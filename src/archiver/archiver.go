@@ -14,7 +14,7 @@ import (
 )
 
 type SmapReading struct {
-    Readings [][]int64
+    Readings [][]uint64
     UUID string
 }
 
@@ -34,9 +34,7 @@ func processSmapReading(jdata *[]byte) {
         log.Panic(err)
         return
       }
-      //println(sr.Readings)
-      //println(sr.UUID)
-
+      rdb_add(&sr)
     }
 
 }
@@ -82,5 +80,5 @@ func main() {
     http.HandleFunc("/add", sMAPAddHandler)
 
     log.Println("Starting HTTP Server on port 8079...")
-    log.Panic(http.ListenAndServe(":8079", nil))
+    log.Panic(http.ListenAndServe("0.0.0.0:8079", nil))
 }
