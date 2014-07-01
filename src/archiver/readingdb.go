@@ -1,15 +1,33 @@
 package main
 
 import (
-	"code.google.com/p/go-uuid/uuid"
+	_ "code.google.com/p/go-uuid/uuid"
 	"code.google.com/p/goprotobuf/proto"
 	"log"
 	"net"
+	"sync"
+	"sync/atomic"
 )
 
+var streamids = make(map[string]uint32)
+var maxstreamid uint32 = 0
+var streamlock sync.Mutex
+
+func getStreamid(uuid string) uint32 {
+	streamlock.Lock()
+	defer streamlock.Unlock()
+	if streamids[uuid] == 0 {
+		atomic.AddUint32(&maxstreamid, 1)
+		streamids[uuid] = maxstreamid
+	}
+	return streamids[uuid]
+}
+
 type RDB struct {
+	sync.Mutex
 	addr *net.TCPAddr
-	Conn net.Conn
+	conn net.Conn
+	In   chan []byte
 }
 
 func NewReadingDB(address string) *RDB {
@@ -18,33 +36,53 @@ func NewReadingDB(address string) *RDB {
 		log.Panic("Error resolving TCP address", address, err)
 		return nil
 	}
-	rdb := &RDB{addr: tcpaddr}
+	rdb := &RDB{addr: tcpaddr, In: make(chan []byte)}
 	return rdb
 }
 
 func (rdb *RDB) Connect() {
+	if rdb.conn != nil {
+		rdb.conn.Close()
+	}
 	conn, err := net.DialTCP("tcp", nil, rdb.addr)
 	if err != nil {
 		log.Panic("Error connecting to ReadingDB", rdb.addr, err)
 		return
 	}
-	rdb.Conn = conn
+	rdb.conn = conn
+}
+
+func (rdb *RDB) DoWrites() {
+	for b := range rdb.In {
+		_, err := rdb.conn.Write(b)
+		if err != nil {
+			log.Println("Error writing data to ReadingDB", err, len(b))
+			rdb.Connect()
+		}
+
+	}
 }
 
 func (rdb *RDB) Add(sr *SmapReading) bool {
-	if rdb.Conn == nil {
+	if rdb.conn == nil {
 		log.Panic("RDB is not connected")
+		return false
+	}
+	if len(sr.Readings) == 0 {
+		log.Println("No readings")
 		return false
 	}
 	var seqno uint32 = 0
 	var timestamp uint32
 	var value float64
-	streamid, _ := uuid.Parse(sr.UUID).Id()
+	//streamid := uuid.Parse(sr.UUID)
+	streamid := getStreamid(sr.UUID)
 	readingset := &ReadingSet{Streamid: &streamid, Substream: &seqno, Data: make([](*Reading), len(sr.Readings))}
 	for i, reading := range sr.Readings {
 		timestamp = uint32(reading[0])
 		value = float64(reading[1])
 		(*readingset).Data[i] = &Reading{Timestamp: &timestamp, Seqno: &seqno, Value: &value}
+		log.Println(timestamp, value, streamid, sr.UUID)
 	}
 
 	data, err := proto.Marshal(readingset)
@@ -52,11 +90,13 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 		log.Panic("Error marshaling ReadingSet", err)
 		return false
 	}
-	_, err = rdb.Conn.Write(data)
-	if err != nil {
-		log.Panic("Error writing data to ReadingDB", err)
-		return false
-	}
+
+	rdb.In <- data
+	//_, err = rdb.conn.Write(data)
+	//if err != nil {
+	//    log.Panic("Error writing data to ReadingDB", err)
+	//    rdb.Connect()
+	//}
 
 	//println(readingset.Streamid)
 	//println((*readingset.Data[0].Timestamp))
