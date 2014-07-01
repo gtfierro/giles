@@ -21,7 +21,6 @@ type SmapReading struct {
 func processSmapReading(jdata *[]byte) {
 	var reading map[string]*json.RawMessage
 	err := json.Unmarshal(*jdata, &reading)
-	//println(jdata)
 	if err != nil {
 		log.Panic(err)
 		return
@@ -34,7 +33,10 @@ func processSmapReading(jdata *[]byte) {
 			log.Panic(err)
 			return
 		}
-		log.Println(rdb.Add(&sr))
+		//if len(sr.Readings) > 0 {
+		//  println(sr.Readings[0][0], sr.Readings[0][1])
+		//}
+		rdb.Add(&sr)
 	}
 }
 
@@ -56,6 +58,7 @@ func main() {
 
 	rdb = NewReadingDB("localhost:4242")
 	rdb.Connect()
+	go rdb.DoWrites()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	log.Println("Utilizing", runtime.NumCPU(), "CPUs")
