@@ -27,7 +27,7 @@ type RDB struct {
 	sync.Mutex
 	addr *net.TCPAddr
 	conn net.Conn
-	In   chan []byte
+	In   chan *[]byte
 }
 
 func NewReadingDB(address string) *RDB {
@@ -36,7 +36,7 @@ func NewReadingDB(address string) *RDB {
 		log.Panic("Error resolving TCP address", address, err)
 		return nil
 	}
-	rdb := &RDB{addr: tcpaddr, In: make(chan []byte)}
+	rdb := &RDB{addr: tcpaddr, In: make(chan *[]byte)}
 	return rdb
 }
 
@@ -45,6 +45,7 @@ func (rdb *RDB) Connect() {
 		rdb.conn.Close()
 	}
 	conn, err := net.DialTCP("tcp", nil, rdb.addr)
+	conn.SetKeepAlive(true)
 	if err != nil {
 		log.Panic("Error connecting to ReadingDB", rdb.addr, err)
 		return
@@ -54,12 +55,14 @@ func (rdb *RDB) Connect() {
 
 func (rdb *RDB) DoWrites() {
 	for b := range rdb.In {
-		_, err := rdb.conn.Write(b)
+		if len((*b)) == 0 {
+			continue
+		}
+		n, err := rdb.conn.Write((*b))
 		if err != nil {
-			log.Println("Error writing data to ReadingDB", err, len(b))
+			log.Println("Error writing data to ReadingDB", err, len((*b)), n)
 			rdb.Connect()
 		}
-
 	}
 }
 
@@ -82,7 +85,7 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 		timestamp = uint32(reading[0])
 		value = float64(reading[1])
 		(*readingset).Data[i] = &Reading{Timestamp: &timestamp, Seqno: &seqno, Value: &value}
-		log.Println(timestamp, value, streamid, sr.UUID)
+		//log.Println(timestamp, value, streamid, sr.UUID)
 	}
 
 	data, err := proto.Marshal(readingset)
@@ -91,7 +94,7 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 		return false
 	}
 
-	rdb.In <- data
+	rdb.In <- &data
 	//_, err = rdb.conn.Write(data)
 	//if err != nil {
 	//    log.Panic("Error writing data to ReadingDB", err)
