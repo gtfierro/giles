@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	_ "net/http/pprof"
+	"time"
 
 	"encoding/json"
 	"net/http"
@@ -65,6 +66,12 @@ func main() {
 
 	http.HandleFunc("/add", sMAPAddHandler)
 
+	srv := &http.Server{
+		Addr:        "0.0.0.0:8079",
+		ReadTimeout: 2 * time.Second,
+	}
+
 	log.Println("Starting HTTP Server on port 8079...")
-	log.Panic(http.ListenAndServe("0.0.0.0:8079", nil))
+	//log.Panic(http.ListenAndServe("0.0.0.0:8079", nil))
+	log.Panic(srv.ListenAndServe())
 }
