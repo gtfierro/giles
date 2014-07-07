@@ -56,18 +56,20 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	readings := processJSON(&jdata)
-	println("readings", readings)
 	rw.WriteHeader(200)
 
-	//TODO: use goroutines to do this concurrently
 	for _, reading := range readings {
-		for _, client := range Subscribers[reading.UUID] {
-			bytes, err := json.Marshal(reading)
-			if err != nil {
-				log.Panic(err)
+		go func(reading *SmapReading) {
+			for _, client := range Subscribers[reading.UUID] {
+				go func(client *RepublishClient) {
+					bytes, err := json.Marshal(reading)
+					if err != nil {
+						log.Panic(err)
+					}
+					client.in <- bytes
+				}(client)
 			}
-			client.in <- bytes
-		}
+		}(reading)
 	}
 }
 
