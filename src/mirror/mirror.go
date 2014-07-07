@@ -1,21 +1,21 @@
 package main
 
 import (
-  "github.com/gorilla/mux"
-  "runtime"
-  "net/http"
-  "log"
-  "io/ioutil"
-  "encoding/json"
+	"encoding/json"
+	"github.com/gorilla/mux"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"runtime"
 )
 
 var Clients [](*RepublishClient)
 var Subscribers = make(map[string][](*RepublishClient))
 
 type RepublishClient struct {
-    uuids []string
-    in chan []byte
-    writer http.ResponseWriter
+	uuids  []string
+	in     chan []byte
+	writer http.ResponseWriter
 }
 
 type SmapReading struct {
@@ -23,28 +23,28 @@ type SmapReading struct {
 	UUID     string
 }
 
-func processJSON(bytes *[]byte) [](*SmapReading){
+func processJSON(bytes *[]byte) [](*SmapReading) {
 	var reading map[string]*json.RawMessage
-    var dest [](*SmapReading)
+	var dest [](*SmapReading)
 	err := json.Unmarshal(*bytes, &reading)
 	if err != nil {
 		log.Panic(err)
 		return nil
 	}
 
-    for _, v := range reading {
-      if v == nil {
-        continue
-      }
-      var sr SmapReading
-      err = json.Unmarshal(*v, &sr)
-      if err != nil {
-        log.Panic(err)
-        return nil
-      }
-      dest = append(dest, &sr)
-    }
-    return dest
+	for _, v := range reading {
+		if v == nil {
+			continue
+		}
+		var sr SmapReading
+		err = json.Unmarshal(*v, &sr)
+		if err != nil {
+			log.Panic(err)
+			return nil
+		}
+		dest = append(dest, &sr)
+	}
+	return dest
 }
 
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
@@ -55,77 +55,77 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(500)
 		return
 	}
-    readings := processJSON(&jdata)
-    println("readings",readings)
+	readings := processJSON(&jdata)
+	println("readings", readings)
 	rw.WriteHeader(200)
 
-    //TODO: use goroutines to do this concurrently
-    for _, reading := range readings {
-      for _, client := range Subscribers[reading.UUID] {
-        bytes, err := json.Marshal(reading)
-        if err != nil {
-          log.Panic(err)
-        }
-        client.in <- bytes
-      }
-    }
+	//TODO: use goroutines to do this concurrently
+	for _, reading := range readings {
+		for _, client := range Subscribers[reading.UUID] {
+			bytes, err := json.Marshal(reading)
+			if err != nil {
+				log.Panic(err)
+			}
+			client.in <- bytes
+		}
+	}
 }
 
 func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
-    vars := mux.Vars(req)
-    uuid := vars["uuid"]
-    rw.Header().Set("Content-Type", "application/json")
-    notify := rw.(http.CloseNotifier).CloseNotify()
+	vars := mux.Vars(req)
+	uuid := vars["uuid"]
+	rw.Header().Set("Content-Type", "application/json")
+	notify := rw.(http.CloseNotifier).CloseNotify()
 
-    client := &RepublishClient{[]string{uuid}, make(chan []byte), rw}
-    Clients = append(Clients, client)
-    Subscribers[uuid] = append(Subscribers[uuid], client)
+	client := &RepublishClient{[]string{uuid}, make(chan []byte), rw}
+	Clients = append(Clients, client)
+	Subscribers[uuid] = append(Subscribers[uuid], client)
 
-    for {
-      select {
-      case <-notify:
-        // remove client from Clients
-        for i, pubclient := range Clients {
-          if pubclient == client {
-            Clients = append(Clients[:i], Clients[i+1:]...)
-          }
-        }
-        // remove client from Subscribers
-        for uuid, clientlist := range Subscribers {
-          for i, pubclient := range clientlist {
-            if pubclient == client {
-              clientlist = append(clientlist[:i], clientlist[i+1:]...)
-            }
-          }
-          Subscribers[uuid] = clientlist
-        }
-        return
-      case datum := <- client.in:
-        rw.Write(datum)
-        rw.Write([]byte{'\n','\n'})
-        if flusher, ok := rw.(http.Flusher); ok {
-          flusher.Flush()
-        }
-      }
-    }
+	for {
+		select {
+		case <-notify:
+			// remove client from Clients
+			for i, pubclient := range Clients {
+				if pubclient == client {
+					Clients = append(Clients[:i], Clients[i+1:]...)
+				}
+			}
+			// remove client from Subscribers
+			for uuid, clientlist := range Subscribers {
+				for i, pubclient := range clientlist {
+					if pubclient == client {
+						clientlist = append(clientlist[:i], clientlist[i+1:]...)
+					}
+				}
+				Subscribers[uuid] = clientlist
+			}
+			return
+		case datum := <-client.in:
+			rw.Write(datum)
+			rw.Write([]byte{'\n', '\n'})
+			if flusher, ok := rw.(http.Flusher); ok {
+				flusher.Flush()
+			}
+		}
+	}
 
 }
 
 func main() {
-    runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
-    r := mux.NewRouter()
-    r.HandleFunc("/add", AddReadingHandler).Methods("POST")
-    r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
-    r.HandleFunc("/republish/{uuid}", RepublishHandler).Methods("POST")
+	r := mux.NewRouter()
+	r.HandleFunc("/add", AddReadingHandler).Methods("POST")
+	r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
+	r.HandleFunc("/republish/{uuid}", RepublishHandler).Methods("POST")
 
-    http.Handle("/", r)
+	http.Handle("/", r)
 
-    srv := &http.Server{
-      Addr: "0.0.0.0:8079",
-    }
+	srv := &http.Server{
+		Addr: "0.0.0.0:8079",
+	}
 
 	log.Println("Starting HTTP Server on port 8079...")
-    log.Panic(srv.ListenAndServe())
+	log.Panic(srv.ListenAndServe())
 
 }
