@@ -63,6 +63,12 @@ func (rdb *RDB) DoWrites() {
 			log.Println("Error writing data to ReadingDB", err, len((*b)), n)
 			rdb.Connect()
 		}
+		rdb.conn.Write([]byte{'\n'})
+		var recv []byte
+		n, _ = rdb.conn.Read(recv)
+		if n > 0 {
+			log.Println("got back", recv)
+		}
 	}
 }
 
@@ -93,6 +99,10 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 		log.Panic("Error marshaling ReadingSet", err)
 		return false
 	}
+
+	x := new(ReadingSet)
+	proto.Unmarshal(data, x)
+	println(x.Streamid, x.Data)
 
 	rdb.In <- &data
 	//_, err = rdb.conn.Write(data)
