@@ -61,6 +61,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 
 	// rdb.Add(smap reading)
 	for _, reading := range readings {
+		rdb.Add(reading)
 		go func(reading *SmapReading) {
 			for _, client := range Subscribers[reading.UUID] {
 				go func(client *RepublishClient) {

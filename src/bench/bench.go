@@ -13,7 +13,7 @@ import (
   "bytes"
 )
 
-var data = []byte(`{"/sensor0" : {"Metadata" : {"SourceName" : "Test Source","Location" : { "City" : "Berkeley" }},"Properties": {"Timezone": "America/Los_Angeles","UnitofMeasure": "Watt","ReadingType": "double"},"Readings" : [[1351043674000, 0], [1351043675000, 1]],"uuid" : "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"}}`)
+var data = []byte(`{"/sensor0" : {"Metadata" : {"SourceName" : "Test Source","Location" : { "City" : "Berkeley" }},"Properties": {"Timezone": "America/Los_Angeles","UnitofMeasure": "Watt","ReadingType": "double"},"Readings" : [[0, 0], [1, 1]],"uuid" : "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"}}`)
 var wg sync.WaitGroup
 var bad uint64
 var gud uint64
@@ -36,7 +36,7 @@ func makePost(s *sync.WaitGroup) {
 func main() {
   runtime.GOMAXPROCS(runtime.NumCPU())
 
-  num := 100000
+  num := 1
   wg.Add(num)
   for x:=0; x<num; x+=1 {
     makePost(&wg)
