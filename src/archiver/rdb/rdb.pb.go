@@ -142,11 +142,9 @@ func (x *Response_ErrorCode) UnmarshalJSON(data []byte) error {
 }
 
 type Reading struct {
-	Timestamp        *uint32  `protobuf:"varint,1,req,name=timestamp" json:"timestamp,omitempty"`
+	Timestamp        *uint64  `protobuf:"varint,1,req,name=timestamp" json:"timestamp,omitempty"`
 	Value            *float64 `protobuf:"fixed64,2,req,name=value" json:"value,omitempty"`
-	Seqno            *uint32  `protobuf:"varint,3,opt,name=seqno" json:"seqno,omitempty"`
-	Min              *float64 `protobuf:"fixed64,4,opt,name=min" json:"min,omitempty"`
-	Max              *float64 `protobuf:"fixed64,5,opt,name=max" json:"max,omitempty"`
+	Seqno            *uint64  `protobuf:"varint,3,opt,name=seqno" json:"seqno,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -154,7 +152,7 @@ func (m *Reading) Reset()         { *m = Reading{} }
 func (m *Reading) String() string { return proto.CompactTextString(m) }
 func (*Reading) ProtoMessage()    {}
 
-func (m *Reading) GetTimestamp() uint32 {
+func (m *Reading) GetTimestamp() uint64 {
 	if m != nil && m.Timestamp != nil {
 		return *m.Timestamp
 	}
@@ -168,23 +166,9 @@ func (m *Reading) GetValue() float64 {
 	return 0
 }
 
-func (m *Reading) GetSeqno() uint32 {
+func (m *Reading) GetSeqno() uint64 {
 	if m != nil && m.Seqno != nil {
 		return *m.Seqno
-	}
-	return 0
-}
-
-func (m *Reading) GetMin() float64 {
-	if m != nil && m.Min != nil {
-		return *m.Min
-	}
-	return 0
-}
-
-func (m *Reading) GetMax() float64 {
-	if m != nil && m.Max != nil {
-		return *m.Max
 	}
 	return 0
 }
@@ -222,21 +206,17 @@ func (m *ReadingSet) GetData() []*Reading {
 }
 
 type DatabaseDelta struct {
-	Timestamp        *int32   `protobuf:"varint,1,opt,name=timestamp" json:"timestamp,omitempty"`
-	Value            *int64   `protobuf:"varint,2,opt,name=value" json:"value,omitempty"`
-	Seqno            *int32   `protobuf:"varint,3,opt,name=seqno" json:"seqno,omitempty"`
-	MinDelta         *int64   `protobuf:"varint,4,opt,name=min_delta" json:"min_delta,omitempty"`
-	MaxDelta         *int64   `protobuf:"varint,5,opt,name=max_delta" json:"max_delta,omitempty"`
-	Min              *float64 `protobuf:"fixed64,6,opt,name=min" json:"min,omitempty"`
-	Max              *float64 `protobuf:"fixed64,7,opt,name=max" json:"max,omitempty"`
-	XXX_unrecognized []byte   `json:"-"`
+	Timestamp        *int64 `protobuf:"varint,1,opt,name=timestamp" json:"timestamp,omitempty"`
+	Value            *int64 `protobuf:"varint,2,opt,name=value" json:"value,omitempty"`
+	Seqno            *int64 `protobuf:"varint,3,opt,name=seqno" json:"seqno,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
 }
 
 func (m *DatabaseDelta) Reset()         { *m = DatabaseDelta{} }
 func (m *DatabaseDelta) String() string { return proto.CompactTextString(m) }
 func (*DatabaseDelta) ProtoMessage()    {}
 
-func (m *DatabaseDelta) GetTimestamp() int32 {
+func (m *DatabaseDelta) GetTimestamp() int64 {
 	if m != nil && m.Timestamp != nil {
 		return *m.Timestamp
 	}
@@ -250,37 +230,9 @@ func (m *DatabaseDelta) GetValue() int64 {
 	return 0
 }
 
-func (m *DatabaseDelta) GetSeqno() int32 {
+func (m *DatabaseDelta) GetSeqno() int64 {
 	if m != nil && m.Seqno != nil {
 		return *m.Seqno
-	}
-	return 0
-}
-
-func (m *DatabaseDelta) GetMinDelta() int64 {
-	if m != nil && m.MinDelta != nil {
-		return *m.MinDelta
-	}
-	return 0
-}
-
-func (m *DatabaseDelta) GetMaxDelta() int64 {
-	if m != nil && m.MaxDelta != nil {
-		return *m.MaxDelta
-	}
-	return 0
-}
-
-func (m *DatabaseDelta) GetMin() float64 {
-	if m != nil && m.Min != nil {
-		return *m.Min
-	}
-	return 0
-}
-
-func (m *DatabaseDelta) GetMax() float64 {
-	if m != nil && m.Max != nil {
-		return *m.Max
 	}
 	return 0
 }
@@ -320,8 +272,8 @@ func (m *DatabaseRecord) GetDeltas() []*DatabaseDelta {
 type Query struct {
 	Streamid         *uint32 `protobuf:"varint,1,req,name=streamid" json:"streamid,omitempty"`
 	Substream        *uint32 `protobuf:"varint,2,req,name=substream" json:"substream,omitempty"`
-	Starttime        *uint32 `protobuf:"varint,3,req,name=starttime" json:"starttime,omitempty"`
-	Endtime          *uint32 `protobuf:"varint,4,req,name=endtime" json:"endtime,omitempty"`
+	Starttime        *uint64 `protobuf:"varint,3,req,name=starttime" json:"starttime,omitempty"`
+	Endtime          *uint64 `protobuf:"varint,4,req,name=endtime" json:"endtime,omitempty"`
 	Action           *uint32 `protobuf:"varint,5,opt,name=action" json:"action,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
@@ -344,14 +296,14 @@ func (m *Query) GetSubstream() uint32 {
 	return 0
 }
 
-func (m *Query) GetStarttime() uint32 {
+func (m *Query) GetStarttime() uint64 {
 	if m != nil && m.Starttime != nil {
 		return *m.Starttime
 	}
 	return 0
 }
 
-func (m *Query) GetEndtime() uint32 {
+func (m *Query) GetEndtime() uint64 {
 	if m != nil && m.Endtime != nil {
 		return *m.Endtime
 	}
@@ -368,7 +320,7 @@ func (m *Query) GetAction() uint32 {
 type Nearest struct {
 	Streamid         *uint32            `protobuf:"varint,1,req,name=streamid" json:"streamid,omitempty"`
 	Substream        *uint32            `protobuf:"varint,2,req,name=substream" json:"substream,omitempty"`
-	Reference        *uint32            `protobuf:"varint,3,req,name=reference" json:"reference,omitempty"`
+	Reference        *uint64            `protobuf:"varint,3,req,name=reference" json:"reference,omitempty"`
 	Direction        *Nearest_Direction `protobuf:"varint,4,req,name=direction,enum=Nearest_Direction" json:"direction,omitempty"`
 	N                *uint32            `protobuf:"varint,5,opt,name=n" json:"n,omitempty"`
 	XXX_unrecognized []byte             `json:"-"`
@@ -392,7 +344,7 @@ func (m *Nearest) GetSubstream() uint32 {
 	return 0
 }
 
-func (m *Nearest) GetReference() uint32 {
+func (m *Nearest) GetReference() uint64 {
 	if m != nil && m.Reference != nil {
 		return *m.Reference
 	}
