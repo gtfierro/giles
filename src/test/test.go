@@ -56,7 +56,7 @@ func main() {
 	var value float64 = 1
 	var streamid uint32 = 1
 	var seqno uint64 = 1
-	// FOR SOME REASON, THIS MUST BE SUBSTREAM-1??
+	// FOR SOME REASON, THIS MUST BE 0?
 	var substream uint32 = 0
 
 	reading := &Reading{Timestamp: &timestamp, Seqno: &seqno, Value: &value}
