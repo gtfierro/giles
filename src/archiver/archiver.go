@@ -60,7 +60,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.WriteHeader(200)
 
 	for _, reading := range readings {
-        // add to ReadingDB
+		// add to ReadingDB
 		rdb.Add(reading)
 		go func(reading *SmapReading) {
 			for _, client := range Subscribers[reading.UUID] {
