@@ -117,18 +117,6 @@ func (rdb *RDB) DoWrites() {
 		if len((*b)) == 0 {
 			continue
 		}
-		// test
-		test := &ReadingSet{}
-		err := proto.Unmarshal((*b), test)
-		if err != nil {
-			println("got error unmarshaling", err)
-		}
-		println(test.GetStreamid(), test.GetSubstream())
-		data := test.GetData()
-		for _, d := range data {
-			println(d.GetTimestamp(), d.GetValue(), d.GetSeqno())
-		}
-
 		n, err := rdb.conn.Write((*b))
 		if err != nil {
 			log.Println("Error writing data to ReadingDB", err, len((*b)), n)
