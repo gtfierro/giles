@@ -112,6 +112,11 @@ func (rdb *RDB) Connect() {
 	rdb.conn = conn
 }
 
+//TODO: explore having a different channel for each UUID.
+// too many connections? Keep pool of last N UUIDs and have
+// those keep channels open for writing. Likely we are not
+// saturating the link.
+//TODO: net/http benchmarking
 func (rdb *RDB) DoWrites() {
 	for b := range rdb.In {
 		if len((*b)) == 0 {
