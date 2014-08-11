@@ -23,9 +23,11 @@ s = StringIO(configfile)
 number = int(sys.argv[1])
 
 source = RawConfigParser()
+source.optionxform=str
 source.readfp(s)
 
 for i in xrange(number):
+    print source.get('server','port')
     port = int(source.get('server','port'))
     source.set('server', 'port', port+1)
     source.set('/','uuid', str(uuid.uuid1()))
