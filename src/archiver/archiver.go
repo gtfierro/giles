@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
+	"runtime/pprof"
 )
 
 var rdb *RDB
@@ -118,7 +121,20 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 
 }
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
+//var memprofile = flag.String("memprofile", "", "write memory profile to this file")
+
 func main() {
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	rdb = NewReadingDB("localhost:4242")
 	rdb.Connect()
