@@ -13,6 +13,7 @@ import (
 )
 
 var rdb *RDB
+var store *Store
 var Clients [](*RepublishClient)
 var Subscribers = make(map[string][](*RepublishClient))
 
@@ -125,6 +126,8 @@ var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 var archiverport = flag.Int("port", 8079, "archiver service port")
 var readingdbip = flag.String("rdbip", "localhost", "ReadingDB IP address")
 var readingdbport = flag.Int("rdbport", 4242, "ReadingDB Port")
+var mongoip = flag.String("mongoip", "localhost", "MongoDB IP address")
+var mongoport = flag.Int("mongoport", 27017, "MongoDB Port")
 
 //var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 
@@ -133,7 +136,10 @@ func main() {
 	log.Println("Serving on port", *archiverport)
 	log.Println("ReadingDB server", *readingdbip)
 	log.Println("ReadingDB port", *readingdbport)
+	log.Println("Mongo server", *mongoip)
+	log.Println("Mongo port", *mongoport)
 
+	/** Configure CPU profiling */
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -143,6 +149,13 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
+	/** connect to Metadata store*/
+	store = NewStore(*mongoip, *mongoport)
+	if store == nil {
+		log.Fatal("Error connection to MongoDB instance")
+	}
+
+	/** connect to ReadingDB */
 	rdb = NewReadingDB(*readingdbip, *readingdbport)
 	if rdb == nil {
 		log.Fatal("Error connecting to ReadingDB instance")
