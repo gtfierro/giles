@@ -122,11 +122,18 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var archiverport = flag.Int("port", 8079, "archiver service port")
+var readingdbip = flag.String("rdbip", "localhost", "ReadingDB IP address")
+var readingdbport = flag.Int("rdbport", 4242, "ReadingDB Port")
 
 //var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 
 func main() {
 	flag.Parse()
+	log.Println("Serving on port", *archiverport)
+	log.Println("ReadingDB server", *readingdbip)
+	log.Println("ReadingDB port", *readingdbport)
+
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -136,7 +143,10 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	rdb = NewReadingDB("localhost:4242")
+	rdb = NewReadingDB(*readingdbip, *readingdbport)
+	if rdb == nil {
+		log.Fatal("Error connecting to ReadingDB instance")
+	}
 	rdb.Connect()
 	go rdb.DoWrites()
 

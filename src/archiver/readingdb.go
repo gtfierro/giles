@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 )
@@ -44,7 +45,7 @@ func NewMessage(sr *SmapReading) *Message {
 	var timestamp uint64
 	var value float64
 	var seqno uint64
-	//TODO: get streamid from smap readings
+	//TODO: get streamid from mongo
 	var streamid uint32 = getStreamid(sr.UUID)
 	var substream uint32 = 0
 
@@ -89,7 +90,8 @@ type RDB struct {
 	In   chan *[]byte
 }
 
-func NewReadingDB(address string) *RDB {
+func NewReadingDB(ip string, port int) *RDB {
+	address := ip + ":" + strconv.Itoa(port)
 	tcpaddr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		log.Panic("Error resolving TCP address", address, err)
@@ -104,11 +106,11 @@ func (rdb *RDB) Connect() {
 		rdb.conn.Close()
 	}
 	conn, err := net.DialTCP("tcp", nil, rdb.addr)
-	conn.SetKeepAlive(true)
 	if err != nil {
-		log.Panic("Error connecting to ReadingDB", rdb.addr, err)
+		log.Panic("Error connecting to ReadingDB: ", rdb.addr, err)
 		return
 	}
+	conn.SetKeepAlive(true)
 	rdb.conn = conn
 }
 
