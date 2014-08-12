@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 )
 
 var rdb *RDB
@@ -173,10 +174,10 @@ func main() {
 	http.Handle("/", r)
 
 	srv := &http.Server{
-		Addr: "0.0.0.0:8079",
+		Addr: "0.0.0.0:" + strconv.Itoa(*archiverport),
 	}
 
-	log.Println("Starting HTTP Server on port 8079...")
+	log.Println("Starting HTTP Server on port " + strconv.Itoa(*archiverport) + "...")
 	log.Panic(srv.ListenAndServe())
 
 }

@@ -47,6 +47,7 @@ func NewMessage(sr *SmapReading) *Message {
 	var seqno uint64
 	//TODO: get streamid from mongo
 	var streamid uint32 = getStreamid(sr.UUID)
+	store.GetStreamId(sr.UUID)
 	var substream uint32 = 0
 
 	// create ReadingSet
