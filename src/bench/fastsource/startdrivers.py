@@ -1,7 +1,11 @@
 import subprocess
 import sys
+import glob
 
-inis = sys.argv[1:]
+inis = glob.glob('*.ini')
+inis = [x.split('.')[0] for x in inis]
+
+print inis
 
 processes = []
 for ini in inis:
