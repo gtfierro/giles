@@ -29,7 +29,12 @@ func NewStore(ip string, port int) *Store {
 	}
 	db := session.DB("archiver")
 	streams := db.C("streams")
+	maxstreamid := &RDBStreamId{}
+	streams.Find(bson.M{}).Sort("-streamid").One(&maxstreamid)
 	var maxsid uint32 = 0
+	if maxstreamid != nil {
+		maxsid = maxstreamid.StreamId + 1
+	}
 	return &Store{session: session, db: db, streams: streams, maxsid: &maxsid}
 }
 
