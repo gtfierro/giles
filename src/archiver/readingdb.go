@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "code.google.com/p/go-uuid/uuid"
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/binary"
 	"log"
