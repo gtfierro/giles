@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -24,35 +23,6 @@ type RepublishClient struct {
 	writer http.ResponseWriter
 }
 
-type SmapReading struct {
-	Readings [][]uint64
-	UUID     string
-}
-
-func processJSON(bytes *[]byte) [](*SmapReading) {
-	var reading map[string]*json.RawMessage
-	var dest [](*SmapReading)
-	err := json.Unmarshal(*bytes, &reading)
-	if err != nil {
-		log.Panic(err)
-		return nil
-	}
-
-	for _, v := range reading {
-		if v == nil {
-			continue
-		}
-		var sr SmapReading
-		err = json.Unmarshal(*v, &sr)
-		if err != nil {
-			log.Panic(err)
-			return nil
-		}
-		dest = append(dest, &sr)
-	}
-	return dest
-}
-
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	jdata, err := ioutil.ReadAll(req.Body)
@@ -61,26 +31,27 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(500)
 		return
 	}
-	readings := processJSON(&jdata)
-	rw.WriteHeader(200)
+	handleJSON(&jdata)
+	//readings := processJSON(&jdata)
+	//rw.WriteHeader(200)
 
-	log.Println("Received POST")
+	//log.Println("Received POST")
 
-	for _, reading := range readings {
-		// add to ReadingDB
-		go rdb.Add(reading)
-		//go func(reading *SmapReading) {
-		//	for _, client := range Subscribers[reading.UUID] {
-		//		go func(client *RepublishClient) {
-		//			bytes, err := json.Marshal(reading)
-		//			if err != nil {
-		//				log.Panic(err)
-		//			}
-		//			client.in <- bytes
-		//		}(client)
-		//	}
-		//}(reading)
-	}
+	//for _, reading := range readings {
+	//	// add to ReadingDB
+	//	go rdb.Add(reading)
+	//	//go func(reading *SmapReading) {
+	//	//	for _, client := range Subscribers[reading.UUID] {
+	//	//		go func(client *RepublishClient) {
+	//	//			bytes, err := json.Marshal(reading)
+	//	//			if err != nil {
+	//	//				log.Panic(err)
+	//	//			}
+	//	//			client.in <- bytes
+	//	//		}(client)
+	//	//	}
+	//	//}(reading)
+	//}
 }
 
 func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
