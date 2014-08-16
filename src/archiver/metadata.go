@@ -14,10 +14,11 @@ type RDBStreamId struct {
 }
 
 type Store struct {
-	session *mgo.Session
-	db      *mgo.Database
-	streams *mgo.Collection
-	maxsid  *uint32
+	session  *mgo.Session
+	db       *mgo.Database
+	streams  *mgo.Collection
+	metadata *mgo.Collection
+	maxsid   *uint32
 }
 
 func NewStore(ip string, port int) *Store {
@@ -29,13 +30,14 @@ func NewStore(ip string, port int) *Store {
 	}
 	db := session.DB("archiver")
 	streams := db.C("streams")
+	metadata := db.C("metadata")
 	maxstreamid := &RDBStreamId{}
 	streams.Find(bson.M{}).Sort("-streamid").One(&maxstreamid)
 	var maxsid uint32 = 1
 	if maxstreamid != nil {
 		maxsid = maxstreamid.StreamId + 1
 	}
-	return &Store{session: session, db: db, streams: streams, maxsid: &maxsid}
+	return &Store{session: session, db: db, streams: streams, metadata: metadata, maxsid: &maxsid}
 }
 
 //TODO: restructure to return value
@@ -47,7 +49,6 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 	err := s.streams.Find(bson.M{"uuid": uuid}).One(&streamid)
 	if err != nil {
 		// not found, so create
-		log.Println(err)
 		streamid.StreamId = (*s.maxsid)
 		streamid.UUID = uuid
 		inserterr := s.streams.Insert(streamid)
@@ -57,6 +58,5 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 		}
 		atomic.AddUint32(s.maxsid, 1)
 	}
-	log.Println(uuid, streamid.UUID, streamid.StreamId)
 	return streamid.StreamId
 }

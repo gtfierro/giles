@@ -146,7 +146,6 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 		return false
 	}
 	if len(sr.Readings) == 0 {
-		log.Println("No readings")
 		return false
 	}
 

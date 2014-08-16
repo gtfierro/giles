@@ -31,7 +31,13 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(500)
 		return
 	}
-	handleJSON(&jdata)
+	messages, err := handleJSON(&jdata)
+	if err != nil {
+		log.Panic(err)
+	}
+	for _, message := range messages {
+		go rdb.Add(message.Readings)
+	}
 	//readings := processJSON(&jdata)
 	//rw.WriteHeader(200)
 
