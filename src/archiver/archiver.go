@@ -32,18 +32,28 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(500)
 		return
 	}
-	readings, err := processJSON(&jdata)
+	messages, err := handleJSON(&jdata)
 	if err != nil {
 		log.Println(err)
 		rw.WriteHeader(500)
 		return
 	}
 	rw.WriteHeader(200)
-
-	for _, reading := range readings {
-		// add to ReadingDB
-		go rdb.Add(reading)
+	for _, msg := range messages {
+		go rdb.Add(msg.Readings)
 	}
+	//readings, err := processJSON(&jdata)
+	//if err != nil {
+	//	log.Println(err)
+	//	rw.WriteHeader(500)
+	//	return
+	//}
+	//rw.WriteHeader(200)
+
+	//for _, reading := range readings {
+	//	// add to ReadingDB
+	//	go rdb.Add(reading)
+	//}
 }
 
 func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
