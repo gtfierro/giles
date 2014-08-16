@@ -42,12 +42,11 @@ func NewStore(ip string, port int) *Store {
 
 //TODO: restructure to return value
 func (s *Store) GetStreamId(uuid string) uint32 {
-	streamlock.Lock()
-	defer streamlock.Unlock()
 
 	streamid := &RDBStreamId{}
 	err := s.streams.Find(bson.M{"uuid": uuid}).One(&streamid)
 	if err != nil {
+		streamlock.Lock()
 		// not found, so create
 		streamid.StreamId = (*s.maxsid)
 		streamid.UUID = uuid
@@ -57,6 +56,7 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 			return 0
 		}
 		atomic.AddUint32(s.maxsid, 1)
+		streamlock.Unlock()
 	}
 	return streamid.StreamId
 }
