@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strconv"
+	"time"
 )
 
 var rdb *RDB
@@ -158,6 +159,18 @@ func main() {
 	}
 
 	log.Println("Starting HTTP Server on port " + strconv.Itoa(*archiverport) + "...")
-	log.Panic(srv.ListenAndServe())
+	go srv.ListenAndServe()
+	idx := 0
+	for {
+		log.Println("still alive", idx, idx*5/10)
+		time.Sleep(5 * time.Second)
+		idx++
+		if idx*5/10 == 10 {
+			if *cpuprofile != "" {
+				return
+			}
+		}
+	}
+	//log.Panic(srv.ListenAndServe())
 
 }
