@@ -27,7 +27,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	jdata, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.Panic(err)
+		log.Println(err)
 		rw.WriteHeader(500)
 		return
 	}
@@ -38,26 +38,31 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	for _, message := range messages {
 		go rdb.Add(message.Readings)
 	}
-	//readings := processJSON(&jdata)
-	//rw.WriteHeader(200)
+	readings, err := processJSON(&jdata)
+	if err != nil {
+		log.Println(err)
+		rw.WriteHeader(500)
+		return
+	}
+	rw.WriteHeader(200)
 
-	//log.Println("Received POST")
+	log.Println("Received POST")
 
-	//for _, reading := range readings {
-	//	// add to ReadingDB
-	//	go rdb.Add(reading)
-	//	//go func(reading *SmapReading) {
-	//	//	for _, client := range Subscribers[reading.UUID] {
-	//	//		go func(client *RepublishClient) {
-	//	//			bytes, err := json.Marshal(reading)
-	//	//			if err != nil {
-	//	//				log.Panic(err)
-	//	//			}
-	//	//			client.in <- bytes
-	//	//		}(client)
-	//	//	}
-	//	//}(reading)
-	//}
+	for _, reading := range readings {
+		// add to ReadingDB
+		go rdb.Add(reading)
+		//go func(reading *SmapReading) {
+		//	for _, client := range Subscribers[reading.UUID] {
+		//		go func(client *RepublishClient) {
+		//			bytes, err := json.Marshal(reading)
+		//			if err != nil {
+		//				log.Panic(err)
+		//			}
+		//			client.in <- bytes
+		//		}(client)
+		//	}
+		//}(reading)
+	}
 }
 
 func RepublishHandler(rw http.ResponseWriter, req *http.Request) {

@@ -10,6 +10,7 @@ import (
 
 type SmapReading struct {
 	Readings [][]uint64
+	Metadata interface{}
 	UUID     string
 }
 
@@ -20,13 +21,12 @@ type SmapMessage struct {
 	UUID       string
 }
 
-func processJSON(bytes *[]byte) [](*SmapReading) {
+func processJSON(bytes *[]byte) ([](*SmapReading), error) {
 	var reading map[string]*json.RawMessage
 	var dest [](*SmapReading)
 	err := json.Unmarshal(*bytes, &reading)
 	if err != nil {
-		log.Panic(err)
-		return nil
+		return dest, err
 	}
 
 	for _, v := range reading {
@@ -36,12 +36,14 @@ func processJSON(bytes *[]byte) [](*SmapReading) {
 		var sr SmapReading
 		err = json.Unmarshal(*v, &sr)
 		if err != nil {
-			log.Panic(err)
-			return nil
+			return nil, err
+		}
+		if sr.Metadata != nil {
+			log.Println("METADATA", sr.Metadata)
 		}
 		dest = append(dest, &sr)
 	}
-	return dest
+	return dest, nil
 }
 
 /*
