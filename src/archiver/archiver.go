@@ -46,8 +46,6 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	rw.WriteHeader(200)
 
-	log.Println("Received POST")
-
 	for _, reading := range readings {
 		// add to ReadingDB
 		go rdb.Add(reading)
