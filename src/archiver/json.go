@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	simplejson "github.com/bitly/go-simplejson"
 	"gopkg.in/mgo.v2/bson"
+	"log"
 	"strconv"
 )
 
@@ -17,6 +18,30 @@ type SmapMessage struct {
 	Metadata   bson.M
 	Properties bson.M
 	UUID       string
+}
+
+func processJSON(bytes *[]byte) [](*SmapReading) {
+	var reading map[string]*json.RawMessage
+	var dest [](*SmapReading)
+	err := json.Unmarshal(*bytes, &reading)
+	if err != nil {
+		log.Panic(err)
+		return nil
+	}
+
+	for _, v := range reading {
+		if v == nil {
+			continue
+		}
+		var sr SmapReading
+		err = json.Unmarshal(*v, &sr)
+		if err != nil {
+			log.Panic(err)
+			return nil
+		}
+		dest = append(dest, &sr)
+	}
+	return dest
 }
 
 /*
