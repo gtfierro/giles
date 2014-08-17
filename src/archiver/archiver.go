@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
@@ -85,6 +87,24 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 
 }
 
+func QueryHandler(rw http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	stringquery, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	res := store.Query(stringquery)
+	fmt.Println("Query result", *res)
+	data, err := json.Marshal(*res)
+	if err != nil {
+		fmt.Println(err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+	}
+	rw.WriteHeader(200)
+	rw.Write(data)
+}
+
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 var archiverport = flag.Int("port", 8079, "archiver service port")
@@ -131,6 +151,7 @@ func main() {
 	r.HandleFunc("/add", AddReadingHandler).Methods("POST")
 	r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
 	r.HandleFunc("/republish/{uuid}", RepublishHandler).Methods("POST")
+	r.HandleFunc("/api/query", QueryHandler).Methods("POST")
 
 	http.Handle("/", r)
 

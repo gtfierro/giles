@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"log"
@@ -84,4 +85,15 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 			log.Panic(err)
 		}
 	}
+}
+
+func (s *Store) Query(stringquery []byte) *[]bson.M {
+	var res []bson.M
+	query := parse(string(stringquery))
+	fmt.Println(*query)
+	err := s.metadata.Find(*query).All(&res)
+	if err != nil {
+		log.Panic(err)
+	}
+	return &res
 }
