@@ -40,7 +40,6 @@ func NewStore(ip string, port int) *Store {
 	return &Store{session: session, db: db, streams: streams, metadata: metadata, maxsid: &maxsid}
 }
 
-//TODO: restructure to return value
 func (s *Store) GetStreamId(uuid string) uint32 {
 
 	streamid := &RDBStreamId{}

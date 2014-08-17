@@ -7,7 +7,6 @@ import (
 	"net"
 	"strconv"
 	"sync"
-	"sync/atomic"
 )
 
 var streamids = make(map[string]uint32)
@@ -24,7 +23,7 @@ type Message struct {
 	data   []byte
 }
 
-type Query struct {
+type Where struct {
 }
 
 /*
@@ -37,7 +36,6 @@ func NewMessage(sr *SmapReading) *Message {
 	var timestamp uint64
 	var value float64
 	var seqno uint64
-	//TODO: get streamid from mongo
 	var streamid uint32 = store.GetStreamId(sr.UUID)
 	if streamid == 0 {
 		log.Println("error committing streamid")
@@ -150,39 +148,47 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 	return true
 }
 
+/*
+  Resolve a query to a slice of StreamIds
+*/
+func (rdb *RDB) Resolve(w Where) []string {
+
+	return nil
+}
+
 //TODO: figure out return values here
 /*
   Retrieves the most recent [limit] readings from
-  all streams that match query [q]
+  all streams that match query [w]
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Latest(q Query, limit uint64) {
+func (rdb *RDB) Latest(w Where, limit uint64) {
 }
 
 /*
   Retrieves the last [limit] readings before (and including)
-  [ref] for all streams that match query [q]
+  [ref] for all streams that match query [w]
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Prev(q Query, ref, limit uint64) {
+func (rdb *RDB) Prev(w Where, ref, limit uint64) {
 }
 
 /*
   Retrieves the last [limit] readings after (and including)
-  [ref] for all streams that match query [q]
+  [ref] for all streams that match query [w]
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Next(q Query, ref, limit uint64) {
+func (rdb *RDB) Next(w Where, ref, limit uint64) {
 }
 
 /*
   Retrieves all data between (and including) [start] and [end]
-  for all streams matching query [q]
+  for all streams matching query [w]
 */
-func (rdb *RDB) Data(q Query, start, end uint64) {
+func (rdb *RDB) Data(w Where, start, end uint64) {
 }
 
 /*

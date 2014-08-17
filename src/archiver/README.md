@@ -9,5 +9,5 @@
 	* `latest(where, limit=1)`
 	* `prev(where, ref, limit=1)`: ref is the timestamp
 	* `next(where, ref, limit=1)`
-	* `data(where, start, end, limit)`
+	* `data(where, start, end)`
 	* `data_uuid(uuids, start, end)`
