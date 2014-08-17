@@ -24,6 +24,9 @@ type Message struct {
 	data   []byte
 }
 
+type Query struct {
+}
+
 /*
    for now, assume all Smap Readings have same uuid. In the future
    We will probably want to queue up the serialization of a bunch
@@ -145,4 +148,46 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 	rdb.In <- &data
 
 	return true
+}
+
+//TODO: figure out return values here
+/*
+  Retrieves the most recent [limit] readings from
+  all streams that match query [q]
+
+  [limit] defaults to 1
+*/
+func (rdb *RDB) Latest(q Query, limit uint64) {
+}
+
+/*
+  Retrieves the last [limit] readings before (and including)
+  [ref] for all streams that match query [q]
+
+  [limit] defaults to 1
+*/
+func (rdb *RDB) Prev(q Query, ref, limit uint64) {
+}
+
+/*
+  Retrieves the last [limit] readings after (and including)
+  [ref] for all streams that match query [q]
+
+  [limit] defaults to 1
+*/
+func (rdb *RDB) Next(q Query, ref, limit uint64) {
+}
+
+/*
+  Retrieves all data between (and including) [start] and [end]
+  for all streams matching query [q]
+*/
+func (rdb *RDB) Data(q Query, start, end uint64) {
+}
+
+/*
+  Retrieves all data between (and including) [start] and [end]
+  for all streams with a uuid in [uuids]
+*/
+func (rdb *RDB) DataUUID(uuids []string, start, end uint64) {
 }
