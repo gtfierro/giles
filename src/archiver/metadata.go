@@ -61,3 +61,28 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 	}
 	return streamid.StreamId
 }
+
+func (s *Store) SaveMetadata(msg *SmapMessage) {
+	/* check if we have any metadata or properties.
+	   This should get hit once per stream unless the stream's
+	   metadata changes
+	*/
+	if msg.Metadata == nil && msg.Properties == nil {
+		return
+	}
+
+	if msg.Metadata != nil {
+		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata": msg.Metadata}})
+		if err != nil {
+			log.Println("Error saving metadata for", msg.UUID)
+			log.Panic(err)
+		}
+	}
+	if msg.Properties != nil {
+		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties": msg.Properties}})
+		if err != nil {
+			log.Println("Error saving metadata for", msg.UUID)
+			log.Panic(err)
+		}
+	}
+}
