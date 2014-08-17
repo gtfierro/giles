@@ -86,13 +86,12 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 var archiverport = flag.Int("port", 8079, "archiver service port")
 var readingdbip = flag.String("rdbip", "localhost", "ReadingDB IP address")
 var readingdbport = flag.Int("rdbport", 4242, "ReadingDB Port")
 var mongoip = flag.String("mongoip", "localhost", "MongoDB IP address")
 var mongoport = flag.Int("mongoport", 27017, "MongoDB Port")
-
-//var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 
 func main() {
 	flag.Parse()
@@ -147,6 +146,15 @@ func main() {
 		time.Sleep(5 * time.Second)
 		idx++
 		if idx*5/10 == 10 {
+			if *memprofile != "" {
+				f, err := os.Create(*memprofile)
+				if err != nil {
+					log.Panic(err)
+				}
+				pprof.WriteHeapProfile(f)
+				f.Close()
+				return
+			}
 			if *cpuprofile != "" {
 				return
 			}
