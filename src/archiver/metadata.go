@@ -81,7 +81,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	if msg.Properties != nil {
 		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties": msg.Properties}})
 		if err != nil {
-			log.Println("Error saving metadata for", msg.UUID)
+			log.Println("Error saving properties for", msg.UUID)
 			log.Panic(err)
 		}
 	}
