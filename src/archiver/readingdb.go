@@ -14,16 +14,6 @@ var streamids = make(map[string]uint32)
 var maxstreamid uint32 = 0
 var streamlock sync.Mutex
 
-func getStreamid(uuid string) uint32 {
-	streamlock.Lock()
-	defer streamlock.Unlock()
-	if streamids[uuid] == 0 {
-		atomic.AddUint32(&maxstreamid, 1)
-		streamids[uuid] = maxstreamid
-	}
-	return streamids[uuid]
-}
-
 type Header struct {
 	Type   MessageType
 	Length uint32
