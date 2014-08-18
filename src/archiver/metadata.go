@@ -61,9 +61,9 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 		}
 		atomic.AddUint32(s.maxsid, 1)
 		log.Println("Creating StreamId", streamid.StreamId, "for uuid", uuid)
-		UUIDCache[uuid] = streamid.StreamId
 		streamlock.Unlock()
 	}
+	UUIDCache[uuid] = streamid.StreamId
 	return streamid.StreamId
 }
 
