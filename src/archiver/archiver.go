@@ -17,6 +17,7 @@ import (
 
 var rdb *RDB
 var store *Store
+var UUIDCache map[string]uint32
 var Clients [](*RepublishClient)
 var Subscribers = make(map[string][](*RepublishClient))
 
