@@ -57,6 +57,12 @@ func (n Node) ToBson() bson.M {
 		return bson.M{"$and": []bson.M{n.Left.(Node).ToBson(), n.Right.(Node).ToBson()}}
 	case OR_NODE:
 		return bson.M{"$or": []bson.M{n.Left.(Node).ToBson(), n.Right.(Node).ToBson()}}
+	case HAS_NODE:
+		return bson.M{n.Left.(string): bson.M{"$exists": true}}
 	}
 	return bson.M{}
+}
+
+func (n Node) Length() int {
+	return 0
 }

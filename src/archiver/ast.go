@@ -113,30 +113,26 @@ func parseWhere(tokens *[]string) *Node {
 			break
 		}
 		switch (*tokens)[pos] {
-		case "has":
-			fmt.Println("has")
-			pos += 2
-			continue
 		case "and":
-			left := stack[len(stack)-1]       // last item off stack
-			stack = stack[:len(stack)-1]      // pop it off
-			right := getNodeAt(pos+1, tokens) // next node
+			left := stack[len(stack)-1]            // last item off stack
+			stack = stack[:len(stack)-1]           // pop it off
+			right, num := getNodeAt(pos+1, tokens) // next node
 			node := Node{Type: AND_NODE, Left: left, Right: right}
 			stack = append(stack, node)
-			pos += 4
+			pos += 1 + num
 			continue
 		case "or":
-			left := stack[len(stack)-1]       // last item off stack
-			stack = stack[:len(stack)-1]      // pop it off
-			right := getNodeAt(pos+1, tokens) // next node
+			left := stack[len(stack)-1]            // last item off stack
+			stack = stack[:len(stack)-1]           // pop it off
+			right, num := getNodeAt(pos+1, tokens) // next node
 			node := Node{Type: OR_NODE, Left: left, Right: right}
 			stack = append(stack, node)
-			pos += 4
+			pos += 1 + num
 			continue
 		default:
-			node := getNodeAt(pos, tokens)
+			node, num := getNodeAt(pos, tokens)
 			stack = append(stack, node)
-			pos += 3
+			pos += num
 			continue
 		}
 		pos++
@@ -150,15 +146,23 @@ func parseWhere(tokens *[]string) *Node {
 	return &Node{Type: DEF_NODE}
 }
 
-func getNodeAt(index int, tokens *[]string) Node {
+func getNodeAt(index int, tokens *[]string) (Node, int) {
 	var node = Node{}
-	node.Left = (*tokens)[index]
-	node.Type = getNodeType((*tokens)[index+1])
-	node.Right = (*tokens)[index+2]
-
+	var numtokens = 0
+	if (*tokens)[index] == "has" {
+		node.Left = (*tokens)[index+1]
+		node.Type = getNodeType((*tokens)[index])
+		node.Right = ""
+		numtokens = 2
+	} else {
+		node.Left = (*tokens)[index]
+		node.Type = getNodeType((*tokens)[index+1])
+		node.Right = (*tokens)[index+2]
+		numtokens = 3
+	}
 	node.Left = strings.Replace(node.Left.(string), "/", ".", -1)
 	node.Right = strings.Replace(node.Right.(string), "/", ".", -1)
-	return node
+	return node, numtokens
 }
 
 func makeAST(tokens []string) (*AST, error) {
