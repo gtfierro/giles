@@ -16,5 +16,5 @@ class Fast(driver.SmapDriver):
     def read(self):
         for i in range(5):
             self.values[i] += 1
-            self.add('/sensor{0}'.format(i), self.values[i])
+            self.add('/sensor{0}'.format(i), self.values[i], self.values[i])
 

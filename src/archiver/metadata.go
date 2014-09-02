@@ -92,13 +92,43 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	}
 }
 
+//TODO: use the rest of the AST! this only does tags queries right now
 func (s *Store) Query(stringquery []byte) *[]bson.M {
+	ast := parse(string(stringquery))
+	fmt.Println("Where clause:", ast.Where.ToBson())
+	where := ast.Where.ToBson()
 	var res []bson.M
-	query := parse(string(stringquery))
-	fmt.Println(*query)
-	err := s.metadata.Find(*query).All(&res)
+	err := s.metadata.Find(where).All(&res)
 	if err != nil {
 		log.Panic(err)
 	}
 	return &res
+}
+
+/*
+  Resolve a query to a slice of UUIDs
+*/
+func (s *Store) GetUUIDs(sq *SmapQuery) []string {
+	var res []string
+	err := s.metadata.Find(*sq.Where).Select(bson.M{"uuid": 1}).All(&res)
+	if err != nil {
+		log.Panic(err)
+	}
+	return res
+}
+
+/*
+  Resolve a query to a slice of StreamIds
+*/
+func (s *Store) GetStreamIds(sq *SmapQuery) []uint32 {
+	var tmp []bson.M
+	var res []uint32
+	err := s.metadata.Find(*sq.Where).Select(bson.M{"uuid": 1}).All(&tmp)
+	if err != nil {
+		log.Panic(err)
+	}
+	for _, uuid := range tmp {
+		res = append(res, s.GetStreamId(uuid["uuid"].(string)))
+	}
+	return res
 }

@@ -23,9 +23,6 @@ type Message struct {
 	data   []byte
 }
 
-type Where struct {
-}
-
 /*
    for now, assume all Smap Readings have same uuid. In the future
    We will probably want to queue up the serialization of a bunch
@@ -148,14 +145,6 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 	return true
 }
 
-/*
-  Resolve a query to a slice of StreamIds
-*/
-func (rdb *RDB) Resolve(w Where) []string {
-
-	return nil
-}
-
 //TODO: figure out return values here
 /*
   Retrieves the most recent [limit] readings from
@@ -163,7 +152,8 @@ func (rdb *RDB) Resolve(w Where) []string {
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Latest(w Where, limit uint64) {
+func (rdb *RDB) Latest(sq *SmapQuery, limit uint64) {
+
 }
 
 /*
@@ -172,7 +162,7 @@ func (rdb *RDB) Latest(w Where, limit uint64) {
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Prev(w Where, ref, limit uint64) {
+func (rdb *RDB) Prev(sq *SmapQuery, ref, limit uint64) {
 }
 
 /*
@@ -181,14 +171,39 @@ func (rdb *RDB) Prev(w Where, ref, limit uint64) {
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Next(w Where, ref, limit uint64) {
+func (rdb *RDB) Next(sq *SmapQuery, ref, limit uint64) {
 }
 
 /*
   Retrieves all data between (and including) [start] and [end]
   for all streams matching query [w]
 */
-func (rdb *RDB) Data(w Where, start, end uint64) {
+func (rdb *RDB) Data(sq *SmapQuery, start, end uint64) {
+	streamids := store.GetStreamIds(sq)
+	var substream uint32 = 0
+	for _, sid := range streamids {
+		m := &Message{}
+		query := &Query{Streamid: &sid, Substream: &substream,
+			Starttime: &start, Endtime: &end}
+		data, err := proto.Marshal(query)
+		h := &Header{Type: MessageType_QUERY, Length: uint32(len(data))}
+		m.header = h
+		m.data = data
+
+		n, err := rdb.conn.Write(m.ToBytes())
+		println("writing", n, "bytes to rdb")
+		if err != nil {
+			log.Println("Error writing data to ReadingDB", err, len((data)), n)
+			rdb.Connect()
+		}
+		var recv []byte
+		n, _ = rdb.conn.Read(recv)
+		println("recv", n)
+		if n > 0 {
+			log.Println("got back", recv, n)
+		}
+
+	}
 }
 
 /*
