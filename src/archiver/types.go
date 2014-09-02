@@ -48,8 +48,20 @@ type Target_T interface {
 }
 
 type TagsTarget struct {
-	distinct bool
-	contents []string
+	Distinct bool
+	Contents []string
+}
+
+func (tt TagsTarget) ToBson() bson.M {
+	var item = bson.M{}
+	for _, val := range tt.Contents {
+		if val == "*" {
+			break
+		} else {
+			item[val] = 1
+		}
+	}
+	return item
 }
 
 type AST struct {
@@ -63,9 +75,9 @@ func (ast *AST) Repr() {
 	fmt.Println("QueryType: ", ast.QueryType)
 	fmt.Println("TargetType: ", ast.TargetType)
 	fmt.Println("Target:")
-	fmt.Println("  distinct?:", ast.Target.(*TagsTarget).distinct)
+	fmt.Println("  distinct?:", ast.Target.(*TagsTarget).Distinct)
 	fmt.Println("  contents:")
-	for idx, val := range ast.Target.(*TagsTarget).contents {
+	for idx, val := range ast.Target.(*TagsTarget).Contents {
 		fmt.Println("    ", idx, ":", val)
 	}
 	fmt.Println("Where:")

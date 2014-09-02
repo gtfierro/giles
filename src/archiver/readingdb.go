@@ -178,8 +178,8 @@ func (rdb *RDB) Next(sq *SmapQuery, ref, limit uint64) {
   Retrieves all data between (and including) [start] and [end]
   for all streams matching query [w]
 */
-func (rdb *RDB) Data(sq *SmapQuery, start, end uint64) {
-	streamids := store.GetStreamIds(sq)
+func (rdb *RDB) Data(ast *AST, start, end uint64) {
+	streamids := store.GetStreamIds(ast.Where.ToBson())
 	var substream uint32 = 0
 	for _, sid := range streamids {
 		m := &Message{}

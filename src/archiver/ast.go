@@ -77,13 +77,13 @@ func parseDataTarget(tokens *[]string) Target_T {
  * or can contain a list of tag paths.
  */
 func parseTagsTarget(tokens *[]string) Target_T {
-	var tt = &TagsTarget{distinct: false, contents: []string{}}
+	var tt = &TagsTarget{Distinct: false, Contents: []string{}}
 	if len(*tokens) == 0 {
 		return tt
 	}
 	pos := 0
 	if (*tokens)[pos] == "distinct" {
-		tt.distinct = true
+		tt.Distinct = true
 		pos++
 	}
 	for idx, val := range (*tokens)[pos:] {
@@ -97,7 +97,9 @@ func parseTagsTarget(tokens *[]string) Target_T {
 		}
 		// adds the token to the list of contents,
 		// removing a trailing comma if there is one
-		tt.contents = append(tt.contents, strings.TrimSuffix(val, ","))
+		tmp := strings.TrimSuffix(val, ",")
+		tmp = strings.Replace(tmp, "/", ".", -1)
+		tt.Contents = append(tt.Contents, tmp)
 	}
 	(*tokens) = []string{}
 	return tt

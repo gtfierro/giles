@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"log"
@@ -94,13 +93,32 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 
 //TODO: use the rest of the AST! this only does tags queries right now
 func (s *Store) Query(stringquery []byte) *[]bson.M {
-	ast := parse(string(stringquery))
-	fmt.Println("Where clause:", ast.Where.ToBson())
-	where := ast.Where.ToBson()
 	var res []bson.M
-	err := s.metadata.Find(where).All(&res)
-	if err != nil {
-		log.Panic(err)
+	ast := parse(string(stringquery))
+	where := ast.Where.ToBson()
+	switch ast.TargetType {
+	case TAGS_TARGET:
+		var err error
+		var staged *mgo.Query
+		target := ast.Target.(*TagsTarget).ToBson()
+		if len(target) == 0 {
+			staged = s.metadata.Find(where).Select(bson.M{"_id": 0})
+		} else {
+			target["_id"] = 0
+			staged = s.metadata.Find(where).Select(target)
+		}
+		if ast.Target.(*TagsTarget).Distinct {
+			log.Panic("Distinct not currently working")
+			err = staged.Distinct(ast.Target.(*TagsTarget).Contents[0], &res)
+		} else {
+			err = staged.All(&res)
+		}
+		if err != nil {
+			log.Panic(err)
+		}
+	case DATA_TARGET:
+		log.Println("Data operations not supported yet")
+		return &res
 	}
 	return &res
 }
@@ -108,9 +126,9 @@ func (s *Store) Query(stringquery []byte) *[]bson.M {
 /*
   Resolve a query to a slice of UUIDs
 */
-func (s *Store) GetUUIDs(sq *SmapQuery) []string {
+func (s *Store) GetUUIDs(where bson.M) []string {
 	var res []string
-	err := s.metadata.Find(*sq.Where).Select(bson.M{"uuid": 1}).All(&res)
+	err := s.metadata.Find(where).Select(bson.M{"uuid": 1}).All(&res)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -120,10 +138,10 @@ func (s *Store) GetUUIDs(sq *SmapQuery) []string {
 /*
   Resolve a query to a slice of StreamIds
 */
-func (s *Store) GetStreamIds(sq *SmapQuery) []uint32 {
+func (s *Store) GetStreamIds(where bson.M) []uint32 {
 	var tmp []bson.M
 	var res []uint32
-	err := s.metadata.Find(*sq.Where).Select(bson.M{"uuid": 1}).All(&tmp)
+	err := s.metadata.Find(where).Select(bson.M{"uuid": 1}).All(&tmp)
 	if err != nil {
 		log.Panic(err)
 	}
