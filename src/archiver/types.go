@@ -13,6 +13,7 @@ type QueryType_T uint
 const (
 	SELECT_TYPE = iota
 	DELETE_TYPE
+	SET_TYPE
 )
 
 /*
@@ -23,6 +24,7 @@ type TargetType_T uint
 const (
 	TAGS_TARGET = iota
 	DATA_TARGET
+	SET_TARGET
 )
 
 type SmapQuery struct {
@@ -52,6 +54,10 @@ type TagsTarget struct {
 	Contents []string
 }
 
+type SetTarget struct {
+	Updates bson.M
+}
+
 func (tt TagsTarget) ToBson() bson.M {
 	var item = bson.M{}
 	for _, val := range tt.Contents {
@@ -75,10 +81,16 @@ func (ast *AST) Repr() {
 	fmt.Println("QueryType: ", ast.QueryType)
 	fmt.Println("TargetType: ", ast.TargetType)
 	fmt.Println("Target:")
-	fmt.Println("  distinct?:", ast.Target.(*TagsTarget).Distinct)
-	fmt.Println("  contents:")
-	for idx, val := range ast.Target.(*TagsTarget).Contents {
-		fmt.Println("    ", idx, ":", val)
+	switch ast.Target.(type) {
+	case (*TagsTarget):
+		fmt.Println("  distinct?:", ast.Target.(*TagsTarget).Distinct)
+		fmt.Println("  contents:")
+		for idx, val := range ast.Target.(*TagsTarget).Contents {
+			fmt.Println("    ", idx, ":", val)
+		}
+	case (*SetTarget):
+		fmt.Println("  set target")
+		fmt.Println("  ", ast.Target.(*SetTarget).Updates)
 	}
 	fmt.Println("Where:")
 	fmt.Println(ast.Where.ToBson())

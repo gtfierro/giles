@@ -3,8 +3,16 @@ package main
 import (
 	"errors"
 	"fmt"
+	"gopkg.in/mgo.v2/bson"
+	"log"
 	"strings"
 )
+
+func cleantagstring(inp string) string {
+	tmp := strings.TrimSuffix(inp, ",")
+	tmp = strings.Replace(tmp, "/", ".", -1)
+	return tmp
+}
 
 /*
   appends stringified token to list of tokens,
@@ -38,6 +46,10 @@ func tokenize(q string) []string {
 		switch char {
 		case '\'':
 			inquotes = !inquotes
+		case ',':
+			if !inquotes {
+				addtoken(&tokens, &token)
+			}
 		case '!':
 			if !inquotes {
 				addtoken(&tokens, &token)
@@ -103,6 +115,33 @@ func parseTagsTarget(tokens *[]string) Target_T {
 	}
 	(*tokens) = []string{}
 	return tt
+}
+
+func parseSetTarget(tokens *[]string) Target_T {
+	var st = &SetTarget{Updates: bson.M{}}
+	if len(*tokens) == 0 {
+		return st
+	}
+	pos := 0
+	for {
+		token := (*tokens)[pos]
+		println(pos, token)
+		if token == "where" {
+			(*tokens) = (*tokens)[pos+1:]
+			return st
+		}
+		// key is token
+		// check that (*tokens)[pos+1] is an equals sign
+		if (*tokens)[pos+1] != "=" {
+			log.Panic("Invalid syntax for setting tag")
+		}
+		value := (*tokens)[pos+2]
+		token = cleantagstring(token)
+		st.Updates[token] = value
+		pos += 3
+	}
+	(*tokens) = []string{}
+	return st
 }
 
 func parseWhere(tokens *[]string) *Node {
@@ -174,8 +213,10 @@ func makeAST(tokens []string) (*AST, error) {
 		ast.QueryType = SELECT_TYPE
 	case "delete":
 		ast.QueryType = DELETE_TYPE
+	case "set":
+		ast.QueryType = SET_TYPE
 	default:
-		return ast, errors.New("Query must be select or delete")
+		return ast, errors.New("Query must be select or delete or set")
 	}
 
 	/* TargetType */
@@ -187,8 +228,13 @@ func makeAST(tokens []string) (*AST, error) {
 		ast.TargetType = DATA_TARGET
 		ast.Target = parseDataTarget(&tokens)
 	default:
-		ast.TargetType = TAGS_TARGET
-		ast.Target = parseTagsTarget(&tokens)
+		if ast.QueryType == SELECT_TYPE {
+			ast.TargetType = TAGS_TARGET
+			ast.Target = parseTagsTarget(&tokens)
+		} else if ast.QueryType == SET_TYPE {
+			ast.TargetType = SET_TARGET
+			ast.Target = parseSetTarget(&tokens)
+		}
 	}
 
 	/* Where */

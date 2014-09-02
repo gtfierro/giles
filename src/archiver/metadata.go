@@ -94,11 +94,11 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 //TODO: use the rest of the AST! this only does tags queries right now
 func (s *Store) Query(stringquery []byte) *[]bson.M {
 	var res []bson.M
+	var err error
 	ast := parse(string(stringquery))
 	where := ast.Where.ToBson()
 	switch ast.TargetType {
 	case TAGS_TARGET:
-		var err error
 		var staged *mgo.Query
 		target := ast.Target.(*TagsTarget).ToBson()
 		if len(target) == 0 {
@@ -113,12 +113,16 @@ func (s *Store) Query(stringquery []byte) *[]bson.M {
 		} else {
 			err = staged.All(&res)
 		}
-		if err != nil {
-			log.Panic(err)
-		}
+	case SET_TARGET:
+		target := ast.Target.(*SetTarget).Updates
+		_, err = s.metadata.UpdateAll(where, bson.M{"$set": target})
+		log.Println("Updated", "records")
 	case DATA_TARGET:
 		log.Println("Data operations not supported yet")
 		return &res
+	}
+	if err != nil {
+		log.Panic(err)
 	}
 	return &res
 }
