@@ -112,7 +112,6 @@ func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
 			message.Properties = bson.M(properties)
 		}
 
-		//TODO get readings
 		readingarray := js.Get("Readings").MustArray()
 		sr := &SmapReading{UUID: uuid}
 		srs := make([][]uint64, len(readingarray))

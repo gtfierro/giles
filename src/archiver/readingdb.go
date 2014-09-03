@@ -25,16 +25,6 @@ type Message struct {
 	data   []byte
 }
 
-type JSONReading struct {
-	Timestamp uint64
-	Value     float64
-}
-
-type JSONReadingSet struct {
-	UUID     string
-	Readings []Reading
-}
-
 /*
    for now, assume all Smap Readings have same uuid. In the future
    We will probably want to queue up the serialization of a bunch
