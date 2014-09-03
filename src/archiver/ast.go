@@ -81,7 +81,19 @@ func tokenize(q string) []string {
 }
 
 func parseDataTarget(tokens *[]string) Target_T {
-	return nil
+	var tt = &TagsTarget{Distinct: false, Contents: []string{}}
+	if len(*tokens) == 0 {
+		return tt
+	}
+	pos := 0
+	for idx, val := range (*tokens)[pos:] {
+		if val == "where" {
+			(*tokens) = (*tokens)[idx+1:]
+			return tt
+		}
+	}
+	(*tokens) = []string{}
+	return tt
 }
 
 /*

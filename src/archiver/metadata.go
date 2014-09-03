@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"log"
@@ -92,8 +93,9 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 }
 
 //TODO: use the rest of the AST! this only does tags queries right now
-func (s *Store) Query(stringquery []byte) *[]bson.M {
+func (s *Store) Query(stringquery []byte) ([]byte, error) {
 	var res []bson.M
+	var d []byte
 	var err error
 	ast := parse(string(stringquery))
 	where := ast.Where.ToBson()
@@ -118,23 +120,29 @@ func (s *Store) Query(stringquery []byte) *[]bson.M {
 		_, err = s.metadata.UpdateAll(where, bson.M{"$set": target})
 		log.Println("Updated", "records")
 	case DATA_TARGET:
-		log.Println("Data operations not supported yet")
-		return &res
+		return rdb.Data(ast, 0, 1000)
+		//log.Println("Data operations not supported yet")
+		//return &res
 	}
 	if err != nil {
-		log.Panic(err)
+		return d, err
 	}
-	return &res
+	d, err = json.Marshal(res)
+	return d, err
 }
 
 /*
   Resolve a query to a slice of UUIDs
 */
 func (s *Store) GetUUIDs(where bson.M) []string {
-	var res []string
-	err := s.metadata.Find(where).Select(bson.M{"uuid": 1}).All(&res)
+	var tmp []bson.M
+	err := s.metadata.Find(where).Select(bson.M{"uuid": 1}).All(&tmp)
 	if err != nil {
 		log.Panic(err)
+	}
+	var res = []string{}
+	for _, uuid := range tmp {
+		res = append(res, uuid["uuid"].(string))
 	}
 	return res
 }

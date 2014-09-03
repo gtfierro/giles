@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -94,16 +93,14 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	res := store.Query(stringquery)
-	fmt.Println("Query result", *res)
-	data, err := json.Marshal(*res)
+	res, err := store.Query(stringquery)
 	if err != nil {
 		fmt.Println(err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 	}
 	rw.WriteHeader(200)
-	rw.Write(data)
+	rw.Write(res)
 }
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")

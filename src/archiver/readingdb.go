@@ -3,6 +3,8 @@ package main
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/binary"
+	"encoding/json"
+	"gopkg.in/mgo.v2/bson"
 	"log"
 	"net"
 	"strconv"
@@ -21,6 +23,16 @@ type Header struct {
 type Message struct {
 	header *Header
 	data   []byte
+}
+
+type JSONReading struct {
+	Timestamp uint64
+	Value     float64
+}
+
+type JSONReadingSet struct {
+	UUID     string
+	Readings []Reading
 }
 
 /*
@@ -178,32 +190,57 @@ func (rdb *RDB) Next(sq *SmapQuery, ref, limit uint64) {
   Retrieves all data between (and including) [start] and [end]
   for all streams matching query [w]
 */
-func (rdb *RDB) Data(ast *AST, start, end uint64) {
-	streamids := store.GetStreamIds(ast.Where.ToBson())
+func (rdb *RDB) Data(ast *AST, start, end uint64) ([]byte, error) {
+	var res []bson.M
+	var d []byte
+	var err error
+	var retdata = []SmapReading{}
+	uuids := store.GetUUIDs(ast.Where.ToBson())
 	var substream uint32 = 0
-	for _, sid := range streamids {
+	var action uint32 = 1
+	for _, uuid := range uuids {
+		sid := store.GetStreamId(uuid)
+		sid = 32
 		m := &Message{}
 		query := &Query{Streamid: &sid, Substream: &substream,
-			Starttime: &start, Endtime: &end}
+			Starttime: &start, Endtime: &end, Action: &action}
 		data, err := proto.Marshal(query)
 		h := &Header{Type: MessageType_QUERY, Length: uint32(len(data))}
 		m.header = h
 		m.data = data
 
 		n, err := rdb.conn.Write(m.ToBytes())
-		println("writing", n, "bytes to rdb")
 		if err != nil {
 			log.Println("Error writing data to ReadingDB", err, len((data)), n)
 			rdb.Connect()
 		}
-		var recv []byte
+		recv := make([]byte, 1024)
 		n, _ = rdb.conn.Read(recv)
-		println("recv", n)
-		if n > 0 {
-			log.Println("got back", recv, n)
+		msglen := binary.BigEndian.Uint32(recv[4:8])
+		response := &Response{}
+		if msglen <= uint32(len(recv)) {
+			err = proto.Unmarshal(recv[8:msglen+8], response)
+			if err != nil {
+				log.Println("Error receiving data from Readingdb", err)
+				return d, err
+			}
+			data := response.GetData()
+			if data == nil {
+				log.Println("No data returned from Readingdb")
+				return d, err
+			}
+			var jr = SmapReading{UUID: uuid, Readings: [][]uint64{}}
+			for _, rdg := range data.GetData() {
+				jr.Readings = append(jr.Readings, []uint64{*rdg.Timestamp, uint64(*rdg.Value)})
+			}
+			retdata = append(retdata, jr)
+			res = append(res, bson.M{"uuid": sid})
+		} else {
+			//TODO read more bytes
 		}
-
 	}
+	d, err = json.Marshal(retdata)
+	return d, err
 }
 
 /*
