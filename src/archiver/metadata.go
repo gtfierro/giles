@@ -118,9 +118,12 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 		d, err = json.Marshal(res)
 	case SET_TARGET:
 		target := ast.Target.(*SetTarget).Updates
-		_, err = s.metadata.UpdateAll(where, bson.M{"$set": target})
-		log.Println("Updated", "records")
-		d, err = json.Marshal(res)
+		info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": target})
+		if err2 != nil {
+			return d, err2
+		}
+		log.Println("Updated", info.Updated, "records")
+		d, err = json.Marshal(bson.M{"Updated": info.Updated})
 	case DATA_TARGET:
 		uuids := store.GetUUIDs(ast.Where.ToBson())
 		response, err := rdb.GetData(uuids, 0, 1000)
