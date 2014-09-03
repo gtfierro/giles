@@ -3,8 +3,6 @@ package main
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/binary"
-	"encoding/json"
-	"gopkg.in/mgo.v2/bson"
 	"log"
 	"net"
 	"strconv"
@@ -23,6 +21,11 @@ type Header struct {
 type Message struct {
 	header *Header
 	data   []byte
+}
+
+type SmapResponse struct {
+	Readings [][]uint64
+	UUID     string
 }
 
 /*
@@ -148,11 +151,18 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 }
 
 //TODO: figure out return values here
+/**
+ * For all the ReadingDB methods, we need to remember that this should really try to act like a
+   standalone package (ish). Given this constraint, we should not require using methods from the
+   metadata store. These methods will return SmapResponse structs
+**/
+
 /*
   Retrieves the most recent [limit] readings from
   all streams that match query [w]
 
   [limit] defaults to 1
+  TODO: just have this accept a list of streamids
 */
 func (rdb *RDB) Latest(sq *SmapQuery, limit uint64) {
 
@@ -163,6 +173,7 @@ func (rdb *RDB) Latest(sq *SmapQuery, limit uint64) {
   [ref] for all streams that match query [w]
 
   [limit] defaults to 1
+  TODO: just have this accept a list of streamids
 */
 func (rdb *RDB) Prev(sq *SmapQuery, ref, limit uint64) {
 }
@@ -172,6 +183,7 @@ func (rdb *RDB) Prev(sq *SmapQuery, ref, limit uint64) {
   [ref] for all streams that match query [w]
 
   [limit] defaults to 1
+  TODO: just have this accept a list of streamids
 */
 func (rdb *RDB) Next(sq *SmapQuery, ref, limit uint64) {
 }
@@ -179,13 +191,11 @@ func (rdb *RDB) Next(sq *SmapQuery, ref, limit uint64) {
 /*
   Retrieves all data between (and including) [start] and [end]
   for all streams matching query [w]
+  TODO: just have this accept a list of streamids
 */
-func (rdb *RDB) Data(ast *AST, start, end uint64) ([]byte, error) {
-	var res []bson.M
-	var d []byte
+func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, error) {
 	var err error
-	var retdata = []SmapReading{}
-	uuids := store.GetUUIDs(ast.Where.ToBson())
+	var retdata = []SmapResponse{}
 	var substream uint32 = 0
 	var action uint32 = 1
 	for _, uuid := range uuids {
@@ -204,33 +214,48 @@ func (rdb *RDB) Data(ast *AST, start, end uint64) ([]byte, error) {
 			log.Println("Error writing data to ReadingDB", err, len((data)), n)
 			rdb.Connect()
 		}
-		recv := make([]byte, 1024)
-		n, _ = rdb.conn.Read(recv)
-		msglen := binary.BigEndian.Uint32(recv[4:8])
-		response := &Response{}
-		if msglen <= uint32(len(recv)) {
-			err = proto.Unmarshal(recv[8:msglen+8], response)
-			if err != nil {
-				log.Println("Error receiving data from Readingdb", err)
-				return d, err
-			}
-			data := response.GetData()
-			if data == nil {
-				log.Println("No data returned from Readingdb")
-				return d, err
-			}
-			var jr = SmapReading{UUID: uuid, Readings: [][]uint64{}}
-			for _, rdg := range data.GetData() {
-				jr.Readings = append(jr.Readings, []uint64{*rdg.Timestamp, uint64(*rdg.Value)})
-			}
-			retdata = append(retdata, jr)
-			res = append(res, bson.M{"uuid": sid})
-		} else {
-			//TODO read more bytes
+		sr, err := rdb.ReceiveData()
+		if err != nil {
+			return retdata, err
 		}
+		retdata = append(retdata, sr)
 	}
-	d, err = json.Marshal(retdata)
-	return d, err
+	return retdata, err
+}
+
+/*
+ * Listens for data coming from ReadingDB
+**/
+func (rdb *RDB) ReceiveData() (SmapResponse, error) {
+	// buffer for received bytes
+	var sr = SmapResponse{}
+	var err error
+	recv := make([]byte, 1024)
+	n, _ := rdb.conn.Read(recv)
+	// message type is first 4 bytes TODO: use it?
+	msglen := binary.BigEndian.Uint32(recv[4:8])
+	// for now, assume the message is a ReadingDB Response protobuf
+	response := &Response{}
+	if msglen <= uint32(n) {
+		err = proto.Unmarshal(recv[8:msglen+8], response)
+		if err != nil {
+			log.Println("Error receiving data from Readingdb", err)
+			return sr, err
+		}
+		data := response.GetData()
+		if data == nil {
+			log.Println("No data returned from Readingdb")
+			return sr, err
+		}
+		//sr.UUID = uuid
+		sr.Readings = [][]uint64{}
+		for _, rdg := range data.GetData() {
+			sr.Readings = append(sr.Readings, []uint64{*rdg.Timestamp, uint64(*rdg.Value)})
+		}
+	} else {
+		//TODO read more bytes
+	}
+	return sr, err
 }
 
 /*

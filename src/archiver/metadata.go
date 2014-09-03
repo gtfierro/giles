@@ -115,19 +115,23 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 		} else {
 			err = staged.All(&res)
 		}
+		d, err = json.Marshal(res)
 	case SET_TARGET:
 		target := ast.Target.(*SetTarget).Updates
 		_, err = s.metadata.UpdateAll(where, bson.M{"$set": target})
 		log.Println("Updated", "records")
+		d, err = json.Marshal(res)
 	case DATA_TARGET:
-		return rdb.Data(ast, 0, 1000)
-		//log.Println("Data operations not supported yet")
-		//return &res
+		uuids := store.GetUUIDs(ast.Where.ToBson())
+		response, err := rdb.GetData(uuids, 0, 1000)
+		if err != nil {
+			return d, err
+		}
+		d, err = json.Marshal(response)
 	}
 	if err != nil {
 		return d, err
 	}
-	d, err = json.Marshal(res)
 	return d, err
 }
 
