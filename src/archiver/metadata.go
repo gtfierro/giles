@@ -92,7 +92,6 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	}
 }
 
-//TODO: use the rest of the AST! this only does tags queries right now
 func (s *Store) Query(stringquery []byte) ([]byte, error) {
 	var res []bson.M
 	var d []byte

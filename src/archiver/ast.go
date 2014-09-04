@@ -81,19 +81,31 @@ func tokenize(q string) []string {
 }
 
 func parseDataTarget(tokens *[]string) Target_T {
-	var tt = &TagsTarget{Distinct: false, Contents: []string{}}
+	var dt = &DataTarget{}
 	if len(*tokens) == 0 {
-		return tt
+		return dt
 	}
-	pos := 0
-	for idx, val := range (*tokens)[pos:] {
+	// pos = 0 is the word 'data', pos = 1 is our dataquery type
+	switch (*tokens)[1] {
+	case "in":
+		dt.Type = IN
+	case "before":
+		dt.Type = BEFORE
+	case "after":
+		dt.Type = AFTER
+	default:
+		log.Panic("Invalid data query", (*tokens)[1])
+		return dt
+	}
+	for idx, val := range (*tokens)[2:] {
+		log.Println(idx, ":", val)
 		if val == "where" {
-			(*tokens) = (*tokens)[idx+1:]
-			return tt
+			(*tokens) = (*tokens)[2+idx+1:]
+			return dt
 		}
 	}
 	(*tokens) = []string{}
-	return tt
+	return dt
 }
 
 /*

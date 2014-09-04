@@ -27,6 +27,17 @@ const (
 	SET_TARGET
 )
 
+/*
+ * direction of data query
+**/
+type DataQueryType_T uint
+
+const (
+	IN = iota
+	BEFORE
+	AFTER
+)
+
 type SmapQuery struct {
 	Where      *bson.M
 	Type       string
@@ -56,6 +67,10 @@ type TagsTarget struct {
 
 type SetTarget struct {
 	Updates bson.M
+}
+
+type DataTarget struct {
+	Type DataQueryType_T
 }
 
 func (tt TagsTarget) ToBson() bson.M {
