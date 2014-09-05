@@ -47,6 +47,7 @@ func tokenize(q string) []string {
 		case '\'':
 			inquotes = !inquotes
 		case ',':
+			token = append(token, char)
 			if !inquotes {
 				addtoken(&tokens, &token)
 			}
