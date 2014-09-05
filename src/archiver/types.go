@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"gopkg.in/mgo.v2/bson"
+	"time"
 )
 
 /* Type of the query. Are we selecting
@@ -70,7 +71,9 @@ type SetTarget struct {
 }
 
 type DataTarget struct {
-	Type DataQueryType_T
+	Type  DataQueryType_T
+	Start time.Time
+	End   time.Time
 }
 
 func (tt TagsTarget) ToBson() bson.M {

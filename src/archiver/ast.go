@@ -81,6 +81,9 @@ func tokenize(q string) []string {
 	return tokens
 }
 
+/**
+ * Handles parsing the data range queries like "data in (start ref, end ref) [limit]"
+**/
 func parseDataTarget(tokens *[]string) Target_T {
 	var dt = &DataTarget{}
 	if len(*tokens) == 0 {
@@ -98,13 +101,29 @@ func parseDataTarget(tokens *[]string) Target_T {
 		log.Panic("Invalid data query", (*tokens)[1])
 		return dt
 	}
-	for idx, val := range (*tokens)[2:] {
-		log.Println(idx, ":", val)
-		if val == "where" {
-			(*tokens) = (*tokens)[2+idx+1:]
-			return dt
+	pos := 2
+	timetokens := []string{}
+	for {
+		val := (*tokens)[pos]
+		fmt.Println(val)
+		switch val {
+		case "where", "limit", "streamlimit": // terminating cases
+			(*tokens) = (*tokens)[pos+1:]
+			goto ReturnDataTarget
+		default: // parse a time specification
+			timetokens = append(timetokens, val)
+			if strings.HasSuffix(val, ",") || strings.HasSuffix(val, ")") {
+				time, err := handleTime(timetokens)
+				if err != nil {
+					log.Panic(err)
+				}
+				fmt.Println("time", time)
+				timetokens = []string{}
+			}
 		}
+		pos++ //advance to next token
 	}
+ReturnDataTarget:
 	(*tokens) = []string{}
 	return dt
 }
