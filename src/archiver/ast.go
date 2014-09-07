@@ -104,6 +104,9 @@ func parseDataTarget(tokens *[]string) Target_T {
 	pos := 2
 	timetokens := []string{}
 	for {
+		if pos >= len(*tokens) {
+			break
+		}
 		val := (*tokens)[pos]
 		fmt.Println(val)
 		switch val {
@@ -128,8 +131,8 @@ func parseDataTarget(tokens *[]string) Target_T {
 		}
 		pos++ //advance to next token
 	}
-ReturnDataTarget:
 	(*tokens) = []string{}
+ReturnDataTarget:
 	return dt
 }
 
