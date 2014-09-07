@@ -13,6 +13,14 @@ var streamids = make(map[string]uint32)
 var maxstreamid uint32 = 0
 var streamlock sync.Mutex
 
+func min(a, b uint32) uint32 {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
+}
+
 type Header struct {
 	Type   MessageType
 	Length uint32
@@ -200,7 +208,6 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, erro
 	var action uint32 = 1
 	for _, uuid := range uuids {
 		sid := store.GetStreamId(uuid)
-		sid = 32
 		m := &Message{}
 		query := &Query{Streamid: &sid, Substream: &substream,
 			Starttime: &start, Endtime: &end, Action: &action}
@@ -215,6 +222,7 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, erro
 			rdb.Connect()
 		}
 		sr, err := rdb.ReceiveData()
+		sr.UUID = uuid
 		if err != nil {
 			return retdata, err
 		}
@@ -232,16 +240,26 @@ func (rdb *RDB) ReceiveData() (SmapResponse, error) {
 	var err error
 	recv := make([]byte, 2048)
 	n, _ := rdb.conn.Read(recv)
+	recv = recv[:n] // truncate to the length of known valid data
 	// message type is first 4 bytes TODO: use it?
 	msglen := binary.BigEndian.Uint32(recv[4:8])
 	// for now, assume the message is a ReadingDB Response protobuf
 	response := &Response{}
-	//TODO: fix this!
-	if msglen > uint32(n) {
-		log.Println("too big")
-		newrecv := make([]byte, uint32(n)-msglen)
-		rdb.conn.Read(newrecv)
-		recv = append(recv, newrecv...)
+	// remaining length is the expected length of message - how much we've already received
+	var remaining_length = uint32(0)
+	if uint32(n-8) != msglen {
+		remaining_length = msglen - uint32(n)
+	}
+	for {
+		// base case
+		if remaining_length <= 0 {
+			break
+		}
+		buffer_length := min(2048, remaining_length)
+		newrecv := make([]byte, buffer_length)
+		bytes_read, _ := rdb.conn.Read(newrecv)
+		recv = append(recv, newrecv[:bytes_read]...)
+		remaining_length = remaining_length - uint32(bytes_read)
 	}
 	err = proto.Unmarshal(recv[8:msglen+8], response)
 	if err != nil {

@@ -120,7 +120,6 @@ func parseDataTarget(tokens *[]string) Target_T {
 				if err != nil {
 					log.Panic(err)
 				}
-				fmt.Println("time", time)
 				if dt.End.IsZero() {
 					dt.End = time
 				} else if dt.Start.IsZero() {
