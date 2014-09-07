@@ -230,30 +230,33 @@ func (rdb *RDB) ReceiveData() (SmapResponse, error) {
 	// buffer for received bytes
 	var sr = SmapResponse{}
 	var err error
-	recv := make([]byte, 1024)
+	recv := make([]byte, 2048)
 	n, _ := rdb.conn.Read(recv)
 	// message type is first 4 bytes TODO: use it?
 	msglen := binary.BigEndian.Uint32(recv[4:8])
 	// for now, assume the message is a ReadingDB Response protobuf
 	response := &Response{}
-	if msglen <= uint32(n) {
-		err = proto.Unmarshal(recv[8:msglen+8], response)
-		if err != nil {
-			log.Println("Error receiving data from Readingdb", err)
-			return sr, err
-		}
-		data := response.GetData()
-		if data == nil {
-			log.Println("No data returned from Readingdb")
-			return sr, err
-		}
-		//sr.UUID = uuid
-		sr.Readings = [][]uint64{}
-		for _, rdg := range data.GetData() {
-			sr.Readings = append(sr.Readings, []uint64{*rdg.Timestamp, uint64(*rdg.Value)})
-		}
-	} else {
-		//TODO read more bytes
+	//TODO: fix this!
+	if msglen > uint32(n) {
+		log.Println("too big")
+		newrecv := make([]byte, uint32(n)-msglen)
+		rdb.conn.Read(newrecv)
+		recv = append(recv, newrecv...)
+	}
+	err = proto.Unmarshal(recv[8:msglen+8], response)
+	if err != nil {
+		log.Println("Error receiving data from Readingdb", err)
+		return sr, err
+	}
+	data := response.GetData()
+	if data == nil {
+		log.Println("No data returned from Readingdb")
+		return sr, err
+	}
+	//sr.UUID = uuid
+	sr.Readings = [][]uint64{}
+	for _, rdg := range data.GetData() {
+		sr.Readings = append(sr.Readings, []uint64{*rdg.Timestamp, uint64(*rdg.Value)})
 	}
 	return sr, err
 }

@@ -124,8 +124,12 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 		log.Println("Updated", info.Updated, "records")
 		d, err = json.Marshal(bson.M{"Updated": info.Updated})
 	case DATA_TARGET:
+		target := ast.Target.(*DataTarget)
+		start := uint64(target.Start.Unix())
+		end := uint64(target.End.Unix())
+		log.Println("start", start, "end", end)
 		uuids := store.GetUUIDs(ast.Where.ToBson())
-		response, err := rdb.GetData(uuids, 0, 1000)
+		response, err := rdb.GetData(uuids, start, end)
 		if err != nil {
 			return d, err
 		}
