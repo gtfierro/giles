@@ -44,7 +44,7 @@ func tokenize(q string) []string {
 		}
 		char := rune(q[pos])
 		switch char {
-		case '\'':
+		case '\'', '"':
 			inquotes = !inquotes
 		case ',':
 			token = append(token, char)
@@ -108,7 +108,6 @@ func parseDataTarget(tokens *[]string) Target_T {
 			break
 		}
 		val := (*tokens)[pos]
-		fmt.Println(val)
 		switch val {
 		case "where", "limit", "streamlimit": // terminating cases
 			(*tokens) = (*tokens)[pos+1:]
@@ -176,7 +175,6 @@ func parseSetTarget(tokens *[]string) Target_T {
 	pos := 0
 	for {
 		token := (*tokens)[pos]
-		println(pos, token)
 		if token == "where" {
 			(*tokens) = (*tokens)[pos+1:]
 			return st
