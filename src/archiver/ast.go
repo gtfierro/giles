@@ -224,9 +224,6 @@ func parseWhere(tokens *[]string) *Node {
 		}
 		pos++
 	}
-	for _, n := range stack {
-		fmt.Println("clause:", n.ToBson())
-	}
 	if len(stack) > 0 {
 		return &stack[0]
 	}
@@ -292,9 +289,7 @@ func makeAST(tokens []string) (*AST, error) {
 }
 
 func parse(q string) *AST {
-	fmt.Println(q)
 	tokens := tokenize(q)
 	ast, _ := makeAST(tokens)
-	ast.Repr()
 	return ast
 }
