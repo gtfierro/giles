@@ -308,10 +308,3 @@ func (rdb *RDB) ReceiveData(conn *net.Conn) (SmapResponse, error) {
 	}
 	return sr, err
 }
-
-/*
-  Retrieves all data between (and including) [start] and [end]
-  for all streams with a uuid in [uuids]
-*/
-func (rdb *RDB) DataUUID(uuids []string, start, end uint64) {
-}
