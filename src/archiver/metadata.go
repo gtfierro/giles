@@ -141,6 +141,10 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 			ref := uint64(target.Ref.Unix())
 			log.Println("after", ref)
 			response, err = rdb.Next(uuids, ref, 1, &conn)
+		case BEFORE:
+			ref := uint64(target.Ref.Unix())
+			log.Println("before", ref)
+			response, err = rdb.Prev(uuids, ref, 1, &conn)
 		}
 		if err != nil {
 			return d, err

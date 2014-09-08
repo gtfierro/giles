@@ -166,7 +166,6 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 	return true
 }
 
-//TODO: figure out return values here
 /**
  * For all the ReadingDB methods, we need to remember that this should really try to act like a
    standalone package (ish). Given this constraint, we should not require using methods from the
@@ -178,7 +177,6 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
   all streams that match query [w]
 
   [limit] defaults to 1
-  TODO: just have this accept a list of streamids
 */
 func (rdb *RDB) Latest(sq *SmapQuery, limit uint64) {
 
@@ -189,9 +187,35 @@ func (rdb *RDB) Latest(sq *SmapQuery, limit uint64) {
   [ref] for all streams that match query [w]
 
   [limit] defaults to 1
-  TODO: just have this accept a list of streamids
 */
-func (rdb *RDB) Prev(sq *SmapQuery, ref, limit uint64) {
+func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32, conn *net.Conn) ([]SmapResponse, error) {
+	var err error
+	var retdata = []SmapResponse{}
+
+	var substream uint32 = 0
+	var direction = Nearest_PREV
+	for _, uuid := range uuids {
+		sid := store.GetStreamId(uuid)
+		m := &Message{}
+		query := &Nearest{Streamid: &sid, Substream: &substream,
+			Reference: &ref, Direction: &direction, N: &limit}
+		data, err := proto.Marshal(query)
+		h := &Header{Type: MessageType_NEAREST, Length: uint32(len(data))}
+		m.header = h
+		m.data = data
+		n, err := (*conn).Write(m.ToBytes())
+		if err != nil {
+			log.Println("Error writing data to ReadingDB", err, len((data)), n)
+			return retdata, err
+		}
+		sr, err := rdb.ReceiveData(conn)
+		sr.UUID = uuid
+		if err != nil {
+			return retdata, err
+		}
+		retdata = append(retdata, sr)
+	}
+	return retdata, err
 }
 
 /*
@@ -199,7 +223,6 @@ func (rdb *RDB) Prev(sq *SmapQuery, ref, limit uint64) {
   [ref] for all streams that match query [w]
 
   [limit] defaults to 1
-  TODO: just have this accept a list of streamids
 */
 func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32, conn *net.Conn) ([]SmapResponse, error) {
 	var err error
@@ -234,7 +257,6 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32, conn *net.Conn) (
 /*
   Retrieves all data between (and including) [start] and [end]
   for all streams matching query [w]
-  TODO: just have this accept a list of streamids
 */
 func (rdb *RDB) GetData(uuids []string, start, end uint64, conn *net.Conn) ([]SmapResponse, error) {
 	if start > end {
