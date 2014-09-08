@@ -201,7 +201,34 @@ func (rdb *RDB) Prev(sq *SmapQuery, ref, limit uint64) {
   [limit] defaults to 1
   TODO: just have this accept a list of streamids
 */
-func (rdb *RDB) Next(sq *SmapQuery, ref, limit uint64) {
+func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32, conn *net.Conn) ([]SmapResponse, error) {
+	var err error
+	var retdata = []SmapResponse{}
+
+	var substream uint32 = 0
+	var direction = Nearest_NEXT
+	for _, uuid := range uuids {
+		sid := store.GetStreamId(uuid)
+		m := &Message{}
+		query := &Nearest{Streamid: &sid, Substream: &substream,
+			Reference: &ref, Direction: &direction, N: &limit}
+		data, err := proto.Marshal(query)
+		h := &Header{Type: MessageType_NEAREST, Length: uint32(len(data))}
+		m.header = h
+		m.data = data
+		n, err := (*conn).Write(m.ToBytes())
+		if err != nil {
+			log.Println("Error writing data to ReadingDB", err, len((data)), n)
+			return retdata, err
+		}
+		sr, err := rdb.ReceiveData(conn)
+		sr.UUID = uuid
+		if err != nil {
+			return retdata, err
+		}
+		retdata = append(retdata, sr)
+	}
+	return retdata, err
 }
 
 /*

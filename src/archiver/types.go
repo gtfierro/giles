@@ -72,6 +72,7 @@ type SetTarget struct {
 
 type DataTarget struct {
 	Type  DataQueryType_T
+	Ref   time.Time
 	Start time.Time
 	End   time.Time
 }

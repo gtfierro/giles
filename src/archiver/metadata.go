@@ -125,15 +125,23 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 		d, err = json.Marshal(bson.M{"Updated": info.Updated})
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
-		start := uint64(target.Start.Unix())
-		end := uint64(target.End.Unix())
-		log.Println("start", start, "end", end)
 		uuids := store.GetUUIDs(ast.Where.ToBson())
 		conn, err := rdb.GetConnection()
 		if err != nil {
 			return d, err
 		}
-		response, err := rdb.GetData(uuids, start, end, &conn)
+		var response []SmapResponse
+		switch target.Type {
+		case IN:
+			start := uint64(target.Start.Unix())
+			end := uint64(target.End.Unix())
+			log.Println("start", start, "end", end)
+			response, err = rdb.GetData(uuids, start, end, &conn)
+		case AFTER:
+			ref := uint64(target.Ref.Unix())
+			log.Println("after", ref)
+			response, err = rdb.Next(uuids, ref, 1, &conn)
+		}
 		if err != nil {
 			return d, err
 		}
