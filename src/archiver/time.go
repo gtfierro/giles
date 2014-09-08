@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var supported_formats = []string{"01/02/2006", "01-02-2006", "01/02/2006 04:15", "01-02-2006 04:15", "2006-01-02 15:04:05"}
+
 /**
  * Takes a string specifying a time, and returns a canonical Time object representing that string.
  * To consider: should this instead return the kind of timestamp expected by ReadingDB? Or can that
@@ -24,6 +26,13 @@ import (
  * %m/%d/%Y %M:%H
  * %m-%d-%Y %M:%H
  * %Y-%m-%dT%H:%M:%S
+
+ Go time layout: Mon Jan 2 15:04:05 -0700 MST 2006
+ * 01/02/2006
+ * 01-02-2006
+ * 01/02/2006 04:15
+ * 01-02-2006 04:15
+ * 2006-01-02 15:04:05
 **/
 func handleTime(portions []string) (time.Time, error) {
 	ret := time.Now()
@@ -42,12 +51,16 @@ func handleTime(portions []string) (time.Time, error) {
 			ret = ret.Add(dur)
 		}
 	} else {
-		//TODO: parse "normal" time
+		timestring := strings.Join(portions[1:], " ")
+		for _, format := range supported_formats {
+			t, err := time.Parse(format, timestring)
+			if err != nil {
+				continue
+			}
+			ret = t
+			break
+		}
 	}
-	log.Println("ret", ret)
-	log.Println(ret.Unix())
-	log.Println("now", time.Now())
-	log.Println(time.Now().Unix())
 	return ret, nil
 }
 
