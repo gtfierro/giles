@@ -13,14 +13,6 @@ var streamids = make(map[string]uint32)
 var maxstreamid uint32 = 0
 var streamlock sync.Mutex
 
-func min(a, b uint32) uint32 {
-	if a < b {
-		return a
-	} else {
-		return b
-	}
-}
-
 type Header struct {
 	Type   MessageType
 	Length uint32

@@ -8,12 +8,6 @@ import (
 	"strings"
 )
 
-func cleantagstring(inp string) string {
-	tmp := strings.TrimSuffix(inp, ",")
-	tmp = strings.Replace(tmp, "/", ".", -1)
-	return tmp
-}
-
 /*
   appends stringified token to list of tokens,
   then empties token
@@ -304,24 +298,3 @@ func parse(q string) *AST {
 	ast.Repr()
 	return ast
 }
-
-//func main() {
-//	var q string
-//	q = "select *"
-//	parse(q)
-//
-//	q = "select * where Metadata/System = 'Lighting'"
-//	parse(q)
-//
-//	q = "select * where Metadata/System='Building Lighting'"
-//	parse(q)
-//
-//	q = "select Metadata/System, uuid where Metadata/site='012345' and Metadata/System = 'HVAC'"
-//	parse(q)
-//
-//	q = "select uuid where Metadata/site != '123'"
-//	parse(q)
-//
-//	q = "select uuid where Metadata/site!='123'"
-//	parse(q)
-//}
