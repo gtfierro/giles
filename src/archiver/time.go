@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var supported_formats = []string{"01/02/2006", "01-02-2006", "01/02/2006 04:15", "01-02-2006 04:15", "2006-01-02 15:04:05"}
+var supported_formats = []string{"1/2/2006", "1-2-2006", "1/2/2006 04:15", "1-2-2006 04:15", "2006-1-2 15:04:05"}
 
 /**
  * Takes a string specifying a time, and returns a canonical Time object representing that string.
@@ -51,7 +51,10 @@ func handleTime(portions []string) (time.Time, error) {
 			ret = ret.Add(dur)
 		}
 	} else {
-		timestring := strings.Join(portions[1:], " ")
+		portions[0] = strings.Replace(portions[idx], "(", "", -1)
+		portions[0] = strings.Replace(portions[idx], ",", "", -1)
+		timestring := strings.Join(portions, " ")
+		log.Println("parsing", timestring)
 		for _, format := range supported_formats {
 			t, err := time.Parse(format, timestring)
 			if err != nil {

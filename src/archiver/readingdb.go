@@ -202,6 +202,9 @@ func (rdb *RDB) Next(sq *SmapQuery, ref, limit uint64) {
   TODO: just have this accept a list of streamids
 */
 func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, error) {
+	if start > end {
+		start, end = end, start
+	}
 	var err error
 	var retdata = []SmapResponse{}
 	var substream uint32 = 0
