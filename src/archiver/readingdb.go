@@ -172,14 +172,23 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
    metadata store. These methods will return SmapResponse structs
 **/
 
-/*
-  Retrieves the most recent [limit] readings from
-  all streams that match query [w]
-
-  [limit] defaults to 1
-*/
-func (rdb *RDB) Latest(sq *SmapQuery, limit uint64) {
-
+/**
+ * What's the common functionality for all the methods? Sending and receiving
+**/
+func (rdb *RDB) sendAndReceive(payload []byte, msgtype MessageType, conn *net.Conn) (SmapResponse, error) {
+	var sr SmapResponse
+	var err error
+	m := &Message{}
+	h := &Header{Type: msgtype, Length: uint32(len(payload))}
+	m.header = h
+	m.data = payload
+	_, err = (*conn).Write(m.ToBytes())
+	if err != nil {
+		log.Println("Error writing data to ReadingDB", err)
+		return sr, err
+	}
+	sr, err = rdb.ReceiveData(conn)
+	return sr, err
 }
 
 /*
@@ -191,28 +200,18 @@ func (rdb *RDB) Latest(sq *SmapQuery, limit uint64) {
 func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32, conn *net.Conn) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
-
+	var data []byte
 	var substream uint32 = 0
 	var direction = Nearest_PREV
+	var sr SmapResponse
+
 	for _, uuid := range uuids {
 		sid := store.GetStreamId(uuid)
-		m := &Message{}
 		query := &Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &limit}
-		data, err := proto.Marshal(query)
-		h := &Header{Type: MessageType_NEAREST, Length: uint32(len(data))}
-		m.header = h
-		m.data = data
-		n, err := (*conn).Write(m.ToBytes())
-		if err != nil {
-			log.Println("Error writing data to ReadingDB", err, len((data)), n)
-			return retdata, err
-		}
-		sr, err := rdb.ReceiveData(conn)
+		data, err = proto.Marshal(query)
+		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, conn)
 		sr.UUID = uuid
-		if err != nil {
-			return retdata, err
-		}
 		retdata = append(retdata, sr)
 	}
 	return retdata, err
@@ -227,28 +226,18 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32, conn *net.Conn) (
 func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32, conn *net.Conn) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
-
+	var data []byte
 	var substream uint32 = 0
 	var direction = Nearest_NEXT
+	var sr SmapResponse
+
 	for _, uuid := range uuids {
 		sid := store.GetStreamId(uuid)
-		m := &Message{}
 		query := &Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &limit}
-		data, err := proto.Marshal(query)
-		h := &Header{Type: MessageType_NEAREST, Length: uint32(len(data))}
-		m.header = h
-		m.data = data
-		n, err := (*conn).Write(m.ToBytes())
-		if err != nil {
-			log.Println("Error writing data to ReadingDB", err, len((data)), n)
-			return retdata, err
-		}
-		sr, err := rdb.ReceiveData(conn)
+		data, err = proto.Marshal(query)
+		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, conn)
 		sr.UUID = uuid
-		if err != nil {
-			return retdata, err
-		}
 		retdata = append(retdata, sr)
 	}
 	return retdata, err
@@ -264,28 +253,17 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64, conn *net.Conn) ([]Sm
 	}
 	var err error
 	var retdata = []SmapResponse{}
+	var data []byte
 	var substream uint32 = 0
 	var action uint32 = 1
+	var sr SmapResponse
 	for _, uuid := range uuids {
 		sid := store.GetStreamId(uuid)
-		m := &Message{}
 		query := &Query{Streamid: &sid, Substream: &substream,
 			Starttime: &start, Endtime: &end, Action: &action}
-		data, err := proto.Marshal(query)
-		h := &Header{Type: MessageType_QUERY, Length: uint32(len(data))}
-		m.header = h
-		m.data = data
-
-		n, err := (*conn).Write(m.ToBytes())
-		if err != nil {
-			log.Println("Error writing data to ReadingDB", err, len((data)), n)
-			return retdata, err
-		}
-		sr, err := rdb.ReceiveData(conn)
+		data, err = proto.Marshal(query)
+		sr, err = rdb.sendAndReceive(data, MessageType_QUERY, conn)
 		sr.UUID = uuid
-		if err != nil {
-			return retdata, err
-		}
 		retdata = append(retdata, sr)
 	}
 	return retdata, err
