@@ -78,7 +78,7 @@ func parseIntoDuration(str string) (time.Duration, error) {
 	 * "s|sec|second". Otherwise, you will find yourself matching "s", but with a tailing
 	 * "econd"
 	**/
-	re := regexp.MustCompile("([-+][0-9]+)(hour|h|minute|min|m|second|sec|s|day|d)")
+	re := regexp.MustCompile("([-+][0-9]+)(hour|hr|h|minute|min|m|second|sec|s|days|day|d)")
 	res := re.FindAllStringSubmatch(str, -1)
 	if len(res) != 1 {
 		return d, errors.New("Invalid timespec: " + str)
@@ -93,13 +93,13 @@ func parseIntoDuration(str string) (time.Duration, error) {
 
 	// handle units
 	switch res[0][2] {
-	case "h", "hour":
+	case "h", "hr", "hour":
 		d *= time.Hour
 	case "m", "min", "minute":
 		d *= time.Minute
 	case "s", "sec", "second":
 		d *= time.Second
-	case "d", "day":
+	case "d", "days", "day":
 		d *= 24 * time.Hour
 	default:
 		return d, errors.New("Timespec needs valid units:" + str)
