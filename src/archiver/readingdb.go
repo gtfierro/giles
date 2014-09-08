@@ -105,6 +105,14 @@ func NewReadingDB(ip string, port int) *RDB {
 	return rdb
 }
 
+func (rdb *RDB) GetConnection() (net.Conn, error) {
+	conn, err := net.DialTCP("tcp", nil, rdb.addr)
+	if err == nil {
+		conn.SetKeepAlive(true)
+	}
+	return conn, err
+}
+
 func (rdb *RDB) Connect() {
 	if rdb.conn != nil {
 		rdb.conn.Close()
@@ -201,7 +209,7 @@ func (rdb *RDB) Next(sq *SmapQuery, ref, limit uint64) {
   for all streams matching query [w]
   TODO: just have this accept a list of streamids
 */
-func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, error) {
+func (rdb *RDB) GetData(uuids []string, start, end uint64, conn *net.Conn) ([]SmapResponse, error) {
 	if start > end {
 		start, end = end, start
 	}
@@ -219,12 +227,12 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, erro
 		m.header = h
 		m.data = data
 
-		n, err := rdb.conn.Write(m.ToBytes())
+		n, err := (*conn).Write(m.ToBytes())
 		if err != nil {
 			log.Println("Error writing data to ReadingDB", err, len((data)), n)
-			rdb.Connect()
+			return retdata, err
 		}
-		sr, err := rdb.ReceiveData()
+		sr, err := rdb.ReceiveData(conn)
 		sr.UUID = uuid
 		if err != nil {
 			return retdata, err
@@ -237,12 +245,12 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, erro
 /*
  * Listens for data coming from ReadingDB
 **/
-func (rdb *RDB) ReceiveData() (SmapResponse, error) {
+func (rdb *RDB) ReceiveData(conn *net.Conn) (SmapResponse, error) {
 	// buffer for received bytes
 	var sr = SmapResponse{}
 	var err error
 	recv := make([]byte, 2048)
-	n, _ := rdb.conn.Read(recv)
+	n, _ := (*conn).Read(recv)
 	recv = recv[:n] // truncate to the length of known valid data
 	// message type is first 4 bytes TODO: use it?
 	msglen := binary.BigEndian.Uint32(recv[4:8])
@@ -260,7 +268,7 @@ func (rdb *RDB) ReceiveData() (SmapResponse, error) {
 		}
 		buffer_length := min(2048, remaining_length)
 		newrecv := make([]byte, buffer_length)
-		bytes_read, _ := rdb.conn.Read(newrecv)
+		bytes_read, _ := (*conn).Read(newrecv)
 		recv = append(recv, newrecv[:bytes_read]...)
 		remaining_length = remaining_length - uint32(bytes_read)
 	}

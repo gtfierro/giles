@@ -129,7 +129,11 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 		end := uint64(target.End.Unix())
 		log.Println("start", start, "end", end)
 		uuids := store.GetUUIDs(ast.Where.ToBson())
-		response, err := rdb.GetData(uuids, start, end)
+		conn, err := rdb.GetConnection()
+		if err != nil {
+			return d, err
+		}
+		response, err := rdb.GetData(uuids, start, end, &conn)
 		if err != nil {
 			return d, err
 		}
