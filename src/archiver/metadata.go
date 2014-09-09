@@ -126,6 +126,7 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
 		uuids := store.GetUUIDs(ast.Where.ToBson())
+        log.Println("these uuids",uuids)
 		if target.Streamlimit > -1 {
 			uuids = uuids[:target.Streamlimit] // limit number of streams
 		}
