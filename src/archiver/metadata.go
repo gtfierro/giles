@@ -126,13 +126,9 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
 		uuids := store.GetUUIDs(ast.Where.ToBson())
-        log.Println("these uuids",uuids)
+		log.Println("these uuids", uuids)
 		if target.Streamlimit > -1 {
 			uuids = uuids[:target.Streamlimit] // limit number of streams
-		}
-		conn, err := rdb.GetConnection()
-		if err != nil {
-			return d, err
 		}
 		var response []SmapResponse
 		switch target.Type {
@@ -140,15 +136,15 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 			start := uint64(target.Start.Unix())
 			end := uint64(target.End.Unix())
 			log.Println("start", start, "end", end)
-			response, err = rdb.GetData(uuids, start, end, &conn)
+			response, err = rdb.GetData(uuids, start, end)
 		case AFTER:
 			ref := uint64(target.Ref.Unix())
 			log.Println("after", ref)
-			response, err = rdb.Next(uuids, ref, target.Limit, &conn)
+			response, err = rdb.Next(uuids, ref, target.Limit)
 		case BEFORE:
 			ref := uint64(target.Ref.Unix())
 			log.Println("before", ref)
-			response, err = rdb.Prev(uuids, ref, target.Limit, &conn)
+			response, err = rdb.Prev(uuids, ref, target.Limit)
 		}
 		if err != nil {
 			return d, err

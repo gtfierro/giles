@@ -133,11 +133,6 @@ func (rdb *RDB) DoWrites() {
 			log.Println("Error writing data to ReadingDB", err, len((*b)), n)
 			rdb.Connect()
 		}
-		var recv []byte
-		n, _ = rdb.conn.Read(recv)
-		if n > 0 {
-			log.Println("got back", recv)
-		}
 	}
 }
 
@@ -189,7 +184,7 @@ func (rdb *RDB) sendAndReceive(payload []byte, msgtype MessageType, conn *net.Co
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32, conn *net.Conn) ([]SmapResponse, error) {
+func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
 	var data []byte
@@ -198,11 +193,15 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32, conn *net.Conn) (
 	var sr SmapResponse
 
 	for _, uuid := range uuids {
+		conn, err := rdb.GetConnection()
+		if err != nil {
+			return retdata, err
+		}
 		sid := store.GetStreamId(uuid)
 		query := &Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &limit}
 		data, err = proto.Marshal(query)
-		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, conn)
+		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, &conn)
 		sr.UUID = uuid
 		retdata = append(retdata, sr)
 	}
@@ -215,7 +214,7 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32, conn *net.Conn) (
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32, conn *net.Conn) ([]SmapResponse, error) {
+func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
 	var data []byte
@@ -224,11 +223,15 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32, conn *net.Conn) (
 	var sr SmapResponse
 
 	for _, uuid := range uuids {
+		conn, err := rdb.GetConnection()
+		if err != nil {
+			return retdata, err
+		}
 		sid := store.GetStreamId(uuid)
 		query := &Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &limit}
 		data, err = proto.Marshal(query)
-		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, conn)
+		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, &conn)
 		sr.UUID = uuid
 		retdata = append(retdata, sr)
 	}
@@ -239,7 +242,7 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32, conn *net.Conn) (
   Retrieves all data between (and including) [start] and [end]
   for all streams matching query [w]
 */
-func (rdb *RDB) GetData(uuids []string, start, end uint64, conn *net.Conn) ([]SmapResponse, error) {
+func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, error) {
 	if start > end {
 		start, end = end, start
 	}
@@ -250,11 +253,15 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64, conn *net.Conn) ([]Sm
 	var action uint32 = 1
 	var sr SmapResponse
 	for _, uuid := range uuids {
+		conn, err := rdb.GetConnection()
+		if err != nil {
+			return retdata, err
+		}
 		sid := store.GetStreamId(uuid)
 		query := &Query{Streamid: &sid, Substream: &substream,
 			Starttime: &start, Endtime: &end, Action: &action}
 		data, err = proto.Marshal(query)
-		sr, err = rdb.sendAndReceive(data, MessageType_QUERY, conn)
+		sr, err = rdb.sendAndReceive(data, MessageType_QUERY, &conn)
 		sr.UUID = uuid
 		retdata = append(retdata, sr)
 	}
