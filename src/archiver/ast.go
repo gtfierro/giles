@@ -2,9 +2,9 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"gopkg.in/mgo.v2/bson"
 	"log"
+	"strconv"
 	"strings"
 )
 
@@ -79,7 +79,7 @@ func tokenize(q string) []string {
  * Handles parsing the data range queries like "data in (start ref, end ref) [limit]"
 **/
 func parseDataTarget(tokens *[]string) Target_T {
-	var dt = &DataTarget{}
+	var dt = &DataTarget{Streamlimit: -1, Limit: 1}
 	if len(*tokens) == 0 {
 		return dt
 	}
@@ -103,7 +103,23 @@ func parseDataTarget(tokens *[]string) Target_T {
 		}
 		val := (*tokens)[pos]
 		switch val {
-		case "where", "limit", "streamlimit": // terminating cases
+		case "limit":
+			limit, err := strconv.ParseUint((*tokens)[pos+1], 10, 64)
+			if err != nil {
+				log.Panic(err)
+			}
+			dt.Limit = uint32(limit)
+			pos += 2
+			continue
+		case "streamlimit":
+			limit, err := strconv.ParseInt((*tokens)[pos+1], 10, 64)
+			if err != nil {
+				log.Panic(err)
+			}
+			dt.Streamlimit = int(limit)
+			pos += 2
+			continue
+		case "where": // terminating cases
 			(*tokens) = (*tokens)[pos+1:]
 			goto ReturnDataTarget
 		default: // parse a time specification

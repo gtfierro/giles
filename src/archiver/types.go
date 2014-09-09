@@ -71,10 +71,12 @@ type SetTarget struct {
 }
 
 type DataTarget struct {
-	Type  DataQueryType_T
-	Ref   time.Time
-	Start time.Time
-	End   time.Time
+	Type        DataQueryType_T
+	Ref         time.Time
+	Start       time.Time
+	End         time.Time
+	Limit       uint32
+	Streamlimit int
 }
 
 func (tt TagsTarget) ToBson() bson.M {
