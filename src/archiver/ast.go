@@ -261,7 +261,7 @@ func getNodeAt(index int, tokens *[]string) (Node, int) {
 		numtokens = 3
 	}
 	node.Left = strings.Replace(node.Left.(string), "/", ".", -1)
-	node.Right = strings.Replace(node.Right.(string), "/", ".", -1)
+	//node.Right = strings.Replace(node.Right.(string), "/", ".", -1)
 	return node, numtokens
 }
 

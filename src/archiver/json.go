@@ -17,9 +17,10 @@ type SmapReading struct {
 type SmapMessage struct {
 	Readings   *SmapReading
 	Metadata   bson.M
+	Actuator   bson.M
 	Properties bson.M
 	UUID       string
-	path       string
+	Path       string
 }
 
 func processJSON(bytes *[]byte) ([](*SmapReading), error) {
@@ -97,7 +98,7 @@ func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
 			continue
 		}
 
-		message := &SmapMessage{path: path, UUID: uuid}
+		message := &SmapMessage{Path: path, UUID: uuid}
 
 		if localmetadata != nil {
 			message.Metadata = bson.M(localmetadata)
@@ -121,7 +122,10 @@ func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
 		sr.Readings = srs
 		message.Readings = sr
 
-		//TODO get actuator
+		actuator := js.Get("Actuator").MustMap()
+		if actuator != nil {
+			message.Actuator = bson.M(actuator)
+		}
 
 		ret = append(ret, message)
 
@@ -134,7 +138,7 @@ func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
 				ret[idx] = msg
 				break
 			}
-			if strings.HasPrefix((*msg).path, prefix) {
+			if strings.HasPrefix((*msg).Path, prefix) {
 				for k, v := range md.(map[string]interface{}) {
 					if (*msg).Metadata[k] == nil {
 						(*msg).Metadata[k] = v

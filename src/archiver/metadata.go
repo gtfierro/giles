@@ -72,8 +72,15 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	   This should get hit once per stream unless the stream's
 	   metadata changes
 	*/
-	if msg.Metadata == nil && msg.Properties == nil {
+	if msg.Path == "" && msg.Metadata == nil && msg.Properties == nil {
 		return
+	}
+	if msg.Path != "" {
+		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Path": msg.Path}})
+		if err != nil {
+			log.Println("Error saving path for", msg.UUID)
+			log.Panic(err)
+		}
 	}
 
 	if msg.Metadata != nil {
@@ -157,6 +164,9 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 	return d, err
 }
 
+/*
+   Return all metadata for a certain UUID
+*/
 func (s *Store) TagsUUID(uuid string) ([]byte, error) {
 	var d []byte
 	staged := s.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"_id": 0})
