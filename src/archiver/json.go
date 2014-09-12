@@ -6,6 +6,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"log"
 	"strconv"
+	"strings"
 )
 
 type SmapReading struct {
@@ -19,6 +20,7 @@ type SmapMessage struct {
 	Metadata   bson.M
 	Properties bson.M
 	UUID       string
+	path       string
 }
 
 func processJSON(bytes *[]byte) ([](*SmapReading), error) {
@@ -37,9 +39,6 @@ func processJSON(bytes *[]byte) ([](*SmapReading), error) {
 		err = json.Unmarshal(*v, &sr)
 		if err != nil {
 			return nil, err
-		}
-		if sr.Metadata != nil {
-			log.Println("METADATA", sr.Metadata)
 		}
 		dest = append(dest, &sr)
 	}
@@ -99,8 +98,7 @@ func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
 			continue
 		}
 
-		message := &SmapMessage{}
-		message.UUID = uuid
+		message := &SmapMessage{path: path, UUID: uuid}
 
 		if localmetadata != nil {
 			message.Metadata = bson.M(localmetadata)
@@ -130,5 +128,22 @@ func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
 
 	}
 	//loop through all path metadata and apply to messages
+	for prefix, md := range pathmetadata {
+		for idx, msg := range ret {
+			if (*msg).Metadata == nil {
+				(*msg).Metadata = bson.M(md.(map[string]interface{}))
+				ret[idx] = msg
+				break
+			}
+			if strings.HasPrefix((*msg).path, prefix) {
+				for k, v := range md.(map[string]interface{}) {
+					if (*msg).Metadata[k] == nil {
+						(*msg).Metadata[k] = v
+					}
+				}
+				ret[idx] = msg
+			}
+		}
+	}
 	return ret, e
 }
