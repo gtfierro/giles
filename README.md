@@ -48,10 +48,3 @@ for creating new stream ids.
 The command-line utility should read off some credentials from an internal
 config file or environment vars (think AWS creds) and use those as
 authentication to create new subscription keys.
-
-### /add
-
-* **Create stream ids if they do not exist**: 
-    
-* Look up stream ids
-* Add data to readingdb
