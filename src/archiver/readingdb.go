@@ -285,7 +285,7 @@ func (rdb *RDB) ReceiveData(conn *net.Conn) (SmapResponse, error) {
 	// remaining length is the expected length of message - how much we've already received
 	var remaining_length = uint32(0)
 	if uint32(n-8) != msglen {
-		remaining_length = msglen - uint32(n)
+		remaining_length = msglen - uint32(n) + 8
 	}
 	for {
 		// base case
