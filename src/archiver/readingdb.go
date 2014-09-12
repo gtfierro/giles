@@ -60,7 +60,7 @@ func NewMessage(sr *SmapReading) *Message {
 	// marshal for sending over wire
 	data, err := proto.Marshal(readingset)
 	if err != nil {
-		log.Panic("Error marshaling ReadingSet", err)
+		log.Panic("Error marshaling ReadingSet:", err)
 		return nil
 	}
 
@@ -300,7 +300,7 @@ func (rdb *RDB) ReceiveData(conn *net.Conn) (SmapResponse, error) {
 	}
 	err = proto.Unmarshal(recv[8:msglen+8], response)
 	if err != nil {
-		log.Println("Error receiving data from Readingdb", err)
+		log.Println("Error receiving data from Readingdb:", err)
 		return sr, err
 	}
 	data := response.GetData()

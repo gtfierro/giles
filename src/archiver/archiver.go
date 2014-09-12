@@ -26,18 +26,23 @@ type RepublishClient struct {
 	writer http.ResponseWriter
 }
 
+/**
+ * Handles POSTing of new data
+**/
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	jdata, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Println(err)
 		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
 		return
 	}
 	messages, err := handleJSON(&jdata)
 	if err != nil {
 		log.Println(err)
 		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
 		return
 	}
 	rw.WriteHeader(200)
@@ -47,6 +52,10 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
+/**
+ * Receives POST request which contains metadata query. Subscribes the
+ * requester to readings from streams which match that metadata query
+**/
 func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
@@ -84,9 +93,11 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
-
 }
 
+/**
+ * Resolves sMAP queries and returns results
+**/
 func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
@@ -95,27 +106,34 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	res, err := store.Query(stringquery)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
+		return
 	}
 	rw.WriteHeader(200)
 	rw.Write(res)
 }
 
+/**
+ * Returns metadata for a uuid. A limited GET alternative to the POST query handler
+**/
 func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	rw.Header().Set("Content-Type", "application/json")
 	res, err := store.TagsUUID(uuid)
 	if err != nil {
+		log.Println(err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
+		return
 	}
 	rw.WriteHeader(200)
 	rw.Write(res)
 }
 
+// config flags
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 var archiverport = flag.Int("port", 8079, "archiver service port")
