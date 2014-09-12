@@ -103,6 +103,19 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(res)
 }
 
+func TagsHandler(rw http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	uuid := vars["uuid"]
+	rw.Header().Set("Content-Type", "application/json")
+	res, err := store.TagsUUID(uuid)
+	if err != nil {
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+	}
+	rw.WriteHeader(200)
+	rw.Write(res)
+}
+
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 var memprofile = flag.String("memprofile", "", "write memory profile to this file")
 var archiverport = flag.Int("port", 8079, "archiver service port")
@@ -150,6 +163,7 @@ func main() {
 	r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
 	r.HandleFunc("/republish/{uuid}", RepublishHandler).Methods("POST")
 	r.HandleFunc("/api/query", QueryHandler).Methods("POST")
+	r.HandleFunc("/api/tags/uuid/{uuid}", TagsHandler).Methods("GET")
 
 	http.Handle("/", r)
 

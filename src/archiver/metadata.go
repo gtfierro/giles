@@ -157,6 +157,18 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 	return d, err
 }
 
+func (s *Store) TagsUUID(uuid string) ([]byte, error) {
+	var d []byte
+	staged := s.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"_id": 0})
+	res := []bson.M{}
+	err := staged.All(&res)
+	if err != nil {
+		return d, err
+	}
+	d, err = json.Marshal(res)
+	return d, err
+}
+
 /*
   Resolve a query to a slice of UUIDs
 */

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	simplejson "github.com/bitly/go-simplejson"
 	"gopkg.in/mgo.v2/bson"
-	"log"
 	"strconv"
 	"strings"
 )
