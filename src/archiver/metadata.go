@@ -72,7 +72,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	   This should get hit once per stream unless the stream's
 	   metadata changes
 	*/
-	if msg.Path == "" && msg.Metadata == nil && msg.Properties == nil {
+	if msg.Path == "" && msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil {
 		return
 	}
 	if msg.Path != "" {
@@ -94,6 +94,13 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties": msg.Properties}})
 		if err != nil {
 			log.Println("Error saving properties for", msg.UUID)
+			log.Panic(err)
+		}
+	}
+	if msg.Actuator != nil {
+		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Actuator": msg.Actuator}})
+		if err != nil {
+			log.Println("Error saving actuator for", msg.UUID)
 			log.Panic(err)
 		}
 	}
