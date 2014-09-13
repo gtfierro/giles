@@ -165,9 +165,6 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 		}
 		d, err = json.Marshal(response)
 	}
-	if err != nil {
-		return d, err
-	}
 	return d, err
 }
 
