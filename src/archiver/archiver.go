@@ -42,6 +42,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	for _, msg := range messages {
 		go rdb.Add(msg.Readings)
 		go store.SaveMetadata(msg)
+		go republisher.Republish(msg)
 	}
 }
 
@@ -55,19 +56,7 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		fmt.Println(err)
 	}
-
 	republisher.HandleSubscriber(rw, string(stringquery))
-
-	//for {
-	//	select {
-	//	case datum := <-client.in:
-	//		rw.Write(datum)
-	//		rw.Write([]byte{'\n', '\n'})
-	//		if flusher, ok := rw.(http.Flusher); ok {
-	//			flusher.Flush()
-	//		}
-	//	}
-	//}
 }
 
 /**

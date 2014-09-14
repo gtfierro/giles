@@ -59,3 +59,13 @@ func (r *Republisher) HandleSubscriber(rw http.ResponseWriter, query string) {
 		r.Subscribers[uuid] = clientlist
 	}
 }
+
+func (r *Republisher) Republish(msg *SmapMessage) {
+	for _, client := range r.Subscribers[msg.UUID] {
+		client.writer.Write(msg.ToJson())
+		client.writer.Write([]byte{'\n', '\n'})
+		if flusher, ok := client.writer.(http.Flusher); ok {
+			flusher.Flush()
+		}
+	}
+}

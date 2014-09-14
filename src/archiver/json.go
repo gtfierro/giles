@@ -10,8 +10,7 @@ import (
 
 type SmapReading struct {
 	Readings [][]uint64
-	Metadata interface{}
-	UUID     string
+	UUID     string `json:"uuid"`
 }
 
 type SmapMessage struct {
@@ -21,6 +20,17 @@ type SmapMessage struct {
 	Properties bson.M
 	UUID       string
 	Path       string
+}
+
+func (sm *SmapMessage) ToJson() []byte {
+	towrite := map[string]*SmapReading{}
+	towrite[sm.Path] = sm.Readings
+	b, err := json.Marshal(towrite)
+	if err != nil {
+		log.Println(err)
+		return []byte{}
+	}
+	return b
 }
 
 func processJSON(bytes *[]byte) ([](*SmapReading), error) {
