@@ -17,14 +17,7 @@ import (
 var rdb *RDB
 var store *Store
 var UUIDCache = make(map[string]uint32)
-var Clients [](*RepublishClient)
-var Subscribers = make(map[string][](*RepublishClient))
-
-type RepublishClient struct {
-	uuids  []string
-	in     chan []byte
-	writer http.ResponseWriter
-}
+var republisher *Republisher
 
 /**
  * Handles POSTing of new data
@@ -57,42 +50,24 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
  * requester to readings from streams which match that metadata query
 **/
 func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	uuid := vars["uuid"]
-	rw.Header().Set("Content-Type", "application/json")
-	notify := rw.(http.CloseNotifier).CloseNotify()
-
-	client := &RepublishClient{[]string{uuid}, make(chan []byte), rw}
-	Clients = append(Clients, client)
-	Subscribers[uuid] = append(Subscribers[uuid], client)
-
-	for {
-		select {
-		case <-notify:
-			// remove client from Clients
-			for i, pubclient := range Clients {
-				if pubclient == client {
-					Clients = append(Clients[:i], Clients[i+1:]...)
-				}
-			}
-			// remove client from Subscribers
-			for uuid, clientlist := range Subscribers {
-				for i, pubclient := range clientlist {
-					if pubclient == client {
-						clientlist = append(clientlist[:i], clientlist[i+1:]...)
-					}
-				}
-				Subscribers[uuid] = clientlist
-			}
-			return
-		case datum := <-client.in:
-			rw.Write(datum)
-			rw.Write([]byte{'\n', '\n'})
-			if flusher, ok := rw.(http.Flusher); ok {
-				flusher.Flush()
-			}
-		}
+	defer req.Body.Close()
+	stringquery, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		fmt.Println(err)
 	}
+
+	republisher.HandleSubscriber(rw, string(stringquery))
+
+	//for {
+	//	select {
+	//	case datum := <-client.in:
+	//		rw.Write(datum)
+	//		rw.Write([]byte{'\n', '\n'})
+	//		if flusher, ok := rw.(http.Flusher); ok {
+	//			flusher.Flush()
+	//		}
+	//	}
+	//}
 }
 
 /**
@@ -159,6 +134,7 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
+	republisher = NewRepublisher()
 
 	/** connect to Metadata store*/
 	store = NewStore(*mongoip, *mongoport)
@@ -179,7 +155,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/add", AddReadingHandler).Methods("POST")
 	r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
-	r.HandleFunc("/republish/{uuid}", RepublishHandler).Methods("POST")
+	r.HandleFunc("/republish", RepublishHandler).Methods("POST")
 	r.HandleFunc("/api/query", QueryHandler).Methods("POST")
 	r.HandleFunc("/api/tags/uuid/{uuid}", TagsHandler).Methods("GET")
 
