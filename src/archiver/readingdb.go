@@ -279,6 +279,7 @@ func (rdb *RDB) ReceiveData(conn *net.Conn) (SmapResponse, error) {
 	n, _ := (*conn).Read(recv)
 	recv = recv[:n] // truncate to the length of known valid data
 	// message type is first 4 bytes TODO: use it?
+	_ = binary.BigEndian.Uint32(recv[:4])
 	msglen := binary.BigEndian.Uint32(recv[4:8])
 	// for now, assume the message is a ReadingDB Response protobuf
 	response := &Response{}
