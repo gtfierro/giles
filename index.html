@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Giles by gtfierro</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Giles</h1>
+        <p>Go implementation of sMAP archiver</p>
+
+        <p class="view"><a href="https://github.com/gtfierro/giles">View the Project on GitHub <small>gtfierro/giles</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/gtfierro/giles/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/gtfierro/giles/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/gtfierro/giles">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+    
+      <p>Giles is a re-implementation of the <a href="https://github.com/SoftwareDefinedBuildings/smap/"></a>sMAP Archiver</a> in Go. It is
+      part of an effort to modernize (and multi-thread) the sMAP architecture to help it scale to larger deployments.</p>
+      
+      <h3>Installation</h3>
+      <p>Giles is designed to be easy to install:</p>
+      <p>You can download <a href='https://github.com/gtfierro/giles/releases/tag/v0.1-alpha'>pre-compiled binaries</a>,
+      of if you have Go installed on your computer, you can run</p>
+      <pre>
+$ go get github.com/gtfierro/giles/src/archiver
+$ archiver -h
+Usage of archiver:
+  -cpuprofile="": write cpu profile to file
+  -memprofile="": write memory profile to this file
+  -mongoip="localhost": MongoDB IP address
+  -mongoport=27017: MongoDB Port
+  -port=8079: archiver service port
+  -rdbip="localhost": ReadingDB IP address
+  -rdbport=4242: ReadingDB Port
+
+      </pre>
+
+      <p>You will need both <a href="https://github.com/SoftwareDefinedBuildings/readingdb/tree/adaptive">ReadingDB</a> and <a href="http://www.mongodb.org/downloads">MongoDB</a>
+      running. Point Giles to their ports using the command line options. Giles assumes by default that ReadingDB and MongoDB are running on localhost on ports 4242 and 27017
+      respectively (these are the default ports for those services)</p>
+      
+      <h3>Status</h3>
+      <p>Giles is still in development, so not all features are implemented</p>
+      
+      <h4>Features</h4>
+      <ul>
+        <li> Compatibility with ReadingDB (<a href="https://github.com/SoftwareDefinedBuildings/readingdb/tree/adaptive">Adaptive Branch</a>)</li>
+        <li> Metadata store over MongoDB (instead of the usual Postgres HSTORE) </li>
+        <li> Support for basic metadata queries </li>
+        <li> Support for data queries </li>
+      </ul>
+      
+      <p>Eventually, I want to implement the full query language described <a href="http://pythonhosted.org/Smap/en/2.0/archiver.html#query-language">here</a></p>
+
+      <h3>Known Issues</h3>
+      <ul>
+        <li>DELETE queries do not work</li>
+        <li>The DISTINCT keyword does not work</li>
+        <li>Nested quotes are not supported</li>
+        <li>No operators on data queries</li>
+        <li>No nested booleans in WHERE clauses, e.g. "X and Y" is okay, but "X and (Y or Z)" is not</li>
+        <li>"~" and LIKE operators for WHERE clauses not supported</li>
+      </ul>
+      <p>Note: "not supported" and "does not work" are temporary states -- I plan on implementing all these features</p>
+      
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/gtfierro">gtfierro</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
