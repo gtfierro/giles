@@ -60,6 +60,7 @@ func (r *Republisher) HandleSubscriber(rw http.ResponseWriter, query string) {
 	}
 }
 
+//TODO: this gives 0 sometimes...why?
 func (r *Republisher) Republish(msg *SmapMessage) {
 	for _, client := range r.Subscribers[msg.UUID] {
 		client.writer.Write(msg.ToJson())
