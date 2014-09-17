@@ -10,7 +10,7 @@ import (
 )
 
 type SmapReading struct {
-	Readings [][]uint64
+	Readings [][]float64
 	UUID     string `json:"uuid"`
 }
 
@@ -123,12 +123,12 @@ func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
 
 		readingarray := js.Get("Readings").MustArray()
 		sr := &SmapReading{UUID: uuid}
-		srs := make([][]uint64, len(readingarray))
+		srs := make([][]float64, len(readingarray))
 		for idx, readings := range readingarray {
 			reading := readings.([]interface{})
-			ts, _ := strconv.ParseUint(string(reading[0].(json.Number)), 10, 64)
-			val, _ := strconv.ParseUint(string(reading[1].(json.Number)), 10, 64)
-			srs[idx] = []uint64{ts, val}
+			ts, _ := strconv.ParseFloat(string(reading[0].(json.Number)), 64)
+			val, _ := strconv.ParseFloat(string(reading[1].(json.Number)), 64)
+			srs[idx] = []float64{ts, float64(val)}
 		}
 		sr.Readings = srs
 		message.Readings = sr

@@ -24,7 +24,7 @@ type Message struct {
 }
 
 type SmapResponse struct {
-	Readings [][]uint64
+	Readings [][]float64
 	UUID     string
 }
 
@@ -310,9 +310,9 @@ func (rdb *RDB) ReceiveData(conn *net.Conn) (SmapResponse, error) {
 		return sr, err
 	}
 	//sr.UUID = uuid
-	sr.Readings = [][]uint64{}
+	sr.Readings = [][]float64{}
 	for _, rdg := range data.GetData() {
-		sr.Readings = append(sr.Readings, []uint64{*rdg.Timestamp, uint64(*rdg.Value)})
+		sr.Readings = append(sr.Readings, []float64{float64(*rdg.Timestamp), *rdg.Value})
 	}
 	return sr, err
 }
