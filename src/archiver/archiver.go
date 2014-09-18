@@ -113,7 +113,14 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		f2, err := os.Create("blockprofile.db")
+		if err != nil {
+			log.Fatal(err)
+		}
 		pprof.StartCPUProfile(f)
+		runtime.SetBlockProfileRate(1)
+		defer runtime.SetBlockProfileRate(0)
+		defer pprof.Lookup("block").WriteTo(f2, 1)
 		defer pprof.StopCPUProfile()
 	}
 	republisher = NewRepublisher()
@@ -151,10 +158,10 @@ func main() {
 	go srv.ListenAndServe()
 	idx := 0
 	for {
-		log.Println("still alive", idx, idx*5/10)
+		log.Println("still alive", idx)
 		time.Sleep(5 * time.Second)
-		idx++
-		if idx*5/10 == 10 {
+		idx += 5
+		if idx == 60 {
 			if *memprofile != "" {
 				f, err := os.Create(*memprofile)
 				if err != nil {
