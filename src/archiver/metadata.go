@@ -123,12 +123,14 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 			staged = s.metadata.Find(where).Select(target)
 		}
 		if ast.Target.(*TagsTarget).Distinct {
-			log.Panic("Distinct not currently working")
-			err = staged.Distinct(ast.Target.(*TagsTarget).Contents[0], &res)
+			var res2 []interface{}
+			err = staged.Distinct(ast.Target.(*TagsTarget).Contents[0], &res2)
+			log.Println(res2)
+			d, err = json.Marshal(res2)
 		} else {
 			err = staged.All(&res)
+			d, err = json.Marshal(res)
 		}
-		d, err = json.Marshal(res)
 	case SET_TARGET:
 		target := ast.Target.(*SetTarget).Updates
 		info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": target})
