@@ -29,6 +29,7 @@ func NewStore(ip string, port int) *Store {
 		log.Panic(err)
 		return nil
 	}
+	session.SetMode(mgo.Eventual, true)
 	db := session.DB("archiver")
 	streams := db.C("streams")
 	metadata := db.C("metadata")
