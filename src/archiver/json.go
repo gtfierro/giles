@@ -107,8 +107,14 @@ func handleJSON(r io.Reader) ([](*SmapMessage), error) {
 		srs := make([][]interface{}, len(readingarray))
 		for idx, readings := range readingarray {
 			reading := readings.([]interface{})
-			ts, _ := strconv.ParseUint(string(reading[0].(json.Number)), 10, 64)
-			val, _ := strconv.ParseFloat(string(reading[1].(json.Number)), 64)
+			ts, e := strconv.ParseUint(string(reading[0].(json.Number)), 10, 64)
+			if e != nil {
+				return ret, e
+			}
+			val, e := strconv.ParseFloat(string(reading[1].(json.Number)), 64)
+			if e != nil {
+				return ret, e
+			}
 			srs[idx] = []interface{}{ts, val}
 		}
 		sr.Readings = srs
