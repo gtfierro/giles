@@ -51,8 +51,8 @@ func NewMessage(sr *SmapReading) *Message {
 		Data:      make([](*Reading), len(sr.Readings))}
 	// populate readings
 	for i, reading := range sr.Readings {
-		timestamp = uint64(reading[0])
-		value = float64(reading[1])
+		timestamp = reading[0].(uint64)
+		value = reading[1].(float64)
 		seqno = uint64(i)
 		(*readingset).Data[i] = &Reading{Timestamp: &timestamp, Seqno: &seqno, Value: &value}
 	}

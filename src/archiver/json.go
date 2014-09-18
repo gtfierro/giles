@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	simplejson "github.com/bitly/go-simplejson"
 	"gopkg.in/mgo.v2/bson"
+	"io"
 	"log"
 	"strconv"
 	"strings"
 )
 
 type SmapReading struct {
-	Readings [][]float64
+	Readings [][]interface{}
 	UUID     string `json:"uuid"`
 }
 
@@ -34,28 +35,6 @@ func (sm *SmapMessage) ToJson() []byte {
 	return b
 }
 
-func processJSON(bytes *[]byte) ([](*SmapReading), error) {
-	var reading map[string]*json.RawMessage
-	var dest [](*SmapReading)
-	err := json.Unmarshal(*bytes, &reading)
-	if err != nil {
-		return dest, err
-	}
-
-	for _, v := range reading {
-		if v == nil {
-			continue
-		}
-		var sr SmapReading
-		err = json.Unmarshal(*v, &sr)
-		if err != nil {
-			return nil, err
-		}
-		dest = append(dest, &sr)
-	}
-	return dest, nil
-}
-
 /*
   We receive the following keys:
   - Metadata: send directly to mongo, if we can
@@ -64,16 +43,18 @@ func processJSON(bytes *[]byte) ([](*SmapReading), error) {
   - Readings: parse these out for adding to timeseries
   - Properties: send to mongo, but need to parse out ReadingType to help with parsing Readings
 */
-func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
+func handleJSON(r io.Reader) ([](*SmapMessage), error) {
 	/*
 	 * we receive a bunch of top-level keys that we don't know, so we unmarshal them into a
 	 * map, and then parse each of the internal objects individually
 	 */
 
+	decoder := json.NewDecoder(r)
+	decoder.UseNumber()
 	var ret [](*SmapMessage)
 	var e error
 	var rawmessage map[string]*json.RawMessage
-	err := json.Unmarshal(*bytes, &rawmessage)
+	err := decoder.Decode(&rawmessage)
 	if err != nil {
 		return ret, err
 	}
@@ -123,12 +104,12 @@ func handleJSON(bytes *[]byte) ([](*SmapMessage), error) {
 
 		readingarray := js.Get("Readings").MustArray()
 		sr := &SmapReading{UUID: uuid}
-		srs := make([][]float64, len(readingarray))
+		srs := make([][]interface{}, len(readingarray))
 		for idx, readings := range readingarray {
 			reading := readings.([]interface{})
-			ts, _ := strconv.ParseFloat(string(reading[0].(json.Number)), 64)
+			ts, _ := strconv.ParseUint(string(reading[0].(json.Number)), 10, 64)
 			val, _ := strconv.ParseFloat(string(reading[1].(json.Number)), 64)
-			srs[idx] = []float64{ts, float64(val)}
+			srs[idx] = []interface{}{ts, val}
 		}
 		sr.Readings = srs
 		message.Readings = sr

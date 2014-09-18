@@ -24,14 +24,7 @@ var republisher *Republisher
 **/
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	jdata, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		log.Println(err)
-		rw.WriteHeader(500)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-	messages, err := handleJSON(&jdata)
+	messages, err := handleJSON(req.Body)
 	if err != nil {
 		log.Println(err)
 		rw.WriteHeader(500)
