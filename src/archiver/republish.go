@@ -35,9 +35,7 @@ func (r *Republisher) HandleSubscriber(rw http.ResponseWriter, query string) {
 		r.Subscribers[uuid] = append(r.Subscribers[uuid], client)
 	}
 	log.Println("New subscriber for query", query)
-	log.Println("Subscribers:", r.Subscribers)
 	log.Println("Clients:", len(r.Clients))
-	log.Println("Clients:", r.Clients)
 
 	rw.Header().Set("Content-Type", "application/json")
 	notify := rw.(http.CloseNotifier).CloseNotify()
@@ -60,7 +58,6 @@ func (r *Republisher) HandleSubscriber(rw http.ResponseWriter, query string) {
 	}
 }
 
-//TODO: this gives 0 sometimes...why?
 func (r *Republisher) Republish(msg *SmapMessage) {
 	for _, client := range r.Subscribers[msg.UUID] {
 		client.writer.Write(msg.ToJson())
