@@ -1,2 +1,5 @@
 # binaries
-src/archiver/archiver
+giles/giles
+
+# compiled python
+*.pyc
