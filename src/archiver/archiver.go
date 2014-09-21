@@ -90,6 +90,28 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(res)
 }
 
+/**
+ * Prints status of the archiver:
+ ** number of connected clients
+ ** size of UUID cache
+ ** connection status to RDB
+ ** connection status to Mongo
+ ** amount of incoming traffic since last call
+ ** amount of api requests since last call
+**/
+func status() {
+	log.Print("Still alive at: ", time.Now())
+	log.Print("UUID Cache size: ", len(UUIDCache))
+	log.Print("Connected republish clients: ", len(republisher.Clients))
+}
+
+func PeriodicCall(pause time.Duration, f func()) {
+	for {
+		f()
+		time.Sleep(pause)
+	}
+}
+
 // config flags
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 var memprofile = flag.String("memprofile", "", "write memory profile to this file")
@@ -156,6 +178,7 @@ func main() {
 
 	log.Println("Starting HTTP Server on port " + strconv.Itoa(*archiverport) + "...")
 	go srv.ListenAndServe()
+	go PeriodicCall(5*time.Second, status)
 	idx := 0
 	for {
 		log.Println("still alive", idx)
