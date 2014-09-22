@@ -15,6 +15,7 @@ import (
 )
 
 var rdb *RDB
+var tsdb TSDB
 var store *Store
 var UUIDCache = make(map[string]uint32)
 var republisher *Republisher
@@ -33,7 +34,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	rw.WriteHeader(200)
 	for _, msg := range messages {
-		go rdb.Add(msg.Readings)
+		go tsdb.Add(msg.Readings)
 		go store.SaveMetadata(msg)
 		go republisher.Republish(msg)
 	}
@@ -94,7 +95,7 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
  * Prints status of the archiver:
  ** number of connected clients
  ** size of UUID cache
- ** connection status to RDB
+ ** connection status to database
  ** connection status to Mongo
  ** amount of incoming traffic since last call
  ** amount of api requests since last call
@@ -120,6 +121,7 @@ var readingdbip = flag.String("rdbip", "localhost", "ReadingDB IP address")
 var readingdbport = flag.Int("rdbport", 4242, "ReadingDB Port")
 var mongoip = flag.String("mongoip", "localhost", "MongoDB IP address")
 var mongoport = flag.Int("mongoport", 27017, "MongoDB Port")
+var tsdbstring = flag.String("tsdb", "readingdb", "Type of timeseries database to use: 'readingdb' or 'quasar'")
 
 func main() {
 	flag.Parse()
@@ -128,6 +130,7 @@ func main() {
 	log.Println("ReadingDB port", *readingdbport)
 	log.Println("Mongo server", *mongoip)
 	log.Println("Mongo port", *mongoport)
+	log.Println("Using TSDB", *tsdbstring)
 
 	/** Configure CPU profiling */
 	if *cpuprofile != "" {
@@ -153,13 +156,21 @@ func main() {
 		log.Fatal("Error connection to MongoDB instance")
 	}
 
-	/** connect to ReadingDB */
-	rdb = NewReadingDB(*readingdbip, *readingdbport)
-	if rdb == nil {
-		log.Fatal("Error connecting to ReadingDB instance")
+	switch *tsdbstring {
+	case "readingdb":
+		/** connect to ReadingDB */
+		tsdb = NewReadingDB(*readingdbip, *readingdbport)
+		if tsdb == nil {
+			log.Fatal("Error connecting to ReadingDB instance")
+		}
+		tsdb.Connect()
+		go tsdb.DoWrites()
+		log.Println("readingdb")
+	case "quasar":
+		log.Println("quasar")
+	default:
+		log.Fatal(*tsdbstring, " is not a valid timeseries database")
 	}
-	rdb.Connect()
-	go rdb.DoWrites()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
