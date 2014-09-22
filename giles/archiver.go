@@ -106,13 +106,6 @@ func status() {
 	log.Print("Connected republish clients: ", len(republisher.Clients))
 }
 
-func PeriodicCall(pause time.Duration, f func()) {
-	for {
-		f()
-		time.Sleep(pause)
-	}
-}
-
 // config flags
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 var memprofile = flag.String("memprofile", "", "write memory profile to this file")
@@ -189,7 +182,7 @@ func main() {
 
 	log.Println("Starting HTTP Server on port " + strconv.Itoa(*archiverport) + "...")
 	go srv.ListenAndServe()
-	go PeriodicCall(5*time.Second, status)
+	go periodicCall(5*time.Second, status)
 	idx := 0
 	for {
 		log.Println("still alive", idx)

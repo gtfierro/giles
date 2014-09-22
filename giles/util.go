@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"time"
 )
 
 func cleantagstring(inp string) string {
@@ -15,5 +16,12 @@ func min(a, b uint32) uint32 {
 		return a
 	} else {
 		return b
+	}
+}
+
+func periodicCall(pause time.Duration, f func()) {
+	for {
+		f()
+		time.Sleep(pause)
 	}
 }
