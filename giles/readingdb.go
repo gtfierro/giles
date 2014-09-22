@@ -174,7 +174,7 @@ func (rdb *RDB) sendAndReceive(payload []byte, msgtype MessageType, conn *net.Co
 		log.Println("Error writing data to ReadingDB", err)
 		return sr, err
 	}
-	sr, err = rdb.ReceiveData(conn)
+	sr, err = rdb.receiveData(conn)
 	return sr, err
 }
 
@@ -271,7 +271,7 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, erro
 /*
  * Listens for data coming from ReadingDB
 **/
-func (rdb *RDB) ReceiveData(conn *net.Conn) (SmapResponse, error) {
+func (rdb *RDB) receiveData(conn *net.Conn) (SmapResponse, error) {
 	// buffer for received bytes
 	var sr = SmapResponse{}
 	var err error
