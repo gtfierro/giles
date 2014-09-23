@@ -19,6 +19,7 @@ var tsdb TSDB
 var store *Store
 var UUIDCache = make(map[string]uint32)
 var republisher *Republisher
+var cm *ConnectionMap
 
 /**
  * Handles POSTing of new data
@@ -104,6 +105,7 @@ func status() {
 	log.Print("Still alive at: ", time.Now())
 	log.Print("UUID Cache size: ", len(UUIDCache))
 	log.Print("Connected republish clients: ", len(republisher.Clients))
+	cm.Stats()
 }
 
 // config flags
@@ -115,6 +117,7 @@ var readingdbport = flag.Int("rdbport", 4242, "ReadingDB Port")
 var mongoip = flag.String("mongoip", "localhost", "MongoDB IP address")
 var mongoport = flag.Int("mongoport", 27017, "MongoDB Port")
 var tsdbstring = flag.String("tsdb", "readingdb", "Type of timeseries database to use: 'readingdb' or 'quasar'")
+var tsdbkeepalive = flag.Int("keepalive", 30, "Number of seconds to keep TSDB connection alive per stream for reads")
 
 func main() {
 	flag.Parse()
@@ -124,6 +127,7 @@ func main() {
 	log.Println("Mongo server", *mongoip)
 	log.Println("Mongo port", *mongoport)
 	log.Println("Using TSDB", *tsdbstring)
+	log.Println("TSDB Keepalive", *tsdbkeepalive)
 
 	/** Configure CPU profiling */
 	if *cpuprofile != "" {
@@ -149,10 +153,12 @@ func main() {
 		log.Fatal("Error connection to MongoDB instance")
 	}
 
+	cm = &ConnectionMap{streams: map[string]*Connection{}, keepalive: *tsdbkeepalive}
+
 	switch *tsdbstring {
 	case "readingdb":
 		/** connect to ReadingDB */
-		tsdb = NewReadingDB(*readingdbip, *readingdbport)
+		tsdb = NewReadingDB(*readingdbip, *readingdbport, cm)
 		if tsdb == nil {
 			log.Fatal("Error connecting to ReadingDB instance")
 		}

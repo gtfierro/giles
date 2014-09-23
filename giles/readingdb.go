@@ -80,20 +80,20 @@ func (m *Message) ToBytes() []byte {
 }
 
 type RDB struct {
-	sync.Mutex
 	addr *net.TCPAddr
 	conn net.Conn
 	In   chan *[]byte
+	cm   *ConnectionMap
 }
 
-func NewReadingDB(ip string, port int) *RDB {
+func NewReadingDB(ip string, port int, cm *ConnectionMap) *RDB {
 	address := ip + ":" + strconv.Itoa(port)
 	tcpaddr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		log.Panic("Error resolving TCP address", address, err)
 		return nil
 	}
-	rdb := &RDB{addr: tcpaddr, In: make(chan *[]byte)}
+	rdb := &RDB{addr: tcpaddr, In: make(chan *[]byte), cm: cm}
 	return rdb
 }
 
@@ -148,7 +148,8 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 	m := NewMessage(sr)
 
 	data := m.ToBytes()
-	rdb.In <- &data
+	rdb.cm.Add(sr.UUID, &data)
+	//rdb.In <- &data
 
 	return true
 }
