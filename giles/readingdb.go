@@ -105,42 +105,7 @@ func (rdb *RDB) GetConnection() (net.Conn, error) {
 	return conn, err
 }
 
-func (rdb *RDB) Connect() {
-	if rdb.conn != nil {
-		rdb.conn.Close()
-	}
-	conn, err := net.DialTCP("tcp", nil, rdb.addr)
-	if err != nil {
-		log.Panic("Error connecting to ReadingDB: ", rdb.addr, err)
-		return
-	}
-	conn.SetKeepAlive(true)
-	rdb.conn = conn
-}
-
-//TODO: explore having a different channel for each UUID.
-// too many connections? Keep pool of last N UUIDs and have
-// those keep channels open for writing. Likely we are not
-// saturating the link.
-//TODO: net/http benchmarking
-func (rdb *RDB) DoWrites() {
-	for b := range rdb.In {
-		if len((*b)) == 0 {
-			continue
-		}
-		n, err := rdb.conn.Write((*b))
-		if err != nil {
-			log.Println("Error writing data to ReadingDB", err, len((*b)), n)
-			rdb.Connect()
-		}
-	}
-}
-
 func (rdb *RDB) Add(sr *SmapReading) bool {
-	if rdb.conn == nil {
-		log.Panic("RDB is not connected")
-		return false
-	}
 	if len(sr.Readings) == 0 {
 		return false
 	}
@@ -149,7 +114,6 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 
 	data := m.ToBytes()
 	rdb.cm.Add(sr.UUID, &data)
-	//rdb.In <- &data
 
 	return true
 }

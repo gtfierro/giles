@@ -162,9 +162,6 @@ func main() {
 		if tsdb == nil {
 			log.Fatal("Error connecting to ReadingDB instance")
 		}
-		tsdb.Connect()
-		go tsdb.DoWrites()
-		log.Println("readingdb")
 	case "quasar":
 		log.Println("quasar")
 	default:

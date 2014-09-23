@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-//TODO: use []byte instead of smap reading. this is more universal
-
 type Connection struct {
 	conn *net.Conn
 	In   chan *[]byte
@@ -48,7 +46,7 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 			}
 			timeout = time.After(time.Duration(cm.keepalive) * time.Second)
 		case <-timeout:
-			log.Println("timeout")
+			log.Println("timeout for", uuid)
 			cm.Lock()
 			(*conn.conn).Close()
 			cm.streams[uuid] = nil
