@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+//TODO: benchmark using 'delete' in a map vs setting entry to null
+
 type Connection struct {
 	conn *net.Conn
 	In   chan *[]byte
@@ -49,7 +51,8 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 			log.Println("timeout for", uuid)
 			cm.Lock()
 			(*conn.conn).Close()
-			cm.streams[uuid] = nil
+			delete(cm.streams, uuid)
+			//cm.streams[uuid] = nil
 			cm.Unlock()
 			break
 		}
