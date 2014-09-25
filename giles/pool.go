@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-//TODO: benchmark using 'delete' in a map vs setting entry to null
-
 type Connection struct {
 	conn *net.Conn
 	In   chan *[]byte
@@ -61,23 +59,4 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 
 func (cm *ConnectionMap) Stats() {
 	log.Println("Live Connections:", len(cm.streams))
-}
-
-func test() {
-	in := make(chan bool)
-	to := time.After(5 * time.Second)
-	go func() {
-		for {
-			select {
-			case <-in:
-				log.Println("hey")
-				to = time.After(5 * time.Second)
-			case <-to:
-				log.Println("toolate")
-			}
-		}
-	}()
-	time.Sleep(3 * time.Second)
-	in <- true
-	time.Sleep(10 * time.Second)
 }
