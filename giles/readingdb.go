@@ -277,8 +277,8 @@ func (rdb *RDB) receiveData(conn *net.Conn) (SmapResponse, error) {
 	//sr.UUID = uuid
 	sr.Readings = [][]float64{}
 	for _, rdg := range data.GetData() {
-        //TODO: this *1000 should probably generalized for the unitoftime
-		sr.Readings = append(sr.Readings, []float64{float64(*rdg.Timestamp)*1000, *rdg.Value})
+		//TODO: this *1000 should probably generalized for the unitoftime
+		sr.Readings = append(sr.Readings, []float64{float64(*rdg.Timestamp) * 1000, *rdg.Value})
 	}
 	return sr, err
 }
