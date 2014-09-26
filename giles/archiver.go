@@ -23,6 +23,14 @@ var cm *ConnectionMap
 
 /**
  * Handles POSTing of new data
+ * The handleJSON method parses the message received from the sMAP drivers
+ * and delivers them as an array. Because metadata is delivered as k/v pairs
+ * representing a tree, we have a pre-loop that stores the metadata values at
+ * the higher levels of the tree. Then, when we loop through the data to add it
+ * to the leaves of the tree (the actual timeseries), we query the prefixes
+ * of the timeseries path to get all the 'trickle down' metadata from the higher
+ * parts of the metadata tree. That logic takes place in store.SavePathMetadata and
+ * store.SaveMetadata
 **/
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
@@ -34,6 +42,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	rw.WriteHeader(200)
+	store.SavePathMetadata(&messages)
 	for _, msg := range messages {
 		go tsdb.Add(msg.Readings)
 		go store.SaveMetadata(msg)

@@ -15,11 +15,12 @@ type RDBStreamId struct {
 }
 
 type Store struct {
-	session  *mgo.Session
-	db       *mgo.Database
-	streams  *mgo.Collection
-	metadata *mgo.Collection
-	maxsid   *uint32
+	session      *mgo.Session
+	db           *mgo.Database
+	streams      *mgo.Collection
+	metadata     *mgo.Collection
+	pathmetadata *mgo.Collection
+	maxsid       *uint32
 }
 
 func NewStore(ip string, port int) *Store {
@@ -29,17 +30,18 @@ func NewStore(ip string, port int) *Store {
 		log.Panic(err)
 		return nil
 	}
-	session.SetMode(mgo.Eventual, true)
+	//session.SetMode(mgo.Eventual, true)
 	db := session.DB("archiver")
 	streams := db.C("streams")
 	metadata := db.C("metadata")
+	pathmetadata := db.C("pathmetadata")
 	maxstreamid := &RDBStreamId{}
 	streams.Find(bson.M{}).Sort("-streamid").One(&maxstreamid)
 	var maxsid uint32 = 1
 	if maxstreamid != nil {
 		maxsid = maxstreamid.StreamId + 1
 	}
-	return &Store{session: session, db: db, streams: streams, metadata: metadata, maxsid: &maxsid}
+	return &Store{session: session, db: db, streams: streams, metadata: metadata, pathmetadata: pathmetadata, maxsid: &maxsid}
 }
 
 func (s *Store) GetStreamId(uuid string) uint32 {
@@ -62,10 +64,50 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 		}
 		atomic.AddUint32(s.maxsid, 1)
 		log.Println("Creating StreamId", streamid.StreamId, "for uuid", uuid)
+		UUIDCache[uuid] = streamid.StreamId
 		streamlock.Unlock()
+	} else {
+		//log.Println(UUIDCache)
+		//log.Println(UUIDCache[uuid])
+		//log.Println(streamid)
+		//log.Println(streamid.StreamId)
+		UUIDCache[uuid] = streamid.StreamId
 	}
-	UUIDCache[uuid] = streamid.StreamId
 	return streamid.StreamId
+}
+
+/**
+ * We use a pointer to the map so that we can edit it in-place
+**/
+func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
+	/**
+	 * We add the root metadata to everything in Contents
+	**/
+	if (*messages)["/"] != nil {
+		for _, path := range (*messages)["/"].Contents {
+			_, err := s.pathmetadata.Upsert(bson.M{"Path": "/" + path}, bson.M{"$set": (*messages)["/"].Metadata})
+			if err != nil {
+				log.Println("Error saving metadata for", "/"+path)
+				log.Panic(err)
+			}
+		}
+		delete((*messages), "/")
+	}
+	/**
+	 * For the rest of the keys, check if Contents is nonempty. If it is, we iterate through and update
+	 * the metadata for that path
+	**/
+	for path, msg := range *messages {
+		if len(msg.Contents) > 0 {
+			_, err := s.pathmetadata.Upsert(bson.M{"Path": path}, bson.M{"$set": msg.Metadata})
+			if err != nil {
+				log.Println("Error saving metadata for", path)
+				log.Panic(err)
+			}
+			delete((*messages), path)
+		}
+	}
+
 }
 
 func (s *Store) SaveMetadata(msg *SmapMessage) {
@@ -73,6 +115,18 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	   This should get hit once per stream unless the stream's
 	   metadata changes
 	*/
+	//TODO: one $set per key
+	var prefixMetadata bson.M
+	for _, prefix := range getPrefixes(msg.Path) {
+		s.pathmetadata.Find(bson.M{"Path": prefix}).Select(bson.M{"_id": 0, "Path": 0}).One(&prefixMetadata)
+		for k, v := range prefixMetadata {
+			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata." + k: v}})
+			if err != nil {
+				log.Println("Error saving metadata for", msg.UUID)
+				log.Panic(err)
+			}
+		}
+	}
 	if msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil {
 		return
 	}
@@ -83,19 +137,22 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 			log.Panic(err)
 		}
 	}
-
 	if msg.Metadata != nil {
-		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata": msg.Metadata}})
-		if err != nil {
-			log.Println("Error saving metadata for", msg.UUID)
-			log.Panic(err)
+		for k, v := range msg.Metadata {
+			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata." + k: v}})
+			if err != nil {
+				log.Println("Error saving metadata for", msg.UUID)
+				log.Panic(err)
+			}
 		}
 	}
 	if msg.Properties != nil {
-		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties": msg.Properties}})
-		if err != nil {
-			log.Println("Error saving properties for", msg.UUID)
-			log.Panic(err)
+		for k, v := range msg.Properties {
+			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties." + k: v}})
+			if err != nil {
+				log.Println("Error saving properties for", msg.UUID)
+				log.Panic(err)
+			}
 		}
 	}
 	if msg.Actuator != nil {
@@ -108,6 +165,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 }
 
 func (s *Store) Query(stringquery []byte) ([]byte, error) {
+	log.Println(string(stringquery))
 	var res []bson.M
 	var d []byte
 	var err error

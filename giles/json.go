@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"strconv"
-	"strings"
 )
 
 type SmapReading struct {
@@ -17,6 +16,7 @@ type SmapReading struct {
 
 type SmapMessage struct {
 	Readings   *SmapReading
+	Contents   []string
 	Metadata   bson.M
 	Actuator   bson.M
 	Properties bson.M
@@ -41,9 +41,13 @@ func (sm *SmapMessage) ToJson() []byte {
   - Actuator: send directly to mongo, if we can
   - uuid: parse this out for adding to timeseries
   - Readings: parse these out for adding to timeseries
+  - Contents: list of resources underneat this path
   - Properties: send to mongo, but need to parse out ReadingType to help with parsing Readings
+
+This should not do any fancy sMAP-related work; that's a job for the store. Here we just return the
+object-versions of all the data.
 */
-func handleJSON(r io.Reader) ([](*SmapMessage), error) {
+func handleJSON(r io.Reader) (map[string]*SmapMessage, error) {
 	/*
 	 * we receive a bunch of top-level keys that we don't know, so we unmarshal them into a
 	 * map, and then parse each of the internal objects individually
@@ -51,24 +55,15 @@ func handleJSON(r io.Reader) ([](*SmapMessage), error) {
 
 	decoder := json.NewDecoder(r)
 	decoder.UseNumber()
-	var ret [](*SmapMessage)
 	var e error
 	var rawmessage map[string]*json.RawMessage
+	var decodedjson = map[string]*SmapMessage{}
 	err := decoder.Decode(&rawmessage)
 	if err != nil {
-		return ret, err
+		return decodedjson, err
 	}
 
-	/*
-	   global metadata
-	   We populate this for every non-endpoint path
-	   we come across
-	*/
-	pathmetadata := make(map[string]interface{})
-	isendpoint := true
-
 	for path, reading := range rawmessage {
-		isendpoint = true
 
 		js, err := simplejson.NewJson([]byte(*reading))
 		if err != nil {
@@ -77,23 +72,21 @@ func handleJSON(r io.Reader) ([](*SmapMessage), error) {
 
 		// get uuid
 		uuid := js.Get("uuid").MustString("")
-		if uuid == "" { // no UUID means no endpoint.
-			isendpoint = false
-		}
 
-		//get metadata
+		message := &SmapMessage{Path: path, UUID: uuid, Contents: []string{}}
+
+		// get metadata
 		localmetadata := js.Get("Metadata").MustMap()
-
-		// if not endpoint, set metadata for this path and then exit
-		if !isendpoint {
-			pathmetadata[path] = localmetadata
-			continue
-		}
-
-		message := &SmapMessage{Path: path, UUID: uuid}
-
 		if localmetadata != nil {
 			message.Metadata = bson.M(localmetadata)
+		}
+
+		// get contents
+		contents := js.Get("Contents").MustArray()
+		if len(contents) > 0 {
+			for _, arg := range contents {
+				message.Contents = append(message.Contents, arg.(string))
+			}
 		}
 
 		// get properties
@@ -109,11 +102,11 @@ func handleJSON(r io.Reader) ([](*SmapMessage), error) {
 			reading := readings.([]interface{})
 			ts, e := strconv.ParseUint(string(reading[0].(json.Number)), 10, 64)
 			if e != nil {
-				return ret, e
+				return decodedjson, e
 			}
 			val, e := strconv.ParseFloat(string(reading[1].(json.Number)), 64)
 			if e != nil {
-				return ret, e
+				return decodedjson, e
 			}
 			srs[idx] = []interface{}{ts, val}
 		}
@@ -124,27 +117,8 @@ func handleJSON(r io.Reader) ([](*SmapMessage), error) {
 		if actuator != nil {
 			message.Actuator = bson.M(actuator)
 		}
-
-		ret = append(ret, message)
+		decodedjson[path] = message
 
 	}
-	//loop through all path metadata and apply to messages
-	for prefix, md := range pathmetadata {
-		for idx, msg := range ret {
-			if (*msg).Metadata == nil {
-				(*msg).Metadata = bson.M(md.(map[string]interface{}))
-				ret[idx] = msg
-				break
-			}
-			if strings.HasPrefix((*msg).Path, prefix) {
-				for k, v := range md.(map[string]interface{}) {
-					if (*msg).Metadata[k] == nil {
-						(*msg).Metadata[k] = v
-					}
-				}
-				ret[idx] = msg
-			}
-		}
-	}
-	return ret, e
+	return decodedjson, e
 }

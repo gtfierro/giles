@@ -29,8 +29,10 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
 			log.Panic("Error connecting to TSDB")
 		}
 		conn = &Connection{conn: &c, In: make(chan *[]byte)}
+		cm.Lock()
 		cm.streams[uuid] = conn
 		go cm.watchdog(uuid)
+		cm.Unlock()
 	}
 }
 
@@ -38,6 +40,9 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 	timeout := time.After(time.Duration(cm.keepalive) * time.Second)
 	conn := cm.streams[uuid]
 	for {
+		if conn == nil {
+			return
+		}
 		select {
 		case data := <-conn.In:
 			_, err := (*conn.conn).Write(*data)
@@ -50,7 +55,6 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 			cm.Lock()
 			(*conn.conn).Close()
 			delete(cm.streams, uuid)
-			//cm.streams[uuid] = nil
 			cm.Unlock()
 			break
 		}
