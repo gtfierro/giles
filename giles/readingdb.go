@@ -25,7 +25,7 @@ type Message struct {
 
 type SmapResponse struct {
 	Readings [][]float64
-	UUID     string
+	UUID     string `json:"uuid"`
 }
 
 /*
