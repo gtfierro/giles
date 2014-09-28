@@ -115,7 +115,6 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	   This should get hit once per stream unless the stream's
 	   metadata changes
 	*/
-	//TODO: one $set per key
 	var prefixMetadata bson.M
 	for _, prefix := range getPrefixes(msg.Path) {
 		s.pathmetadata.Find(bson.M{"Path": prefix}).Select(bson.M{"_id": 0, "Path": 0}).One(&prefixMetadata)
