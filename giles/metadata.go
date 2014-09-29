@@ -35,6 +35,25 @@ func NewStore(ip string, port int) *Store {
 	streams := db.C("streams")
 	metadata := db.C("metadata")
 	pathmetadata := db.C("pathmetadata")
+	// create indexes
+	index := mgo.Index{
+		Key:        []string{"uuid"},
+		Unique:     true,
+		DropDups:   false,
+		Background: true,
+		Sparse:     true,
+	}
+	err = metadata.EnsureIndex(index)
+	if err != nil {
+		log.Fatal("Could not create index on metadata.uuid")
+	}
+
+	index.Key = []string{"Path"}
+	err = pathmetadata.EnsureIndex(index)
+	if err != nil {
+		log.Fatal("Could not create index on pathmetadata.Path")
+	}
+
 	maxstreamid := &RDBStreamId{}
 	streams.Find(bson.M{}).Sort("-streamid").One(&maxstreamid)
 	var maxsid uint32 = 1
@@ -67,10 +86,6 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 		UUIDCache[uuid] = streamid.StreamId
 		streamlock.Unlock()
 	} else {
-		//log.Println(UUIDCache)
-		//log.Println(UUIDCache[uuid])
-		//log.Println(streamid)
-		//log.Println(streamid.StreamId)
 		UUIDCache[uuid] = streamid.StreamId
 	}
 	return streamid.StreamId

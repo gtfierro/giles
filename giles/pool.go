@@ -54,6 +54,7 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 			log.Println("timeout for", uuid)
 			cm.Lock()
 			(*conn.conn).Close()
+			close(conn.In)
 			delete(cm.streams, uuid)
 			cm.Unlock()
 			return
