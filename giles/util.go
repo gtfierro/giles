@@ -52,7 +52,10 @@ func getPrefixes(s string) []string {
 			ret = append(ret, root)
 		}
 	}
-	return ret[:len(ret)-1]
+	if len(ret) > 1 {
+		return ret[:len(ret)-1]
+	}
+	return ret
 }
 
 func isStringSliceEqual(x, y []string) bool {

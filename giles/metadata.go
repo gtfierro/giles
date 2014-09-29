@@ -83,7 +83,7 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 	/**
 	 * We add the root metadata to everything in Contents
 	**/
-	if (*messages)["/"] != nil {
+	if (*messages)["/"] != nil && (*messages)["/"].Metadata != nil {
 		for _, path := range (*messages)["/"].Contents {
 			_, err := s.pathmetadata.Upsert(bson.M{"Path": "/" + path}, bson.M{"$set": (*messages)["/"].Metadata})
 			if err != nil {
@@ -98,6 +98,9 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 	 * the metadata for that path
 	**/
 	for path, msg := range *messages {
+		if msg.Metadata == nil {
+			continue
+		}
 		if len(msg.Contents) > 0 {
 			_, err := s.pathmetadata.Upsert(bson.M{"Path": path}, bson.M{"$set": msg.Metadata})
 			if err != nil {
