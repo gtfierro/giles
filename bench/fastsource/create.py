@@ -16,6 +16,7 @@ port = 8080
 [/fast]
 type = fast.Fast
 rate = .01
+number = 2
 """
 
 s = StringIO(configfile)
