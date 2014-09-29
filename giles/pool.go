@@ -45,18 +45,18 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 		}
 		select {
 		case data := <-conn.In:
+			timeout = time.After(time.Duration(cm.keepalive) * time.Second)
 			_, err := (*conn.conn).Write(*data)
 			if err != nil {
 				log.Println("Error writing data to ReadingDB", err)
 			}
-			timeout = time.After(time.Duration(cm.keepalive) * time.Second)
 		case <-timeout:
 			log.Println("timeout for", uuid)
 			cm.Lock()
 			(*conn.conn).Close()
 			delete(cm.streams, uuid)
 			cm.Unlock()
-			break
+			return
 		}
 	}
 }
