@@ -201,7 +201,6 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 		if ast.Target.(*TagsTarget).Distinct {
 			var res2 []interface{}
 			err = staged.Distinct(ast.Target.(*TagsTarget).Contents[0], &res2)
-			log.Println(res2)
 			d, err = json.Marshal(res2)
 		} else {
 			err = staged.All(&res)
@@ -218,7 +217,6 @@ func (s *Store) Query(stringquery []byte) ([]byte, error) {
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
 		uuids := store.GetUUIDs(ast.Where.ToBson())
-		log.Println("these uuids", uuids)
 		if target.Streamlimit > -1 {
 			uuids = uuids[:target.Streamlimit] // limit number of streams
 		}

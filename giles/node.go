@@ -2,6 +2,7 @@ package main
 
 import (
 	"gopkg.in/mgo.v2/bson"
+	"strings"
 )
 
 type NodeType_T uint
@@ -51,6 +52,8 @@ func (n Node) ToBson() bson.M {
 	switch n.Type {
 	case EQ_NODE:
 		return bson.M{n.Left.(string): n.Right.(string)}
+	case LIKE_NODE:
+		return bson.M{n.Left.(string): bson.M{"$regex": strings.Replace(n.Right.(string), "%", ".*", -1)}}
 	case NEQ_NODE:
 		return bson.M{"$not": bson.M{n.Left.(string): n.Right.(string)}}
 	case AND_NODE:
