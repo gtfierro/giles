@@ -1,5 +1,6 @@
 # binaries
 giles/giles
+gilescmd/gilescmd
 
 # compiled python
 *.pyc
