@@ -34,6 +34,9 @@ var cm *ConnectionMap
 **/
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
+	//TODO: check we have permission to write
+	vars := mux.Vars(req)
+	apikey := vars["key"]
 	messages, err := handleJSON(req.Body)
 	if err != nil {
 		log.Println(err)
@@ -42,6 +45,18 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	rw.WriteHeader(200)
+	ok, err := store.CheckKey(apikey, messages)
+	if err != nil {
+		log.Println(err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	if !ok {
+		rw.WriteHeader(400)
+		rw.Write([]byte("Unauthorized api key " + apikey))
+		return
+	}
 	store.SavePathMetadata(&messages)
 	for _, msg := range messages {
 		go tsdb.Add(msg.Readings)
@@ -70,14 +85,11 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux.Vars(req)
 	key := vars["key"]
-	if key != "" {
-		log.Println("query with key:", key)
-	}
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		fmt.Println(err)
 	}
-	res, err := store.Query(stringquery)
+	res, err := store.Query(stringquery, key)
 	if err != nil {
 		log.Println(err)
 		rw.WriteHeader(500)
@@ -177,7 +189,7 @@ func main() {
 			log.Fatal("Error connecting to ReadingDB instance")
 		}
 	case "quasar":
-		log.Println("quasar")
+		log.Fatal("quasar")
 	default:
 		log.Fatal(*tsdbstring, " is not a valid timeseries database")
 	}

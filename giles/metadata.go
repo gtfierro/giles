@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"log"
@@ -20,6 +21,7 @@ type Store struct {
 	streams      *mgo.Collection
 	metadata     *mgo.Collection
 	pathmetadata *mgo.Collection
+	apikeys      *mgo.Collection
 	maxsid       *uint32
 }
 
@@ -35,6 +37,7 @@ func NewStore(ip string, port int) *Store {
 	streams := db.C("streams")
 	metadata := db.C("metadata")
 	pathmetadata := db.C("pathmetadata")
+	apikeys := db.C("apikeys")
 	// create indexes
 	index := mgo.Index{
 		Key:        []string{"uuid"},
@@ -60,7 +63,7 @@ func NewStore(ip string, port int) *Store {
 	if maxstreamid != nil {
 		maxsid = maxstreamid.StreamId + 1
 	}
-	return &Store{session: session, db: db, streams: streams, metadata: metadata, pathmetadata: pathmetadata, maxsid: &maxsid}
+	return &Store{session: session, db: db, streams: streams, metadata: metadata, pathmetadata: pathmetadata, apikeys: apikeys, maxsid: &maxsid}
 }
 
 func (s *Store) GetStreamId(uuid string) uint32 {
@@ -89,6 +92,26 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 		UUIDCache[uuid] = streamid.StreamId
 	}
 	return streamid.StreamId
+}
+
+func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
+	var public bool
+	query := s.apikeys.Find(bson.M{"key": apikey})
+	count, err := query.Count()
+	if err != nil {
+		return false, err
+	}
+	if count > 1 {
+		return false, errors.New("More than 1 API key with that value")
+	}
+	if count < 1 {
+		return false, errors.New("No API key with that value")
+	}
+	query.Select(bson.M{"public": 1}).One(&public)
+	//TODO: finish!
+	// check the apikeys for the uuids of the messages that are being written. We need to be
+	// OK to write to all of those
+	return false, nil
 }
 
 /**
@@ -181,7 +204,10 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	}
 }
 
-func (s *Store) Query(stringquery []byte) ([]byte, error) {
+func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
+	if apikey != "" {
+		log.Println("query with key:", apikey)
+	}
 	log.Println(string(stringquery))
 	var res []bson.M
 	var d []byte
