@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"gopkg.in/mgo.v2"
-	_ "gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 	"log"
 	"os"
 	"strconv"
@@ -14,6 +14,13 @@ import (
 /* config flags */
 var mongoip = flag.String("mongoip", "localhost", "MongoDB IP address")
 var mongoport = flag.Int("mongoport", 27017, "MongoDB Port")
+
+/* input flags */
+var name = flag.String("name", "", "Name for API key")
+var email = flag.String("email", "", "Email of user for API key")
+
+// make streams private by default
+var public = flag.Bool("public", false, "Streams with this API are public?")
 
 /* command flags */
 var newapikey = flag.Bool("newkey", false, "Generate a new API key")
@@ -42,15 +49,25 @@ func NewMongo(ip string, port int) *Mongo {
 	return &Mongo{session: session, db: db, apikeys: apikeys}
 }
 
-func (m *Mongo) NewAPIKey() string {
+func (m *Mongo) NewAPIKey(name, email string, public bool) string {
+	if name == "" || email == "" {
+		fmt.Println("-newkey requires that -name and -email cannot be blank")
+		flag.Usage()
+		return ""
+	}
 	f, err := os.Open("/dev/random")
 	if err != nil {
-		log.Fatal("whoops no random")
+		fmt.Print("whoops no random")
 		return ""
 	}
 	buf := make([]byte, 128)
 	_, err = f.Read(buf)
 	key := base64.URLEncoding.EncodeToString(buf)
+	err = m.apikeys.Insert(bson.M{"name": name, "email": email, "key": key, "public": public})
+	if err != nil {
+		log.Fatal(err)
+		return ""
+	}
 	return key
 }
 
@@ -58,6 +75,6 @@ func main() {
 	flag.Parse()
 	mongo = NewMongo(*mongoip, *mongoport)
 	if *newapikey {
-		fmt.Println(mongo.NewAPIKey())
+		fmt.Println(mongo.NewAPIKey(*name, *email, *public))
 	}
 }
