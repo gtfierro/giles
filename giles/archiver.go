@@ -68,6 +68,11 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 **/
 func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
+	vars := mux.Vars(req)
+	key := vars["key"]
+	if key != "" {
+		log.Println("query with key:", key)
+	}
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -183,6 +188,7 @@ func main() {
 	r.HandleFunc("/add", AddReadingHandler).Methods("POST")
 	r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
 	r.HandleFunc("/republish", RepublishHandler).Methods("POST")
+	r.HandleFunc("/api/query", QueryHandler).Queries("key", "{key:[A-Za-z0-9]+}").Methods("POST")
 	r.HandleFunc("/api/query", QueryHandler).Methods("POST")
 	r.HandleFunc("/api/tags/uuid/{uuid}", TagsHandler).Methods("GET")
 
