@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 	"log"
 	"os"
 	"strconv"
@@ -36,6 +35,14 @@ type Mongo struct {
 	apikeys      *mgo.Collection
 }
 
+type APIKeyRecord struct {
+	Key    string
+	Name   string
+	Email  string
+	Public bool
+	UUIDS  []string
+}
+
 func NewMongo(ip string, port int) *Mongo {
 	address := ip + ":" + strconv.Itoa(port)
 	session, err := mgo.Dial(address)
@@ -55,15 +62,16 @@ func (m *Mongo) NewAPIKey(name, email string, public bool) string {
 		flag.Usage()
 		return ""
 	}
-	f, err := os.Open("/dev/random")
+	f, err := os.Open("/dev/urandom")
 	if err != nil {
-		fmt.Print("whoops no random")
+		fmt.Print("whoops no /dev/urandom")
 		return ""
 	}
 	buf := make([]byte, 128)
 	_, err = f.Read(buf)
 	key := base64.URLEncoding.EncodeToString(buf)
-	err = m.apikeys.Insert(bson.M{"name": name, "email": email, "key": key, "public": public})
+	record := APIKeyRecord{Key: key, Name: name, Email: email, Public: public, UUIDS: []string{}}
+	err = m.apikeys.Insert(record)
 	if err != nil {
 		log.Fatal(err)
 		return ""
