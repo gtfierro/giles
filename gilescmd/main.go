@@ -40,7 +40,7 @@ type APIKeyRecord struct {
 	Name   string
 	Email  string
 	Public bool
-	UUIDS  []string
+	UUIDS  map[string]struct{}
 }
 
 func NewMongo(ip string, port int) *Mongo {
@@ -70,7 +70,7 @@ func (m *Mongo) NewAPIKey(name, email string, public bool) string {
 	buf := make([]byte, 128)
 	_, err = f.Read(buf)
 	key := base64.URLEncoding.EncodeToString(buf)
-	record := APIKeyRecord{Key: key, Name: name, Email: email, Public: public, UUIDS: []string{}}
+	record := APIKeyRecord{Key: key, Name: name, Email: email, Public: public, UUIDS: map[string]struct{}{}}
 	err = m.apikeys.Insert(record)
 	if err != nil {
 		log.Fatal(err)
