@@ -46,6 +46,7 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 		select {
 		case data := <-conn.In:
 			timeout = time.After(time.Duration(cm.keepalive) * time.Second)
+			pendingwritescounter.Mark()
 			_, err := (*conn.conn).Write(*data)
 			if err != nil {
 				log.Println("Error writing data to ReadingDB", err)
@@ -62,6 +63,6 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 	}
 }
 
-func (cm *ConnectionMap) Stats() {
-	log.Println("Live Connections:", len(cm.streams))
+func (cm *ConnectionMap) LiveConnections() int {
+	return len(cm.streams)
 }

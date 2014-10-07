@@ -20,6 +20,8 @@ var store *Store
 var UUIDCache = make(map[string]uint32)
 var republisher *Republisher
 var cm *ConnectionMap
+var incomingcounter = NewCounter()
+var pendingwritescounter = NewCounter()
 
 /**
  * Handles POSTing of new data
@@ -35,8 +37,8 @@ var cm *ConnectionMap
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	//TODO: check we have permission to write
-	vars := mux.Vars(req)
-	apikey := vars["key"]
+	//vars := mux.Vars(req)
+	//apikey := vars["key"]
 	messages, err := handleJSON(req.Body)
 	if err != nil {
 		log.Println(err)
@@ -44,19 +46,20 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte(err.Error()))
 		return
 	}
+	incomingcounter.Mark()
 	rw.WriteHeader(200)
-	ok, err := store.CheckKey(apikey, messages)
-	if err != nil {
-		log.Println(err)
-		rw.WriteHeader(500)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-	if !ok {
-		rw.WriteHeader(400)
-		rw.Write([]byte("Unauthorized api key " + apikey))
-		return
-	}
+	//ok, err := store.CheckKey(apikey, messages)
+	//if err != nil {
+	//	log.Println(err)
+	//	rw.WriteHeader(500)
+	//	rw.Write([]byte(err.Error()))
+	//	return
+	//}
+	//if !ok {
+	//	rw.WriteHeader(400)
+	//	rw.Write([]byte("Unauthorized api key " + apikey))
+	//	return
+	//}
 	store.SavePathMetadata(&messages)
 	for _, msg := range messages {
 		go tsdb.Add(msg.Readings)
@@ -116,22 +119,6 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	rw.WriteHeader(200)
 	rw.Write(res)
-}
-
-/**
- * Prints status of the archiver:
- ** number of connected clients
- ** size of UUID cache
- ** connection status to database
- ** connection status to Mongo
- ** amount of incoming traffic since last call
- ** amount of api requests since last call
-**/
-func status() {
-	log.Print("Still alive at: ", time.Now())
-	log.Print("UUID Cache size: ", len(UUIDCache))
-	log.Print("Connected republish clients: ", len(republisher.Clients))
-	cm.Stats()
 }
 
 // config flags
@@ -212,7 +199,7 @@ func main() {
 
 	log.Println("Starting HTTP Server on port " + strconv.Itoa(*archiverport) + "...")
 	go srv.ListenAndServe()
-	go periodicCall(5*time.Second, status)
+	go periodicCall(1*time.Second, status) // status from stats.go
 	idx := 0
 	for {
 		log.Println("still alive", idx)
