@@ -6,12 +6,10 @@ import (
 	"log"
 	"net"
 	"strconv"
-	"sync"
 )
 
 var streamids = make(map[string]uint32)
 var maxstreamid uint32 = 0
-var streamlock sync.Mutex
 
 type Header struct {
 	Type   MessageType
