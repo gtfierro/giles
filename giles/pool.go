@@ -30,8 +30,10 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
 		}
 		conn = &Connection{conn: &c, In: make(chan *[]byte)}
 		cm.Lock()
-		cm.streams[uuid] = conn
-		go cm.watchdog(uuid)
+		if _, found := cm.streams[uuid]; !found {
+			cm.streams[uuid] = conn
+			go cm.watchdog(uuid)
+		}
 		cm.Unlock()
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"log"
 	"strconv"
+	"sync"
 	"sync/atomic"
 )
 
@@ -23,6 +24,7 @@ type Store struct {
 	pathmetadata *mgo.Collection
 	apikeys      *mgo.Collection
 	maxsid       *uint32
+	streamlock   sync.Mutex
 }
 
 func NewStore(ip string, port int) *Store {
@@ -70,10 +72,11 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 	if v, found := UUIDCache[uuid]; found {
 		return v
 	}
+	s.streamlock.Lock()
+	defer s.streamlock.Unlock()
 	streamid := &RDBStreamId{}
 	err := s.streams.Find(bson.M{"uuid": uuid}).One(&streamid)
 	if err != nil {
-		streamlock.Lock()
 		// not found, so create
 		streamid.StreamId = (*s.maxsid)
 		streamid.UUID = uuid
@@ -85,7 +88,6 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 		atomic.AddUint32(s.maxsid, 1)
 		log.Println("Creating StreamId", streamid.StreamId, "for uuid", uuid)
 		UUIDCache[uuid] = streamid.StreamId
-		streamlock.Unlock()
 	} else {
 		UUIDCache[uuid] = streamid.StreamId
 	}
