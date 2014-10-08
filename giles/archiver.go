@@ -202,7 +202,6 @@ func main() {
 	go periodicCall(1*time.Second, status) // status from stats.go
 	idx := 0
 	for {
-		log.Println("still alive", idx)
 		time.Sleep(5 * time.Second)
 		idx += 5
 		if idx == 60 {
