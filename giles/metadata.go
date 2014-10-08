@@ -53,6 +53,11 @@ func NewStore(ip string, port int) *Store {
 		log.Fatal("Could not create index on metadata.uuid")
 	}
 
+	err = streams.EnsureIndex(index)
+	if err != nil {
+		log.Fatal("Could not create index on streams.uuid")
+	}
+
 	index.Key = []string{"Path"}
 	err = pathmetadata.EnsureIndex(index)
 	if err != nil {
