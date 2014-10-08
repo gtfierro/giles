@@ -74,11 +74,11 @@ func NewStore(ip string, port int) *Store {
 }
 
 func (s *Store) GetStreamId(uuid string) uint32 {
+	s.streamlock.Lock()
+	defer s.streamlock.Unlock()
 	if v, found := UUIDCache[uuid]; found {
 		return v
 	}
-	s.streamlock.Lock()
-	defer s.streamlock.Unlock()
 	streamid := &RDBStreamId{}
 	err := s.streams.Find(bson.M{"uuid": uuid}).One(&streamid)
 	if err != nil {
