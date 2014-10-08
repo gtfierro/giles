@@ -67,10 +67,8 @@ func NewStore(ip string, port int) *Store {
 }
 
 func (s *Store) GetStreamId(uuid string) uint32 {
-	for k, v := range UUIDCache {
-		if k == uuid {
-			return v
-		}
+	if v, found := UUIDCache[uuid]; found {
+		return v
 	}
 	streamid := &RDBStreamId{}
 	err := s.streams.Find(bson.M{"uuid": uuid}).One(&streamid)
