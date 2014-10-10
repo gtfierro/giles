@@ -47,7 +47,6 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	incomingcounter.Mark()
-	rw.WriteHeader(200)
 	//ok, err := store.CheckKey(apikey, messages)
 	//if err != nil {
 	//	log.Println(err)
@@ -66,6 +65,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		go store.SaveMetadata(msg)
 		go republisher.Republish(msg)
 	}
+	rw.WriteHeader(200)
 }
 
 /**
