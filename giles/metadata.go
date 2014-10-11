@@ -162,6 +162,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	   metadata changes
 	*/
 	var prefixMetadata bson.M
+	//TODO: this takes up a lot of memory because we run it on every write. How can we know to skip it?
 	for _, prefix := range getPrefixes(msg.Path) {
 		s.pathmetadata.Find(bson.M{"Path": prefix}).Select(bson.M{"_id": 0, "Path": 0}).One(&prefixMetadata)
 		for k, v := range prefixMetadata {

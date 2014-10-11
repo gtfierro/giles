@@ -35,6 +35,7 @@ var pendingwritescounter = NewCounter()
  * store.SaveMetadata
 **/
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
+	//TODO: add transaction coalescing
 	defer req.Body.Close()
 	//TODO: check we have permission to write
 	//vars := mux.Vars(req)
