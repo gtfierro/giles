@@ -35,5 +35,4 @@ func TestSaveMetadata(t *testing.T) {
 	if len(jsonbytes) == 0 {
 		t.Error("No data returned for UUID", myuuid)
 	}
-
 }
