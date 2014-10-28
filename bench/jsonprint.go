@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/gorilla/mux"
-	"net/http"
-	"log"
 	"io/ioutil"
+	"log"
+	"net/http"
 )
 
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
@@ -19,7 +19,6 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.WriteHeader(200)
 	log.Println(string(data))
 }
-
 
 func main() {
 	r := mux.NewRouter()
