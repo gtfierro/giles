@@ -1,11 +1,9 @@
 package main
 
 import (
-	"net/http"
-	"io/ioutil"
-	"log"
-    "fmt"
 	"github.com/gorilla/mux"
+	"io/ioutil"
+	"net/http"
 )
 
 /**
@@ -27,7 +25,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	//apikey := vars["key"]
 	messages, err := handleJSON(req.Body)
 	if err != nil {
-		log.Println(err)
+		log.Error("Error handling JSON", err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
@@ -62,7 +60,7 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Error("Error handling republish", err)
 	}
 	republisher.HandleSubscriber(rw, string(stringquery))
 }
@@ -76,11 +74,11 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	key := vars["key"]
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		fmt.Println(err)
+		log.Error("Error reading query", err)
 	}
 	res, err := store.Query(stringquery, key)
 	if err != nil {
-		log.Println(err)
+		log.Error("Error evaluating query", err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
@@ -98,7 +96,7 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	res, err := store.TagsUUID(uuid)
 	if err != nil {
-		log.Println(err)
+		log.Error("Error evaluating tags", err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return

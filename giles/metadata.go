@@ -5,7 +5,6 @@ import (
 	"errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"log"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -31,7 +30,7 @@ func NewStore(ip string, port int) *Store {
 	address := ip + ":" + strconv.Itoa(port)
 	session, err := mgo.Dial(address)
 	if err != nil {
-		log.Panic(err)
+		log.Critical("Could not connect to MongoDB: %v", err)
 		return nil
 	}
 	//session.SetMode(mgo.Eventual, true)
@@ -87,11 +86,11 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 		streamid.UUID = uuid
 		inserterr := s.streams.Insert(streamid)
 		if inserterr != nil {
-			log.Println(inserterr)
+			log.Error("Error inserting streamid", inserterr)
 			return 0
 		}
 		atomic.AddUint32(s.maxsid, 1)
-		log.Println("Creating StreamId", streamid.StreamId, "for uuid", uuid)
+		log.Notice("Creating StreamId", streamid.StreamId, "for uuid", uuid)
 		UUIDCache[uuid] = streamid.StreamId
 	} else {
 		UUIDCache[uuid] = streamid.StreamId
@@ -130,7 +129,7 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 		for _, path := range (*messages)["/"].Contents {
 			_, err := s.pathmetadata.Upsert(bson.M{"Path": "/" + path}, bson.M{"$set": (*messages)["/"].Metadata})
 			if err != nil {
-				log.Println("Error saving metadata for", "/"+path)
+				log.Error("Error saving metadata for", "/"+path)
 				log.Panic(err)
 			}
 		}
@@ -147,7 +146,7 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 		if len(msg.Contents) > 0 {
 			_, err := s.pathmetadata.Upsert(bson.M{"Path": path}, bson.M{"$set": msg.Metadata})
 			if err != nil {
-				log.Println("Error saving metadata for", path)
+				log.Error("Error saving metadata for", path)
 				log.Panic(err)
 			}
 			delete((*messages), path)
@@ -168,7 +167,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		for k, v := range prefixMetadata {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata." + k: v}})
 			if err != nil {
-				log.Println("Error saving metadata for", msg.UUID)
+				log.Error("Error saving metadata for", msg.UUID)
 				log.Panic(err)
 			}
 		}
@@ -179,7 +178,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	if msg.Path != "" {
 		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Path": msg.Path}})
 		if err != nil {
-			log.Println("Error saving path for", msg.UUID)
+			log.Error("Error saving path for", msg.UUID)
 			log.Panic(err)
 		}
 	}
@@ -187,7 +186,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		for k, v := range msg.Metadata {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata." + k: v}})
 			if err != nil {
-				log.Println("Error saving metadata for", msg.UUID)
+				log.Error("Error saving metadata for", msg.UUID)
 				log.Panic(err)
 			}
 		}
@@ -196,7 +195,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		for k, v := range msg.Properties {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties." + k: v}})
 			if err != nil {
-				log.Println("Error saving properties for", msg.UUID)
+				log.Error("Error saving properties for", msg.UUID)
 				log.Panic(err)
 			}
 		}
@@ -204,7 +203,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	if msg.Actuator != nil {
 		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Actuator": msg.Actuator}})
 		if err != nil {
-			log.Println("Error saving actuator for", msg.UUID)
+			log.Error("Error saving actuator for", msg.UUID)
 			log.Panic(err)
 		}
 	}
@@ -212,9 +211,9 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 
 func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 	if apikey != "" {
-		log.Println("query with key:", apikey)
+		log.Info("query with key:", apikey)
 	}
-	log.Println(string(stringquery))
+	log.Info(string(stringquery))
 	var res []bson.M
 	var d []byte
 	var err error
@@ -244,7 +243,7 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		if err2 != nil {
 			return d, err2
 		}
-		log.Println("Updated", info.Updated, "records")
+		log.Info("Updated", info.Updated, "records")
 		d, err = json.Marshal(bson.M{"Updated": info.Updated})
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
@@ -257,15 +256,15 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		case IN:
 			start := uint64(target.Start.Unix())
 			end := uint64(target.End.Unix())
-			log.Println("start", start, "end", end)
+			log.Debug("start", start, "end", end)
 			response, err = tsdb.GetData(uuids, start, end)
 		case AFTER:
 			ref := uint64(target.Ref.Unix())
-			log.Println("after", ref)
+			log.Debug("after", ref)
 			response, err = tsdb.Next(uuids, ref, target.Limit)
 		case BEFORE:
 			ref := uint64(target.Ref.Unix())
-			log.Println("before", ref)
+			log.Debug("before", ref)
 			response, err = tsdb.Prev(uuids, ref, target.Limit)
 		}
 		if err != nil {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 )
 
@@ -34,8 +33,8 @@ func (r *Republisher) HandleSubscriber(rw http.ResponseWriter, query string) {
 	for _, uuid := range uuids {
 		r.Subscribers[uuid] = append(r.Subscribers[uuid], client)
 	}
-	log.Println("New subscriber for query", query)
-	log.Println("Clients:", len(r.Clients))
+	log.Info("New subscriber for query", query)
+	log.Info("Clients:", len(r.Clients))
 
 	rw.Header().Set("Content-Type", "application/json")
 	notify := rw.(http.CloseNotifier).CloseNotify()

@@ -3,7 +3,6 @@ package main
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/binary"
-	"log"
 	"net"
 	"strconv"
 )
@@ -38,7 +37,7 @@ func NewMessage(sr *SmapReading) *Message {
 	var seqno uint64
 	var streamid uint32 = store.GetStreamId(sr.UUID)
 	if streamid == 0 {
-		log.Println("error committing streamid")
+		log.Error("error committing streamid")
 		return nil
 	}
 	var substream uint32 = 0
@@ -134,7 +133,7 @@ func (rdb *RDB) sendAndReceive(payload []byte, msgtype MessageType, conn *net.Co
 	m.data = payload
 	_, err = (*conn).Write(m.ToBytes())
 	if err != nil {
-		log.Println("Error writing data to ReadingDB", err)
+		log.Error("Error writing data to ReadingDB", err)
 		return sr, err
 	}
 	sr, err = rdb.receiveData(conn)
@@ -264,12 +263,12 @@ func (rdb *RDB) receiveData(conn *net.Conn) (SmapResponse, error) {
 	}
 	err = proto.Unmarshal(recv[8:msglen+8], response)
 	if err != nil {
-		log.Println("Error receiving data from Readingdb:", err)
+		log.Error("Error receiving data from Readingdb:", err)
 		return sr, err
 	}
 	data := response.GetData()
 	if data == nil {
-		log.Println("No data returned from Readingdb")
+		log.Error("No data returned from Readingdb")
 		return sr, err
 	}
 	//sr.UUID = uuid

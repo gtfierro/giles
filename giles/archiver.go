@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/gorilla/mux"
-	"log"
+	"github.com/op/go-logging"
 	"net/http"
 	"os"
 	"runtime"
@@ -20,7 +20,8 @@ var republisher *Republisher
 var cm *ConnectionMap
 var incomingcounter = NewCounter()
 var pendingwritescounter = NewCounter()
-
+var log = logging.MustGetLogger("archiver")
+var format = "%{color}%{time:15:04:05} %{shortfile} ▶ %{level} %{color:reset} %{message}"
 
 // config flags
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -35,13 +36,16 @@ var tsdbkeepalive = flag.Int("keepalive", 30, "Number of seconds to keep TSDB co
 
 func main() {
 	flag.Parse()
-	log.Println("Serving on port", *archiverport)
-	log.Println("ReadingDB server", *readingdbip)
-	log.Println("ReadingDB port", *readingdbport)
-	log.Println("Mongo server", *mongoip)
-	log.Println("Mongo port", *mongoport)
-	log.Println("Using TSDB", *tsdbstring)
-	log.Println("TSDB Keepalive", *tsdbkeepalive)
+	logBackend := logging.NewLogBackend(os.Stderr, "", 0)
+	logging.SetBackend(logBackend)
+	logging.SetFormatter(logging.MustStringFormatter(format))
+	log.Notice("Serving on port %v", *archiverport)
+	log.Notice("ReadingDB server %v", *readingdbip)
+	log.Notice("ReadingDB port %v", *readingdbport)
+	log.Notice("Mongo server %v", *mongoip)
+	log.Notice("Mongo port %v", *mongoport)
+	log.Notice("Using TSDB %v", *tsdbstring)
+	log.Notice("TSDB Keepalive %v", *tsdbkeepalive)
 
 	/** Configure CPU profiling */
 	if *cpuprofile != "" {
@@ -98,7 +102,7 @@ func main() {
 		Addr: "0.0.0.0:" + strconv.Itoa(*archiverport),
 	}
 
-	log.Println("Starting HTTP Server on port " + strconv.Itoa(*archiverport) + "...")
+	log.Notice("Starting HTTP Server on port " + strconv.Itoa(*archiverport) + "...")
 	go srv.ListenAndServe()
 	go periodicCall(1*time.Second, status) // status from stats.go
 	idx := 0

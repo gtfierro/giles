@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -54,7 +53,7 @@ func handleTime(portions []string) (time.Time, error) {
 		portions[0] = strings.Replace(portions[idx], "(", "", -1)
 		portions[0] = strings.Replace(portions[idx], ",", "", -1)
 		timestring := strings.Join(portions, " ")
-		log.Println("parsing", timestring)
+		log.Debug("parsing", timestring)
 		for _, format := range supported_formats {
 			t, err := time.Parse(format, timestring)
 			if err != nil {

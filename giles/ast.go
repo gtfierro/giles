@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"gopkg.in/mgo.v2/bson"
-	"log"
 	"strconv"
 	"strings"
 )

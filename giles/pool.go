@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -22,7 +21,7 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
 	if conn := cm.streams[uuid]; conn != nil {
 		conn.In <- data
 	} else {
-		log.Println("new conn for", uuid)
+		log.Debug("new conn for", uuid)
 		// start new watchdog
 		c, err := tsdb.GetConnection()
 		if err != nil {
@@ -51,10 +50,10 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 			pendingwritescounter.Mark()
 			_, err := (*conn.conn).Write(*data)
 			if err != nil {
-				log.Println("Error writing data to ReadingDB", err)
+				log.Error("Error writing data to ReadingDB", err)
 			}
 		case <-timeout:
-			log.Println("timeout for", uuid)
+			log.Notice("timeout for", uuid)
 			cm.Lock()
 			(*conn.conn).Close()
 			close(conn.In)

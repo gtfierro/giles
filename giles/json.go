@@ -5,7 +5,6 @@ import (
 	simplejson "github.com/bitly/go-simplejson"
 	"gopkg.in/mgo.v2/bson"
 	"io"
-	"log"
 	"strconv"
 )
 
@@ -29,7 +28,7 @@ func (sm *SmapMessage) ToJson() []byte {
 	towrite[sm.Path] = sm.Readings
 	b, err := json.Marshal(towrite)
 	if err != nil {
-		log.Println(err)
+		log.Error("Error marshalling to JSON", err)
 		return []byte{}
 	}
 	return b
