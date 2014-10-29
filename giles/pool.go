@@ -53,7 +53,7 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 				log.Error("Error writing data to ReadingDB", err)
 			}
 		case <-timeout:
-			log.Notice("timeout for", uuid)
+			log.Notice("timeout for %v", uuid)
 			cm.Lock()
 			(*conn.conn).Close()
 			close(conn.In)

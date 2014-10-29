@@ -59,7 +59,7 @@ func NewStore(ip string, port int) *Store {
 		log.Fatal("Could not create index on streams.uuid")
 	}
 
-	index.Key = []string{"Path"}
+	index.Key = []string{"Path", "uuid"}
 	err = pathmetadata.EnsureIndex(index)
 	if err != nil {
 		log.Fatal("Could not create index on pathmetadata.Path")
@@ -128,10 +128,12 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 	 * We add the root metadata to everything in Contents
 	**/
 	if (*messages)["/"] != nil && (*messages)["/"].Metadata != nil {
+		uuid := (*messages)["/"].UUID
 		for _, path := range (*messages)["/"].Contents {
-			_, err := s.pathmetadata.Upsert(bson.M{"Path": "/" + path}, bson.M{"$set": (*messages)["/"].Metadata})
+			(*messages)["/"].Metadata["uuid"] = uuid
+			_, err := s.pathmetadata.Upsert(bson.M{"Path": "/" + path, "uuid": uuid}, bson.M{"$set": (*messages)["/"].Metadata})
 			if err != nil {
-				log.Error("Error saving metadata for", "/"+path)
+				log.Error("Error saving metadata for %v", "/"+path)
 				log.Panic(err)
 			}
 		}
@@ -142,13 +144,15 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 	 * the metadata for that path
 	**/
 	for path, msg := range *messages {
+		uuid := msg.UUID
 		if msg.Metadata == nil {
 			continue
 		}
 		if len(msg.Contents) > 0 {
-			_, err := s.pathmetadata.Upsert(bson.M{"Path": path}, bson.M{"$set": msg.Metadata})
+			msg.Metadata["uuid"] = uuid
+			_, err := s.pathmetadata.Upsert(bson.M{"Path": path, "uuid": uuid}, bson.M{"$set": msg.Metadata})
 			if err != nil {
-				log.Error("Error saving metadata for", path)
+				log.Error("Error saving metadata for %v", path)
 				log.Panic(err)
 			}
 			delete((*messages), path)
@@ -164,12 +168,15 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	*/
 	var prefixMetadata bson.M
 	//TODO: this takes up a lot of memory because we run it on every write. How can we know to skip it?
+	/*
+	 *
+	 */
 	for _, prefix := range getPrefixes(msg.Path) {
 		s.pathmetadata.Find(bson.M{"Path": prefix}).Select(bson.M{"_id": 0, "Path": 0}).One(&prefixMetadata)
 		for k, v := range prefixMetadata {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata." + k: v}})
 			if err != nil {
-				log.Error("Error saving metadata for", msg.UUID)
+				log.Error("Error saving metadata for %v", msg.UUID)
 				log.Panic(err)
 			}
 		}
@@ -180,7 +187,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	if msg.Path != "" {
 		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Path": msg.Path}})
 		if err != nil {
-			log.Error("Error saving path for", msg.UUID)
+			log.Error("Error saving path for %v", msg.UUID)
 			log.Panic(err)
 		}
 	}
@@ -188,7 +195,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		for k, v := range msg.Metadata {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata." + k: v}})
 			if err != nil {
-				log.Error("Error saving metadata for", msg.UUID)
+				log.Error("Error saving metadata for %v", msg.UUID)
 				log.Panic(err)
 			}
 		}
@@ -197,7 +204,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		for k, v := range msg.Properties {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties." + k: v}})
 			if err != nil {
-				log.Error("Error saving properties for", msg.UUID)
+				log.Error("Error saving properties for %v", msg.UUID)
 				log.Panic(err)
 			}
 		}
@@ -205,7 +212,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	if msg.Actuator != nil {
 		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Actuator": msg.Actuator}})
 		if err != nil {
-			log.Error("Error saving actuator for", msg.UUID)
+			log.Error("Error saving actuator for %v", msg.UUID)
 			log.Panic(err)
 		}
 	}
