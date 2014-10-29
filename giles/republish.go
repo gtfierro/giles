@@ -33,8 +33,8 @@ func (r *Republisher) HandleSubscriber(rw http.ResponseWriter, query string) {
 	for _, uuid := range uuids {
 		r.Subscribers[uuid] = append(r.Subscribers[uuid], client)
 	}
-	log.Info("New subscriber for query", query)
-	log.Info("Clients:", len(r.Clients))
+	log.Info("New subscriber for query: %v", query)
+	log.Info("Clients: %v", len(r.Clients))
 
 	rw.Header().Set("Content-Type", "application/json")
 	notify := rw.(http.CloseNotifier).CloseNotify()

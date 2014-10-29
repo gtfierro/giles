@@ -21,7 +21,7 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
 	if conn := cm.streams[uuid]; conn != nil {
 		conn.In <- data
 	} else {
-		log.Debug("new conn for", uuid)
+		log.Notice("new conn for %v", uuid)
 		// start new watchdog
 		c, err := tsdb.GetConnection()
 		if err != nil {

@@ -94,6 +94,7 @@ func handleJSON(r io.Reader) (map[string]*SmapMessage, error) {
 			message.Properties = bson.M(properties)
 		}
 
+		// get readings
 		readingarray := js.Get("Readings").MustArray()
 		sr := &SmapReading{UUID: uuid}
 		srs := make([][]interface{}, len(readingarray))
@@ -112,6 +113,7 @@ func handleJSON(r io.Reader) (map[string]*SmapMessage, error) {
 		sr.Readings = srs
 		message.Readings = sr
 
+		// get actuator
 		actuator := js.Get("Actuator").MustMap()
 		if actuator != nil {
 			message.Actuator = bson.M(actuator)

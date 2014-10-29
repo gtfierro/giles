@@ -92,7 +92,7 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 			return 0
 		}
 		atomic.AddUint32(s.maxsid, 1)
-		log.Notice("Creating StreamId", streamid.StreamId, "for uuid", uuid)
+		log.Notice("Creating StreamId %v for uuid %v", streamid.StreamId, uuid)
 		UUIDCache[uuid] = streamid.StreamId
 	} else {
 		UUIDCache[uuid] = streamid.StreamId
