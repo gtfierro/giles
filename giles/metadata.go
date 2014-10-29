@@ -127,11 +127,12 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 	/**
 	 * We add the root metadata to everything in Contents
 	**/
+	var rootuuid string
 	if (*messages)["/"] != nil && (*messages)["/"].Metadata != nil {
-		uuid := (*messages)["/"].UUID
+		rootuuid = (*messages)["/"].UUID
 		for _, path := range (*messages)["/"].Contents {
-			(*messages)["/"].Metadata["uuid"] = uuid
-			_, err := s.pathmetadata.Upsert(bson.M{"Path": "/" + path, "uuid": uuid}, bson.M{"$set": (*messages)["/"].Metadata})
+			(*messages)["/"].Metadata["uuid"] = rootuuid
+			_, err := s.pathmetadata.Upsert(bson.M{"Path": "/" + path, "uuid": rootuuid}, bson.M{"$set": (*messages)["/"].Metadata})
 			if err != nil {
 				log.Error("Error saving metadata for %v", "/"+path)
 				log.Panic(err)
@@ -144,13 +145,12 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 	 * the metadata for that path
 	**/
 	for path, msg := range *messages {
-		uuid := msg.UUID
 		if msg.Metadata == nil {
 			continue
 		}
 		if len(msg.Contents) > 0 {
-			msg.Metadata["uuid"] = uuid
-			_, err := s.pathmetadata.Upsert(bson.M{"Path": path, "uuid": uuid}, bson.M{"$set": msg.Metadata})
+			msg.Metadata["uuid"] = rootuuid
+			_, err := s.pathmetadata.Upsert(bson.M{"Path": path, "uuid": rootuuid}, bson.M{"$set": msg.Metadata})
 			if err != nil {
 				log.Error("Error saving metadata for %v", path)
 				log.Panic(err)
