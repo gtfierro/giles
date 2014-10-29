@@ -84,12 +84,14 @@ type RDB struct {
 }
 
 func NewReadingDB(ip string, port int, cm *ConnectionMap) *RDB {
+	log.Notice("Connecting to ReadingDB at %v:%v...", ip, port)
 	address := ip + ":" + strconv.Itoa(port)
 	tcpaddr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		log.Panic("Error resolving TCP address", address, err)
 		return nil
 	}
+	log.Notice("...connected!")
 	rdb := &RDB{addr: tcpaddr, In: make(chan *[]byte), cm: cm}
 	return rdb
 }

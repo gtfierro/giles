@@ -27,12 +27,14 @@ type Store struct {
 }
 
 func NewStore(ip string, port int) *Store {
+	log.Notice("Connecting to MongoDB at %v:%v...", ip, port)
 	address := ip + ":" + strconv.Itoa(port)
 	session, err := mgo.Dial(address)
 	if err != nil {
 		log.Critical("Could not connect to MongoDB: %v", err)
 		return nil
 	}
+	log.Notice("...connected!")
 	//session.SetMode(mgo.Eventual, true)
 	db := session.DB("archiver")
 	streams := db.C("streams")

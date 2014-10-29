@@ -12,16 +12,24 @@ import (
 	"time"
 )
 
+// Reading DB instance
 var rdb *RDB
+// generic TimeSeries database instance
 var tsdb TSDB
+// metadata db instance
 var store *Store
+// UUID cache map
 var UUIDCache = make(map[string]uint32)
+// republisher instance for pub/sub fxnality
 var republisher *Republisher
+// map for storing client connections
 var cm *ConnectionMap
+// stats counters
 var incomingcounter = NewCounter()
 var pendingwritescounter = NewCounter()
+// logging config
 var log = logging.MustGetLogger("archiver")
-var format = "%{color}%{time:15:04:05} %{shortfile} ▶ %{level} %{color:reset} %{message}"
+var format = "%{color}%{time:Jan 02 15:04:05} %{shortfile} ▶ %{level} %{color:reset} %{message}"
 
 // config flags
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
