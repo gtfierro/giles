@@ -39,6 +39,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/add", HandlePost).Methods("POST")
 	r.HandleFunc("/add/{key}", HandlePost).Methods("POST")
+	http.Handle("/", r)
 
 	srv := &http.Server{
 		Addr: "0.0.0.0:8079",
@@ -51,5 +52,6 @@ func main() {
 		}
 	}()
 
+	log.Println("hey")
 	log.Panic(srv.ListenAndServe())
 }
