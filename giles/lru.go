@@ -65,3 +65,7 @@ func (lru *LRU) Set(key string, value interface{}) {
 	e := lru.queue.PushFront(key)
 	lru.elements[key] = e
 }
+
+func (lru *LRU) Len() int {
+	return lru.queue.Len()
+}

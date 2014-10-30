@@ -22,7 +22,7 @@ var tsdb TSDB
 var store *Store
 
 // UUID cache map
-var UUIDCache = make(map[string]uint32)
+var UUIDCache = NewLRU(1000)
 
 // republisher instance for pub/sub fxnality
 var republisher *Republisher
@@ -125,7 +125,7 @@ func main() {
 	for {
 		time.Sleep(5 * time.Second)
 		idx += 5
-		if idx == 3600 {
+		if idx == 600 {
 			if *memprofile != "" {
 				f, err := os.Create(*memprofile)
 				if err != nil {
