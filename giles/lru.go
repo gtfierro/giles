@@ -6,31 +6,33 @@ import (
 
 /*
  * LRU cache for UUIDs and Metadata hashes
- */
-
-type refreshfxn func(string) string
+ *
+ * Get(key string) -> interface{}, bool (value, found)
+ * Set(key string, value interface{})
+ * Contains(key string) -> bool
+ * TODO: add locks
+**/
 
 type LRU struct {
 	size     uint32
-	cache    map[string]string        //map key:value
+	cache    map[string]interface{}   //map key:value
 	elements map[string]*list.Element //map key:element pointer
 	queue    *list.List               //doubly-linked list of elements
-	refresh  refreshfxn
 }
 
-func NewLRU(size uint32, refresh refreshfxn) *LRU {
+func NewLRU(size uint32) *LRU {
 	log.Notice("Creating new LRU with size %v", size)
 	if size < 1 {
 		return nil
 	}
 	return &LRU{size: size,
-		cache:    make(map[string]string),
+		cache:    make(map[string]interface{}),
 		elements: make(map[string]*list.Element),
 		queue:    list.New(),
-		refresh:  refresh}
+	}
 }
 
-func (lru *LRU) Get(key string) string {
+func (lru *LRU) Get(key string) (interface{}, bool) {
 	/*
 	 * We want to retrieve the value associated with the key
 	 * Check the cache.
@@ -42,24 +44,24 @@ func (lru *LRU) Get(key string) string {
 	 * it to the front of the queue, remembering to add it to elements
 	 */
 	var (
-		val    string
+		val    interface{}
 		hasval bool
 	)
 	if val, hasval = lru.cache[key]; !hasval {
-
-		// remove oldest element if we are at capacity
-		if uint32(lru.queue.Len()) == lru.size {
-			remkey := lru.queue.Remove(lru.queue.Back())
-			delete(lru.cache, remkey.(string))
-			delete(lru.elements, remkey.(string))
-		}
-		val = lru.refresh(key)
-		lru.cache[key] = val
-		e := lru.queue.PushFront(key)
-		lru.elements[key] = e
-	} else {
-		// we used an item, so move to front
-		lru.queue.MoveToFront(lru.elements[key])
+		return nil, false
 	}
-	return val
+	// we used an item, so move to front
+	lru.queue.MoveToFront(lru.elements[key])
+	return val, true
+}
+
+func (lru *LRU) Set(key string, value interface{}) {
+	if uint32(lru.queue.Len()) == lru.size {
+		remkey := lru.queue.Remove(lru.queue.Back())
+		delete(lru.cache, remkey.(string))
+		delete(lru.elements, remkey.(string))
+	}
+	lru.cache[key] = value
+	e := lru.queue.PushFront(key)
+	lru.elements[key] = e
 }

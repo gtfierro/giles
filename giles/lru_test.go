@@ -4,19 +4,15 @@ import (
 	"testing"
 )
 
-func refresh_string(key string) string {
-	return key + "value"
-}
-
 func TestGet(t *testing.T) {
-	lru := NewLRU(uint32(4), refresh_string)
+	lru := NewLRU(uint32(4))
 
-	val := refresh_string("asdf")
-	if val != "asdfvalue" {
-		t.Error("refresh_string does not correctly append 'value'")
+	val, ok := lru.Get("asdf")
+	if ok != false {
+		t.Error("ok should be false but is", ok)
 	}
-
-	val = lru.Get("asdf")
+	lru.Set("asdf", "asdfvalue")
+	val, ok = lru.Get("asdf")
 	if val != "asdfvalue" {
 		t.Error("LRU.Get does not return correct value")
 	}
@@ -31,22 +27,22 @@ func TestGet(t *testing.T) {
 }
 
 func TestEviction(t *testing.T) {
-	lru := NewLRU(2, refresh_string)
-	var val1, val2, val3 string
-	val1 = lru.Get("a")
+	lru := NewLRU(2)
+	val1, ok := lru.Get("a")
+	if ok != false {
+		t.Error("ok should be false")
+	}
+	lru.Set("a", "avalue")
+	val1, ok = lru.Get("a")
+	if ok != true {
+		t.Error("ok should be true")
+	}
 	if val1 != "avalue" {
 		t.Error("lru.Get: val1 should be avalue but is", val1)
 	}
 
-	val2 = lru.Get("b")
-	if val2 != "bvalue" {
-		t.Error("lru.Get: val2 should be bvalue but is", val2)
-	}
-
-	val3 = lru.Get("c")
-	if val3 != "cvalue" {
-		t.Error("lru.Get: val3 should be cvalue but is", val3)
-	}
+	lru.Set("b", "bvalue")
+	lru.Set("c", "cvalue")
 
 	if len(lru.cache) != 2 {
 		t.Error("lru.Cache size should be 2 but is", len(lru.cache))
