@@ -24,6 +24,10 @@ var store *Store
 // UUID cache map
 var UUIDCache = NewLRU(1000)
 
+// Path metadata cache
+var PMDCache = NewLRU(1000)  // map k/v: rootuuid/changed
+var PathCache = NewLRU(1000) // mapk/v: uuid/path
+
 // republisher instance for pub/sub fxnality
 var republisher *Republisher
 
@@ -36,7 +40,7 @@ var pendingwritescounter = NewCounter()
 
 // logging config
 var log = logging.MustGetLogger("archiver")
-var format = "%{color}%{time:Jan 02 15:04:05} %{shortfile} ▶ %{level} %{color:reset} %{message}"
+var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 
 // config flags
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -125,7 +129,7 @@ func main() {
 	for {
 		time.Sleep(5 * time.Second)
 		idx += 5
-		if idx == 600 {
+		if idx == 120 {
 			if *memprofile != "" {
 				f, err := os.Create(*memprofile)
 				if err != nil {

@@ -137,6 +137,7 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 			}
 		}
 		delete((*messages), "/")
+		PMDCache.Set(rootuuid, true)
 	}
 	/**
 	 * For the rest of the keys, check if Contents is nonempty. If it is, we iterate through and update
@@ -154,6 +155,7 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 				log.Panic(err)
 			}
 			delete((*messages), path)
+			PMDCache.Set(rootuuid, true)
 		}
 	}
 
@@ -165,38 +167,44 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	   metadata changes
 	*/
 	var toWrite, prefixMetadata bson.M
-	//TODO: this takes up a lot of memory because we run it on every write. How can we know to skip it?
-	/*
-	 *
-	 */
-	//TODO: check the root uuid for querying the pathmetadata
-	for _, prefix := range getPrefixes(msg.Path) {
-		s.pathmetadata.Find(bson.M{"Path": prefix, "uuid": msg.UUID}).Select(bson.M{"_id": 0, "Path": 0}).One(&prefixMetadata)
-		for k, v := range prefixMetadata {
-			toWrite["Metadata."+k] = v
-		}
+	changed, found := PMDCache.Get(msg.UUID)
+	if !found {
+		PMDCache.Set(msg.UUID, true)
 	}
-	_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
-	if err != nil {
-		log.Error("Error saving metadata for %v", msg.UUID)
-		log.Panic(err)
+	if (changed != nil && changed.(bool)) || !found {
+		for _, prefix := range getPrefixes(msg.Path) {
+			s.pathmetadata.Find(bson.M{"Path": prefix, "uuid": msg.UUID}).Select(bson.M{"_id": 0, "Path": 0}).One(&prefixMetadata)
+			for k, v := range prefixMetadata {
+				toWrite["Metadata."+k] = v
+			}
+			PMDCache.Set(msg.UUID, false)
+		}
+		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
+		if err != nil {
+			log.Error("Error saving metadata for %v", msg.UUID)
+			log.Panic(err)
+		}
 	}
 	if msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil {
 		return
 	}
-	if msg.Path != "" {
+	// check if we already have this path for this uuid
+	path, found := PathCache.Get(msg.UUID)
+	// if not found,
+	if !found {
+		PathCache.Set(msg.UUID, msg.Path)
+	}
+	if path != nil && path.(string) != msg.Path {
 		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Path": msg.Path}})
 		if err != nil {
-			log.Error("Error saving path for %v", msg.UUID)
-			log.Panic(err)
+			log.Critical("Error saving path for %v: %v", msg.UUID, err)
 		}
 	}
 	if msg.Metadata != nil {
 		for k, v := range msg.Metadata {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata." + k: v}})
 			if err != nil {
-				log.Error("Error saving metadata for %v", msg.UUID)
-				log.Panic(err)
+				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)
 			}
 		}
 	}
@@ -204,16 +212,14 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		for k, v := range msg.Properties {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties." + k: v}})
 			if err != nil {
-				log.Error("Error saving properties for %v", msg.UUID)
-				log.Panic(err)
+				log.Critical("Error saving properties for %v: %v", msg.UUID, err)
 			}
 		}
 	}
 	if msg.Actuator != nil {
 		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Actuator": msg.Actuator}})
 		if err != nil {
-			log.Error("Error saving actuator for %v", msg.UUID)
-			log.Panic(err)
+			log.Critical("Error saving actuator for %v: %v", msg.UUID, err)
 		}
 	}
 }
