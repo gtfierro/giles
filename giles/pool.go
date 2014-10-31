@@ -18,6 +18,8 @@ type ConnectionMap struct {
 }
 
 func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
+	cm.Lock()
+	defer cm.Unlock()
 	if conn := cm.streams[uuid]; conn != nil {
 		conn.In <- data
 	} else {
@@ -27,18 +29,17 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
 		if err != nil {
 			log.Panic("Error connecting to TSDB")
 		}
-		cm.Lock()
 		conn = &Connection{conn: &c, In: make(chan *[]byte)}
 		if _, found := cm.streams[uuid]; !found {
 			cm.streams[uuid] = conn
 			go cm.watchdog(uuid)
 		}
-		cm.Unlock()
 	}
 }
 
 func (cm *ConnectionMap) watchdog(uuid string) {
-	timeout := time.After(time.Duration(cm.keepalive) * time.Second)
+	var timeout <-chan time.Time
+	timer := time.NewTimer(0)
 	conn := cm.streams[uuid]
 	for {
 		if conn == nil {
@@ -46,7 +47,8 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 		}
 		select {
 		case data := <-conn.In:
-			timeout = time.After(time.Duration(cm.keepalive) * time.Second)
+			timer.Reset(time.Duration(cm.keepalive) * time.Second)
+			timeout = timer.C
 			pendingwritescounter.Mark()
 			_, err := (*conn.conn).Write(*data)
 			if err != nil {
@@ -55,6 +57,7 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 		case <-timeout:
 			log.Notice("timeout for %v", uuid)
 			cm.Lock()
+			timeout = nil
 			(*conn.conn).Close()
 			close(conn.In)
 			delete(cm.streams, uuid)
