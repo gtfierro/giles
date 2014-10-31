@@ -25,7 +25,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	//apikey := vars["key"]
 	messages, err := handleJSON(req.Body)
 	if err != nil {
-		log.Error("Error handling JSON", err)
+		log.Error("Error handling JSON: %v", err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
@@ -60,7 +60,7 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.Error("Error handling republish", err)
+		log.Error("Error handling republish: %v", err)
 	}
 	republisher.HandleSubscriber(rw, string(stringquery))
 }
@@ -74,11 +74,11 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	key := vars["key"]
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.Error("Error reading query", err)
+		log.Error("Error reading query: %v", err)
 	}
 	res, err := store.Query(stringquery, key)
 	if err != nil {
-		log.Error("Error evaluating query", err)
+		log.Error("Error evaluating query: %v", err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
@@ -96,7 +96,7 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	res, err := store.TagsUUID(uuid)
 	if err != nil {
-		log.Error("Error evaluating tags", err)
+		log.Error("Error evaluating tags: %v", err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
