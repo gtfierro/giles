@@ -186,21 +186,21 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 			log.Panic(err)
 		}
 	}
-	if msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil {
-		return
-	}
-	// check if we already have this path for this uuid
 	path, found := PathCache.Get(msg.UUID)
 	// if not found,
 	if !found {
 		PathCache.Set(msg.UUID, msg.Path)
 	}
-	if path != nil && path.(string) != msg.Path {
+	if (path != nil && path.(string) != msg.Path) || !found {
 		_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Path": msg.Path}})
 		if err != nil {
 			log.Critical("Error saving path for %v: %v", msg.UUID, err)
 		}
 	}
+	if msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil {
+		return
+	}
+	// check if we already have this path for this uuid
 	if msg.Metadata != nil {
 		for k, v := range msg.Metadata {
 			_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Metadata." + k: v}})
