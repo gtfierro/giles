@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/list"
+	"sync"
 )
 
 /*
@@ -14,6 +15,7 @@ import (
 **/
 
 type LRU struct {
+	sync.Mutex
 	size     uint32
 	cache    map[string]interface{}   //map key:value
 	elements map[string]*list.Element //map key:element pointer
@@ -43,6 +45,8 @@ func (lru *LRU) Get(key string) (interface{}, bool) {
 	 * Then, fetch the value using the refresh() fxn. Add it to the cache, then create a new element and move
 	 * it to the front of the queue, remembering to add it to elements
 	 */
+	lru.Lock()
+	defer lru.Unlock()
 	var (
 		val    interface{}
 		hasval bool
@@ -56,6 +60,8 @@ func (lru *LRU) Get(key string) (interface{}, bool) {
 }
 
 func (lru *LRU) Set(key string, value interface{}) {
+	lru.Lock()
+	defer lru.Unlock()
 	if uint32(lru.queue.Len()) == lru.size {
 		remkey := lru.queue.Remove(lru.queue.Back())
 		delete(lru.cache, remkey.(string))
@@ -67,5 +73,7 @@ func (lru *LRU) Set(key string, value interface{}) {
 }
 
 func (lru *LRU) Len() int {
+	lru.Lock()
+	defer lru.Unlock()
 	return lru.queue.Len()
 }
