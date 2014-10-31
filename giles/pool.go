@@ -39,7 +39,8 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
 
 func (cm *ConnectionMap) watchdog(uuid string) {
 	var timeout <-chan time.Time
-	timer := time.NewTimer(0)
+	timer := time.NewTimer(time.Duration(cm.keepalive) * time.Second)
+	timeout = timer.C
 	conn := cm.streams[uuid]
 	for {
 		if conn == nil {
@@ -57,7 +58,7 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 		case <-timeout:
 			log.Notice("timeout for %v", uuid)
 			cm.Lock()
-			timeout = nil
+			//timeout = nil
 			(*conn.conn).Close()
 			close(conn.In)
 			delete(cm.streams, uuid)

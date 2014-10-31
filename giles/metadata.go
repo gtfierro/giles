@@ -227,7 +227,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 
 func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 	if apikey != "" {
-		log.Info("query with key:", apikey)
+		log.Info("query with key: %v", apikey)
 	}
 	log.Info(string(stringquery))
 	var res []bson.M
@@ -259,7 +259,7 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		if err2 != nil {
 			return d, err2
 		}
-		log.Info("Updated", info.Updated, "records")
+		log.Info("Updated %v records", info.Updated)
 		d, err = json.Marshal(bson.M{"Updated": info.Updated})
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
@@ -272,15 +272,15 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		case IN:
 			start := uint64(target.Start.Unix())
 			end := uint64(target.End.Unix())
-			log.Debug("start", start, "end", end)
+			log.Debug("start %v end %v", start, end)
 			response, err = tsdb.GetData(uuids, start, end)
 		case AFTER:
 			ref := uint64(target.Ref.Unix())
-			log.Debug("after", ref)
+			log.Debug("after %v", ref)
 			response, err = tsdb.Next(uuids, ref, target.Limit)
 		case BEFORE:
 			ref := uint64(target.Ref.Unix())
-			log.Debug("before", ref)
+			log.Debug("before %v", ref)
 			response, err = tsdb.Prev(uuids, ref, target.Limit)
 		}
 		if err != nil {
