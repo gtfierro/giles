@@ -167,6 +167,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	   metadata changes
 	*/
 	var toWrite, prefixMetadata bson.M
+	var uuidM = bson.M{"uuid": msg.UUID}
 	changed, found := PMDCache.Get(msg.UUID)
 	if !found {
 		PMDCache.Set(msg.UUID, true)
@@ -195,14 +196,14 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		PathCache.Set(msg.UUID, msg.Path)
 	}
 	if path != nil && path.(string) != msg.Path {
-		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Path": msg.Path}})
+		_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Path": msg.Path}})
 		if err != nil {
 			log.Critical("Error saving path for %v: %v", msg.UUID, err)
 		}
 	}
 	if msg.Metadata != nil {
 		for k, v := range msg.Metadata {
-			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Metadata." + k: v}})
+			_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Metadata." + k: v}})
 			if err != nil {
 				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)
 			}
@@ -210,14 +211,14 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	}
 	if msg.Properties != nil {
 		for k, v := range msg.Properties {
-			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Properties." + k: v}})
+			_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Properties." + k: v}})
 			if err != nil {
 				log.Critical("Error saving properties for %v: %v", msg.UUID, err)
 			}
 		}
 	}
 	if msg.Actuator != nil {
-		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": bson.M{"Actuator": msg.Actuator}})
+		_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Actuator": msg.Actuator}})
 		if err != nil {
 			log.Critical("Error saving actuator for %v: %v", msg.UUID, err)
 		}
