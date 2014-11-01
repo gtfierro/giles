@@ -57,3 +57,36 @@ func TestEviction(t *testing.T) {
 		t.Error("Most recently used item should be 'b' but is", lru.queue.Back().Value.(string))
 	}
 }
+
+/**
+ * Should do the following benchmarks:
+ * Insert with no Reuse (no repeats)
+ * Insert with Resue (with repeats -- moving LRU item to top)
+ * Parallel versions of the above, to test the effect of the Lock
+ * Insert with LRU size = 1
+ * Insert+Get with LRU size = 1
+ * Get with LRU size = 1
+**/
+
+func BenchmarkSetSize1NoReuse(b *testing.B) {
+	l := NewLRU(uint32(1))
+	for i := 0; i < b.N; i++ {
+		l.Set(string(i), i)
+	}
+}
+
+func BenchmarkSetSize1Reuse(b *testing.B) {
+	l := NewLRU(uint32(1))
+	l.Set("1", 1)
+	for i := 0; i < b.N; i++ {
+		l.Set("1", 1)
+	}
+}
+
+func BenchmarkGetSize1(b *testing.B) {
+	l := NewLRU(uint32(1))
+	l.Set("1", 1)
+	for i := 0; i < b.N; i++ {
+		l.Get("1")
+	}
+}
