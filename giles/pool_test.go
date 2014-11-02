@@ -4,26 +4,26 @@ import (
 	"testing"
 )
 
-func newmap() map[int]*Connection {
+func newmap(b *testing.B) map[int]*Connection {
 	var x = make(map[int]*Connection)
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < b.N; i++ {
 		x[i] = &Connection{}
 	}
 	return x
 }
 
 func BenchmarkMapDelete(b *testing.B) {
-	x := newmap()
+	x := newmap(b)
 	b.ResetTimer()
-	for k, _ := range x {
+	for k := 0; k < b.N; k++ {
 		delete(x, k)
 	}
 }
 
 func BenchmarkMapSetNil(b *testing.B) {
-	x := newmap()
+	x := newmap(b)
 	b.ResetTimer()
-	for k, _ := range x {
+	for k := 0; k < b.N; k++ {
 		x[k] = nil
 	}
 }
