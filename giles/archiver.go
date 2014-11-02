@@ -129,7 +129,7 @@ func main() {
 	for {
 		time.Sleep(5 * time.Second)
 		idx += 5
-		if idx == 120 {
+		if idx == 60 {
 			if *memprofile != "" {
 				f, err := os.Create(*memprofile)
 				if err != nil {
