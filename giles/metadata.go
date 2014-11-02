@@ -180,10 +180,11 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 			}
 			PMDCache.Set(msg.UUID, false)
 		}
-		_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
-		if err != nil {
-			log.Error("Error saving metadata for %v", msg.UUID)
-			log.Panic(err)
+		if len(toWrite) > 0 {
+			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
+			if err != nil {
+				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)
+			}
 		}
 	}
 	path, found := PathCache.Get(msg.UUID)
