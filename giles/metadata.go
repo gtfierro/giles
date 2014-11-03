@@ -112,19 +112,22 @@ func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool,
 	}
 	var record bson.M
 	for _, msg := range messages {
+		if msg.UUID == "" {
+			continue
+		} // no API key for path metadata
 		q := s.metadata.Find(bson.M{"uuid": msg.UUID})
 		count, _ := q.Count()
 		if count > 0 {
 			q.One(&record)
-			log.Debug("record %v", record)
-			log.Debug("api %v %v", record["_api"], apikey)
 			if record["_api"] != apikey {
 				return false, errors.New("API key " + apikey + " is invalid for UUID " + msg.UUID)
 			}
 		} else {
 			log.Debug("inserting uuid %v with api %v", msg.UUID, apikey)
 			err := s.metadata.Insert(bson.M{"uuid": msg.UUID, "_api": apikey})
-			return err == nil, err
+			if err != nil {
+				return false, err
+			}
 		}
 	}
 	return true, nil

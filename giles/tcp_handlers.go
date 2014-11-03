@@ -45,8 +45,8 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	}
 	store.SavePathMetadata(&messages)
 	for _, msg := range messages {
-		store.SaveMetadata(msg)
-		republisher.Republish(msg)
+		go store.SaveMetadata(msg)
+		go republisher.Republish(msg)
 		tsdb.Add(msg.Readings)
 	}
 	rw.WriteHeader(200)
