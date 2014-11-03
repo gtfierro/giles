@@ -55,6 +55,7 @@ var mongoip = flag.String("mongoip", "localhost", "MongoDB IP address")
 var mongoport = flag.Int("mongoport", 27017, "MongoDB Port")
 var tsdbstring = flag.String("tsdb", "readingdb", "Type of timeseries database to use: 'readingdb' or 'quasar'")
 var tsdbkeepalive = flag.Int("keepalive", 30, "Number of seconds to keep TSDB connection alive per stream for reads")
+var benchmarktimer = flag.Int("benchmark", 60, "Number of seconds to benchmark before quitting and writing profiles")
 
 func main() {
 	flag.Parse()
@@ -71,6 +72,7 @@ func main() {
 
 	/** Configure CPU profiling */
 	if *cpuprofile != "" {
+		log.Notice("Benchmarking for %v seconds", *benchmarktimer)
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
 			log.Fatal(err)
@@ -132,7 +134,7 @@ func main() {
 	for {
 		time.Sleep(5 * time.Second)
 		idx += 5
-		if idx == 60 {
+		if idx == *benchmarktimer {
 			if *memprofile != "" {
 				f, err := os.Create(*memprofile)
 				if err != nil {

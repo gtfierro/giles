@@ -30,7 +30,6 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte(err.Error()))
 		return
 	}
-	incomingcounter.Mark()
 	ok, err := store.CheckKey(apikey, messages)
 	if err != nil {
 		log.Info("Error checking API key %v: %v", apikey, err)
@@ -48,6 +47,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		go store.SaveMetadata(msg)
 		go republisher.Republish(msg)
 		tsdb.Add(msg.Readings)
+		incomingcounter.Mark()
 	}
 	rw.WriteHeader(200)
 }
