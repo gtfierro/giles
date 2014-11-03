@@ -99,23 +99,30 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 }
 
 func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
-	var public bool
 	query := s.apikeys.Find(bson.M{"key": apikey})
 	count, err := query.Count()
 	if err != nil {
 		return false, err
 	}
 	if count > 1 {
-		return false, errors.New("More than 1 API key with that value")
+		return false, errors.New("More than 1 API key with value " + apikey)
 	}
 	if count < 1 {
-		return false, errors.New("No API key with that value")
+		return false, errors.New("No API key with value " + apikey)
 	}
-	query.Select(bson.M{"public": 1}).One(&public)
-	//TODO: finish!
-	// check the apikeys for the uuids of the messages that are being written. We need to be
-	// OK to write to all of those
-	return false, nil
+	//query.Select(bson.M{"public": 1}).One(&public)
+	var record bson.M
+	for _, msg := range messages {
+		q := s.metadata.Find(bson.M{"uuid": msg.UUID})
+		count, _ := q.Count()
+		if count > 1 {
+			q.One(&record)
+			if record["_api"] != apikey {
+				return false, errors.New("API key " + apikey + " is invalid for UUID " + msg.UUID)
+			}
+		}
+	}
+	return true, nil
 }
 
 /**

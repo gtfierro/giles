@@ -21,8 +21,8 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	//TODO: add transaction coalescing
 	defer req.Body.Close()
 	//TODO: check we have permission to write
-	//vars := mux.Vars(req)
-	//apikey := vars["key"]
+	vars := mux.Vars(req)
+	apikey := vars["key"]
 	messages, err := handleJSON(req.Body)
 	if err != nil {
 		log.Error("Error handling JSON: %v", err)
@@ -31,18 +31,18 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	incomingcounter.Mark()
-	//ok, err := store.CheckKey(apikey, messages)
-	//if err != nil {
-	//	log.Println(err)
-	//	rw.WriteHeader(500)
-	//	rw.Write([]byte(err.Error()))
-	//	return
-	//}
-	//if !ok {
-	//	rw.WriteHeader(400)
-	//	rw.Write([]byte("Unauthorized api key " + apikey))
-	//	return
-	//}
+	ok, err := store.CheckKey(apikey, messages)
+	if err != nil {
+		log.Info("Error checking API key %v: %v", apikey, err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	if !ok {
+		rw.WriteHeader(400)
+		rw.Write([]byte("Unauthorized api key " + apikey))
+		return
+	}
 	store.SavePathMetadata(&messages)
 	for _, msg := range messages {
 		go store.SaveMetadata(msg)
