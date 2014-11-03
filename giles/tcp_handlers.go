@@ -4,7 +4,12 @@ import (
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
+
+func unescape(s string) string {
+	return strings.Replace(s, "%3D", "=", -1)
+}
 
 /**
  * Handles POSTing of new data
@@ -22,7 +27,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	//TODO: check we have permission to write
 	vars := mux.Vars(req)
-	apikey := vars["key"]
+	apikey := unescape(vars["key"])
 	messages, err := handleJSON(req.Body)
 	if err != nil {
 		log.Error("Error handling JSON: %v", err)
@@ -71,7 +76,8 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux.Vars(req)
-	key := vars["key"]
+	log.Debug("vars: %v", vars)
+	key := unescape(vars["key"])
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Error("Error reading query: %v", err)

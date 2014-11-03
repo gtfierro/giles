@@ -213,7 +213,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	}
 	if (changed != nil && changed.(bool)) || !found {
 		for _, prefix := range getPrefixes(msg.Path) {
-			s.pathmetadata.Find(bson.M{"Path": prefix, "uuid": msg.UUID}).Select(bson.M{"_id": 0, "Path": 0}).One(&prefixMetadata)
+			s.pathmetadata.Find(bson.M{"Path": prefix, "uuid": msg.UUID}).Select(bson.M{"_id": 0, "Path": 0, "_api": 0}).One(&prefixMetadata)
 			for k, v := range prefixMetadata {
 				toWrite["Metadata."+k] = v
 			}
@@ -280,9 +280,10 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		var staged *mgo.Query
 		target := ast.Target.(*TagsTarget).ToBson()
 		if len(target) == 0 {
-			staged = s.metadata.Find(where).Select(bson.M{"_id": 0})
+			staged = s.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
 		} else {
 			target["_id"] = 0
+			target["_api"] = 0
 			staged = s.metadata.Find(where).Select(target)
 		}
 		if ast.Target.(*TagsTarget).Distinct {
@@ -295,6 +296,13 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		}
 	case SET_TARGET:
 		target := ast.Target.(*SetTarget).Updates
+		uuids := store.GetUUIDs(where)
+		for _, uuid := range uuids {
+			ok, err := s.CanWrite(apikey, uuid)
+			if !ok {
+				return d, err
+			}
+		}
 		info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": target})
 		if err2 != nil {
 			return d, err2
@@ -336,7 +344,7 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 */
 func (s *Store) TagsUUID(uuid string) ([]byte, error) {
 	var d []byte
-	staged := s.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"_id": 0})
+	staged := s.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"_id": 0, "_api": 0})
 	res := []bson.M{}
 	err := staged.All(&res)
 	if err != nil {
