@@ -18,11 +18,11 @@ type ConnectionMap struct {
 }
 
 func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
-	cm.Lock()
-	defer cm.Unlock()
 	if conn := cm.streams[uuid]; conn != nil {
 		conn.In <- data
 	} else {
+		cm.Lock()
+		defer cm.Unlock()
 		log.Notice("new conn for %v", uuid)
 		// start new watchdog
 		c, err := tsdb.GetConnection()
