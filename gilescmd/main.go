@@ -67,7 +67,7 @@ func (m *Mongo) NewAPIKey(name, email string, public bool) string {
 		fmt.Print("whoops no /dev/urandom")
 		return ""
 	}
-	buf := make([]byte, 128)
+	buf := make([]byte, 64)
 	_, err = f.Read(buf)
 	key := base64.URLEncoding.EncodeToString(buf)
 	record := APIKeyRecord{Key: key, Name: name, Email: email, Public: public, UUIDS: map[string]struct{}{}}
