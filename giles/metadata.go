@@ -98,7 +98,7 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 	return streamid.StreamId
 }
 
-func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
+func (s *Store) apikeyexists(apikey string) (bool, error) {
 	query := s.apikeys.Find(bson.M{"key": apikey})
 	count, err := query.Count()
 	if err != nil {
@@ -110,11 +110,21 @@ func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool,
 	if count < 1 {
 		return false, errors.New("No API key with value " + apikey)
 	}
+	return true, nil
+}
+
+func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
 	var record bson.M
 	for _, msg := range messages {
 		if msg.UUID == "" {
 			continue
 		} // no API key for path metadata
+		foundkey, found := APIKCache.Get(msg.UUID)
+		if found && foundkey == apikey {
+			return true, nil
+		} else if found && foundkey != apikey {
+			return false, errors.New("API key " + apikey + " is invalid for UUID " + msg.UUID)
+		}
 		q := s.metadata.Find(bson.M{"uuid": msg.UUID})
 		count, _ := q.Count()
 		if count > 0 {
@@ -122,9 +132,15 @@ func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool,
 			if record["_api"] != apikey {
 				return false, errors.New("API key " + apikey + " is invalid for UUID " + msg.UUID)
 			}
+			APIKCache.Set(msg.UUID, apikey)
 		} else {
+			exists, err := s.apikeyexists(apikey)
+			if !exists {
+				return false, err
+			}
 			log.Debug("inserting uuid %v with api %v", msg.UUID, apikey)
-			err := s.metadata.Insert(bson.M{"uuid": msg.UUID, "_api": apikey})
+			err = s.metadata.Insert(bson.M{"uuid": msg.UUID, "_api": apikey})
+			APIKCache.Set(msg.UUID, apikey)
 			if err != nil {
 				return false, err
 			}
