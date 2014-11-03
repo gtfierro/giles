@@ -113,37 +113,45 @@ func (s *Store) apikeyexists(apikey string) (bool, error) {
 	return true, nil
 }
 
-func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
+func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 	var record bson.M
+	foundkey, found := APIKCache.Get(uuid)
+	if found && foundkey == apikey {
+		return true, nil
+	} else if found && foundkey != apikey {
+		return false, errors.New("API key " + apikey + " is invalid for UUID " + uuid)
+	}
+	q := s.metadata.Find(bson.M{"uuid": uuid})
+	count, _ := q.Count()
+	if count > 0 {
+		q.One(&record)
+		if record["_api"] != apikey {
+			return false, errors.New("API key " + apikey + " is invalid for UUID " + uuid)
+		}
+		APIKCache.Set(uuid, apikey)
+	} else {
+		exists, err := s.apikeyexists(apikey)
+		if !exists {
+			return false, err
+		}
+		log.Debug("inserting uuid %v with api %v", uuid, apikey)
+		err = s.metadata.Insert(bson.M{"uuid": uuid, "_api": apikey})
+		APIKCache.Set(uuid, apikey)
+		if err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
 	for _, msg := range messages {
 		if msg.UUID == "" {
 			continue
 		} // no API key for path metadata
-		foundkey, found := APIKCache.Get(msg.UUID)
-		if found && foundkey == apikey {
-			return true, nil
-		} else if found && foundkey != apikey {
-			return false, errors.New("API key " + apikey + " is invalid for UUID " + msg.UUID)
-		}
-		q := s.metadata.Find(bson.M{"uuid": msg.UUID})
-		count, _ := q.Count()
-		if count > 0 {
-			q.One(&record)
-			if record["_api"] != apikey {
-				return false, errors.New("API key " + apikey + " is invalid for UUID " + msg.UUID)
-			}
-			APIKCache.Set(msg.UUID, apikey)
-		} else {
-			exists, err := s.apikeyexists(apikey)
-			if !exists {
-				return false, err
-			}
-			log.Debug("inserting uuid %v with api %v", msg.UUID, apikey)
-			err = s.metadata.Insert(bson.M{"uuid": msg.UUID, "_api": apikey})
-			APIKCache.Set(msg.UUID, apikey)
-			if err != nil {
-				return false, err
-			}
+		ok, err := s.CanWrite(apikey, msg.UUID)
+		if !ok {
+			return false, err
 		}
 	}
 	return true, nil

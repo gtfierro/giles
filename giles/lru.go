@@ -11,7 +11,6 @@ import (
  * Get(key string) -> interface{}, bool (value, found)
  * Set(key string, value interface{})
  * Contains(key string) -> bool
- * TODO: add locks
 **/
 
 type LRU struct {
