@@ -113,7 +113,6 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	r := mux.NewRouter()
-	r.HandleFunc("/add", AddReadingHandler).Methods("POST")
 	r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
 	r.HandleFunc("/republish", RepublishHandler).Methods("POST")
 	r.HandleFunc("/api/query", QueryHandler).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
