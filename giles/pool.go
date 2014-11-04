@@ -37,6 +37,13 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
 	}
 }
 
+/*
+ * Giles creates a connection to readingdb for each UUID representing a timeseries. To avoid
+ * unnecessarily reopening connections, it maintains a map of UUIDs to watchdog goroutines.
+ * Each goroutine has a timeout (defaults to 30s) -- if it does not receive a pending write
+ * for its UUID within the time out, it closes the connection to readingdb, and refreshes
+ * the timout when it receives a reading.
+**/
 func (cm *ConnectionMap) watchdog(uuid string) {
 	var timeout <-chan time.Time
 	timer := time.NewTimer(time.Duration(cm.keepalive) * time.Second)
@@ -58,7 +65,6 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 		case <-timeout:
 			log.Notice("timeout for %v", uuid)
 			cm.Lock()
-			//timeout = nil
 			(*conn.conn).Close()
 			close(conn.In)
 			delete(cm.streams, uuid)

@@ -22,6 +22,7 @@ type Store struct {
 	metadata     *mgo.Collection
 	pathmetadata *mgo.Collection
 	apikeys      *mgo.Collection
+	apikeylock   sync.Mutex
 	maxsid       *uint32
 	streamlock   sync.Mutex
 }
@@ -130,6 +131,9 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		}
 		APIKCache.Set(uuid, apikey)
 	} else {
+		s.apikeylock.Lock()
+		defer s.apikeylock.Lock()
+		// lock?
 		exists, err := s.apikeyexists(apikey)
 		if !exists {
 			return false, err
