@@ -51,7 +51,7 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	for _, msg := range messages {
 		go store.SaveMetadata(msg)
 		go republisher.Republish(msg)
-		go tsdb.Add(msg.Readings)
+		tsdb.Add(msg.Readings)
 		incomingcounter.Mark()
 	}
 	rw.WriteHeader(200)
