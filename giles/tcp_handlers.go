@@ -123,6 +123,7 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 //TODO: infer if we're doing IN, AFTER or BEFORE based on the params
 //TODO: make sure to handle the timestamps correctly
 //TODO: limit should not be unsigned
+//TODO: query metadata for the unitoftime and multiply start/end time appropriately
 func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	var starttime, endtime uint64
 	var limit int64
@@ -157,19 +158,19 @@ func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	// parse out start and end times, or default to
 	if startstr, found = req.Form["starttime"]; found {
 		starttime, _ = strconv.ParseUint(startstr[0], 10, 64)
+		starttime /= unitmultiplier[timeunit]
 	} else {
-		starttime = uint64(time.Now().Unix()) - 3600*24*unitmultiplier[timeunit]
+		starttime = uint64(time.Now().Unix()) - 3600*24
 	}
 	if endstr, found = req.Form["endtime"]; found {
 		endtime, _ = strconv.ParseUint(endstr[0], 10, 64)
+		endtime /= unitmultiplier[timeunit]
 	} else {
-		endtime = uint64(time.Now().Unix()) * unitmultiplier[timeunit]
+		endtime = uint64(time.Now().Unix())
 	}
-	//start, _ := strconv.ParseUint(vars["starttime"][0], 10, 64)
-	//end, _ := strconv.ParseUint(vars["endtime"][0], 10, 64)
-	//limit, _ := strconv.ParseInt(vars["limit"], 10, 64)
+
 	rw.Header().Set("Content-Type", "application/json")
-	log.Debug("start: %v, end: %v", starttime, endtime)
+	log.Debug("method: %v, limit %v, start: %v, end: %v", method, limit, starttime, endtime)
 	switch method {
 	case "data":
 		response, err = tsdb.GetData([]string{uuid}, starttime, endtime)
