@@ -118,6 +118,9 @@ func main() {
 	r.HandleFunc("/api/query", QueryHandler).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
 	r.HandleFunc("/api/query", QueryHandler).Methods("POST")
 	r.HandleFunc("/api/tags/uuid/{uuid}", TagsHandler).Methods("GET")
+	r.HandleFunc("/api/data/uuid/{uuid}", DataHandler).
+		Queries("endtime", "{endtime:[0-9]+}", "starttime", "{starttime:[0-9]+}").
+		Methods("GET")
 
 	http.Handle("/", r)
 

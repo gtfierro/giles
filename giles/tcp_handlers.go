@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -25,7 +27,6 @@ func unescape(s string) string {
 func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 	//TODO: add transaction coalescing
 	defer req.Body.Close()
-	//TODO: check we have permission to write
 	vars := mux.Vars(req)
 	apikey := unescape(vars["key"])
 	messages, err := handleJSON(req.Body)
@@ -76,7 +77,6 @@ func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
 func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux.Vars(req)
-	log.Debug("vars: %v", vars)
 	key := unescape(vars["key"])
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -103,6 +103,35 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	res, err := store.TagsUUID(uuid)
 	if err != nil {
 		log.Error("Error evaluating tags: %v", err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	rw.WriteHeader(200)
+	rw.Write(res)
+}
+
+//TODO: infer if we're doing IN, AFTER or BEFORE based on the params
+//TODO: make sure to handle the timestamps correctly
+func DataHandler(rw http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	uuid := vars["uuid"]
+	start, _ := strconv.ParseUint(vars["starttime"], 10, 64)
+	end, _ := strconv.ParseUint(vars["endtime"], 10, 64)
+	//limit, _ := strconv.ParseInt(vars["limit"], 10, 64)
+	rw.Header().Set("Content-Type", "application/json")
+	log.Debug("start: %v, end: %v", start, end)
+	response, err := tsdb.GetData([]string{uuid}, start, end)
+	if err != nil {
+		log.Error("Error fetching data: %v", err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	log.Debug("response %v", response)
+	res, err := json.Marshal(response)
+	if err != nil {
+		log.Error("Error fetching data: %v", err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
