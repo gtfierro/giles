@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func unescape(s string) string {
@@ -111,17 +112,72 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(res)
 }
 
+/*
+ * A catch-all function for determining the correct methods to use to talk to the timeseries database
+ * {Data,Prev,Next}Handler should all point to this for evaluation
+**/
+//func Data(rw http.ResponseWriter, uuids []string, start, end uint64, limit uint32, timeunit string) {
+//    unitmultiplier = map[string]uint{"ns": 1000000000, "us": 1000000, "ms": 1000, "s": 1}
+//}
+
 //TODO: infer if we're doing IN, AFTER or BEFORE based on the params
 //TODO: make sure to handle the timestamps correctly
+//TODO: limit should not be unsigned
 func DataHandler(rw http.ResponseWriter, req *http.Request) {
+	var starttime, endtime uint64
+	var limit int64
+	var startstr, endstr, timeunitstr, limitstr []string
+	var timeunit string
+	var response []SmapResponse
+	var err error
+	var found bool
+
+	unitmultiplier := map[string]uint64{"ns": 1000000000, "us": 1000000, "ms": 1000, "s": 1}
+
+	// extract URL query parameters into the req.Form map
+	req.ParseForm()
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
-	start, _ := strconv.ParseUint(vars["starttime"], 10, 64)
-	end, _ := strconv.ParseUint(vars["endtime"], 10, 64)
+	method := vars["method"]
+
+	// get the unit of time for the query
+	if timeunitstr, found = req.Form["unit"]; !found {
+		timeunit = "ms"
+	} else {
+		timeunit = timeunitstr[0]
+	}
+
+	// get the limit on the time series
+	if limitstr, found = req.Form["limit"]; !found {
+		limit = -1
+	} else {
+		limit, _ = strconv.ParseInt(limitstr[0], 10, 32)
+	}
+
+	// parse out start and end times, or default to
+	if startstr, found = req.Form["starttime"]; found {
+		starttime, _ = strconv.ParseUint(startstr[0], 10, 64)
+	} else {
+		starttime = uint64(time.Now().Unix()) - 3600*24*unitmultiplier[timeunit]
+	}
+	if endstr, found = req.Form["endtime"]; found {
+		endtime, _ = strconv.ParseUint(endstr[0], 10, 64)
+	} else {
+		endtime = uint64(time.Now().Unix()) * unitmultiplier[timeunit]
+	}
+	//start, _ := strconv.ParseUint(vars["starttime"][0], 10, 64)
+	//end, _ := strconv.ParseUint(vars["endtime"][0], 10, 64)
 	//limit, _ := strconv.ParseInt(vars["limit"], 10, 64)
 	rw.Header().Set("Content-Type", "application/json")
-	log.Debug("start: %v, end: %v", start, end)
-	response, err := tsdb.GetData([]string{uuid}, start, end)
+	log.Debug("start: %v, end: %v", starttime, endtime)
+	switch method {
+	case "data":
+		response, err = tsdb.GetData([]string{uuid}, starttime, endtime)
+	case "prev":
+		response, err = tsdb.Prev([]string{uuid}, starttime, uint32(limit))
+	case "next":
+		response, err = tsdb.Next([]string{uuid}, starttime, uint32(limit))
+	}
 	if err != nil {
 		log.Error("Error fetching data: %v", err)
 		rw.WriteHeader(500)
