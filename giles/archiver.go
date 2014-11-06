@@ -109,6 +109,8 @@ func main() {
 	r.HandleFunc("/api/query", QueryHandler).Methods("POST")
 	r.HandleFunc("/api/tags/uuid/{uuid}", TagsHandler).Methods("GET")
 	r.HandleFunc("/api/{method}/uuid/{uuid}", DataHandler).Methods("GET")
+
+	r.HandleFunc("/ws/tags/uuid/{uuid}", WsTagsHandler).Methods("GET")
 	http.Handle("/", r)
 
 	srv := &http.Server{

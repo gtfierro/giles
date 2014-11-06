@@ -350,16 +350,11 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 /*
    Return all metadata for a certain UUID
 */
-func (s *Store) TagsUUID(uuid string) ([]byte, error) {
-	var d []byte
+func (s *Store) TagsUUID(uuid string) ([]bson.M, error) {
 	staged := s.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"_id": 0, "_api": 0})
 	res := []bson.M{}
 	err := staged.All(&res)
-	if err != nil {
-		return d, err
-	}
-	d, err = json.Marshal(res)
-	return d, err
+	return res, err
 }
 
 /*

@@ -101,9 +101,16 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	rw.Header().Set("Content-Type", "application/json")
-	res, err := store.TagsUUID(uuid)
+	jsonres, err := store.TagsUUID(uuid)
 	if err != nil {
 		log.Error("Error evaluating tags: %v", err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	res, err := json.Marshal(jsonres)
+	if err != nil {
+		log.Error("Error converting to json: %v", err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
