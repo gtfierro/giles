@@ -21,16 +21,6 @@ var tsdb TSDB
 // metadata db instance
 var store *Store
 
-// UUID cache map
-var UUIDCache = NewLRU(1000)
-
-// Path metadata cache
-var PMDCache = NewLRU(1000)  // map k/v: rootuuid/changed
-var PathCache = NewLRU(1000) // mapk/v: uuid/path
-
-// API key cache
-var APIKCache = NewLRU(1000) // map k/v: uuid/apikey
-
 // republisher instance for pub/sub fxnality
 var republisher *Republisher
 

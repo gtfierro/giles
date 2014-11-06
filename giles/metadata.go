@@ -25,6 +25,10 @@ type Store struct {
 	apikeylock   sync.Mutex
 	maxsid       *uint32
 	streamlock   sync.Mutex
+	uuidcache    *LRU
+	pmdcache     *LRU
+	pathcache    *LRU
+	apikcache    *LRU
 }
 
 func NewStore(ip string, port int) *Store {
@@ -72,13 +76,13 @@ func NewStore(ip string, port int) *Store {
 	if maxstreamid != nil {
 		maxsid = maxstreamid.StreamId + 1
 	}
-	return &Store{session: session, db: db, streams: streams, metadata: metadata, pathmetadata: pathmetadata, apikeys: apikeys, maxsid: &maxsid}
+	return &Store{session: session, db: db, streams: streams, metadata: metadata, pathmetadata: pathmetadata, apikeys: apikeys, maxsid: &maxsid, uuidcache: NewLRU(1000), pmdcache: NewLRU(1000), pathcache: NewLRU(1000), apikcache: NewLRU(1000)}
 }
 
 func (s *Store) GetStreamId(uuid string) uint32 {
 	s.streamlock.Lock()
 	defer s.streamlock.Unlock()
-	if v, found := UUIDCache.Get(uuid); found {
+	if v, found := s.uuidcache.Get(uuid); found {
 		return v.(uint32)
 	}
 	streamid := &RDBStreamId{}
@@ -95,7 +99,7 @@ func (s *Store) GetStreamId(uuid string) uint32 {
 		atomic.AddUint32(s.maxsid, 1)
 		log.Notice("Creating StreamId %v for uuid %v", streamid.StreamId, uuid)
 	}
-	UUIDCache.Set(uuid, streamid.StreamId)
+	s.uuidcache.Set(uuid, streamid.StreamId)
 	return streamid.StreamId
 }
 
@@ -116,7 +120,7 @@ func (s *Store) apikeyexists(apikey string) (bool, error) {
 
 func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 	var record bson.M
-	foundkey, found := APIKCache.Get(uuid)
+	foundkey, found := s.apikcache.Get(uuid)
 	if found && foundkey == apikey {
 		return true, nil
 	} else if found && foundkey != apikey {
@@ -129,7 +133,7 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		if record["_api"] != apikey {
 			return false, errors.New("API key " + apikey + " is invalid for UUID " + uuid)
 		}
-		APIKCache.Set(uuid, apikey)
+		s.apikcache.Set(uuid, apikey)
 	} else {
 		s.apikeylock.Lock()
 		defer s.apikeylock.Lock()
@@ -140,7 +144,7 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		}
 		log.Debug("inserting uuid %v with api %v", uuid, apikey)
 		err = s.metadata.Insert(bson.M{"uuid": uuid, "_api": apikey})
-		APIKCache.Set(uuid, apikey)
+		s.apikcache.Set(uuid, apikey)
 		if err != nil {
 			return false, err
 		}
@@ -180,7 +184,7 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 			}
 		}
 		delete((*messages), "/")
-		PMDCache.Set(rootuuid, true)
+		s.pmdcache.Set(rootuuid, true)
 	}
 	/**
 	 * For the rest of the keys, check if Contents is nonempty. If it is, we iterate through and update
@@ -198,7 +202,7 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 				log.Panic(err)
 			}
 			delete((*messages), path)
-			PMDCache.Set(rootuuid, true)
+			s.pmdcache.Set(rootuuid, true)
 		}
 	}
 
@@ -211,9 +215,9 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	*/
 	var toWrite, prefixMetadata bson.M
 	var uuidM = bson.M{"uuid": msg.UUID}
-	changed, found := PMDCache.Get(msg.UUID)
+	changed, found := s.pmdcache.Get(msg.UUID)
 	if !found {
-		PMDCache.Set(msg.UUID, true)
+		s.pmdcache.Set(msg.UUID, true)
 	}
 	if (changed != nil && changed.(bool)) || !found {
 		for _, prefix := range getPrefixes(msg.Path) {
@@ -221,7 +225,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 			for k, v := range prefixMetadata {
 				toWrite["Metadata."+k] = v
 			}
-			PMDCache.Set(msg.UUID, false)
+			s.pmdcache.Set(msg.UUID, false)
 		}
 		if len(toWrite) > 0 {
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
@@ -230,10 +234,10 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 			}
 		}
 	}
-	path, found := PathCache.Get(msg.UUID)
+	path, found := s.pathcache.Get(msg.UUID)
 	// if not found,
 	if !found {
-		PathCache.Set(msg.UUID, msg.Path)
+		s.pathcache.Set(msg.UUID, msg.Path)
 	}
 	if (path != nil && path.(string) != msg.Path) || !found {
 		_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Path": msg.Path}})
