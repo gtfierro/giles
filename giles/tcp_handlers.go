@@ -112,18 +112,7 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(res)
 }
 
-/*
- * A catch-all function for determining the correct methods to use to talk to the timeseries database
- * {Data,Prev,Next}Handler should all point to this for evaluation
-**/
-//func Data(rw http.ResponseWriter, uuids []string, start, end uint64, limit uint32, timeunit string) {
-//    unitmultiplier = map[string]uint{"ns": 1000000000, "us": 1000000, "ms": 1000, "s": 1}
-//}
-
-//TODO: infer if we're doing IN, AFTER or BEFORE based on the params
-//TODO: make sure to handle the timestamps correctly
 //TODO: limit should not be unsigned
-//TODO: query metadata for the unitoftime and multiply start/end time appropriately
 func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	var starttime, endtime uint64
 	var limit int64
