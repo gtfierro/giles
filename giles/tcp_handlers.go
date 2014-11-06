@@ -128,7 +128,7 @@ func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	var starttime, endtime uint64
 	var limit int64
 	var startstr, endstr, timeunitstr, limitstr []string
-	var timeunit string
+	var querytimeunit string
 	var response []SmapResponse
 	var err error
 	var found bool
@@ -141,11 +141,12 @@ func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	uuid := vars["uuid"]
 	method := vars["method"]
 
+	streamtimeunit := store.GetUnitofTime(uuid)
 	// get the unit of time for the query
 	if timeunitstr, found = req.Form["unit"]; !found {
-		timeunit = "ms"
+		querytimeunit = "ms"
 	} else {
-		timeunit = timeunitstr[0]
+		querytimeunit = timeunitstr[0]
 	}
 
 	// get the limit on the time series
@@ -158,16 +159,19 @@ func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	// parse out start and end times, or default to
 	if startstr, found = req.Form["starttime"]; found {
 		starttime, _ = strconv.ParseUint(startstr[0], 10, 64)
-		starttime /= unitmultiplier[timeunit]
+		starttime /= unitmultiplier[querytimeunit]
 	} else {
 		starttime = uint64(time.Now().Unix()) - 3600*24
 	}
+	starttime *= unitmultiplier[streamtimeunit]
+
 	if endstr, found = req.Form["endtime"]; found {
 		endtime, _ = strconv.ParseUint(endstr[0], 10, 64)
-		endtime /= unitmultiplier[timeunit]
+		endtime /= unitmultiplier[querytimeunit]
 	} else {
 		endtime = uint64(time.Now().Unix())
 	}
+	endtime *= unitmultiplier[streamtimeunit]
 
 	rw.Header().Set("Content-Type", "application/json")
 	log.Debug("method: %v, limit %v, start: %v, end: %v", method, limit, starttime, endtime)

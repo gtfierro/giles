@@ -389,3 +389,12 @@ func (s *Store) GetStreamIds(where bson.M) []uint32 {
 	}
 	return res
 }
+
+func (s *Store) GetUnitofTime(uuid string) string {
+	var res bson.M
+	err := s.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"Properties.UnitofTime": 1}).One(&res)
+	if err != nil {
+		return "ms"
+	}
+	return res["Properties"].(bson.M)["UnitofTime"].(string)
+}
