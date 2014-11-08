@@ -110,6 +110,9 @@ func main() {
 	r.HandleFunc("/api/tags/uuid/{uuid}", TagsHandler).Methods("GET")
 	r.HandleFunc("/api/{method}/uuid/{uuid}", DataHandler).Methods("GET")
 
+	//r.HandleFunc("/ws/api/query", WsQueryHandler).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
+	r.HandleFunc("/ws/api/query", WsQueryHandler).Methods("POST")
+	r.HandleFunc("/ws/tags/uuid", WsTagsHandler).Methods("GET")
 	r.HandleFunc("/ws/tags/uuid/{uuid}", WsTagsHandler).Methods("GET")
 	http.Handle("/", r)
 
