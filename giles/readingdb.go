@@ -83,7 +83,7 @@ type RDB struct {
 	cm   *ConnectionMap
 }
 
-func NewReadingDB(ip string, port int, connectionkeepalive int) *RDB { //cm *ConnectionMap) *RDB {
+func NewReadingDB(ip string, port int, connectionkeepalive int) *RDB {
 	log.Notice("Connecting to ReadingDB at %v:%v...", ip, port)
 	address := ip + ":" + strconv.Itoa(port)
 	tcpaddr, err := net.ResolveTCPAddr("tcp", address)
@@ -106,6 +106,10 @@ func (rdb *RDB) GetConnection() (net.Conn, error) {
 	return conn, err
 }
 
+// Add deposits incoming readings in order for them to be sent to the database.
+// When Add returns, the client should be guaranteed that the writes will be
+// committed to the underlying store. Returns True if there were readings to be committed,
+// and False if there were no readings found in the incoming message
 func (rdb *RDB) Add(sr *SmapReading) bool {
 	if len(sr.Readings) == 0 {
 		return false
