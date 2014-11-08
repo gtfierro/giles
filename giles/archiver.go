@@ -24,9 +24,6 @@ var store *Store
 // republisher instance for pub/sub fxnality
 var republisher *Republisher
 
-// map for storing client connections
-var cm *ConnectionMap
-
 // stats counters
 var incomingcounter = NewCounter()
 var pendingwritescounter = NewCounter()
@@ -85,12 +82,10 @@ func main() {
 		log.Fatal("Error connection to MongoDB instance")
 	}
 
-	cm = &ConnectionMap{streams: map[string]*Connection{}, keepalive: *tsdbkeepalive}
-
 	switch *tsdbstring {
 	case "readingdb":
 		/** connect to ReadingDB */
-		tsdb = NewReadingDB(*readingdbip, *readingdbport, cm)
+		tsdb = NewReadingDB(*readingdbip, *readingdbport, *tsdbkeepalive)
 		if tsdb == nil {
 			log.Fatal("Error connecting to ReadingDB instance")
 		}

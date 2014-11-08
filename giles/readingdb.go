@@ -83,7 +83,7 @@ type RDB struct {
 	cm   *ConnectionMap
 }
 
-func NewReadingDB(ip string, port int, cm *ConnectionMap) *RDB {
+func NewReadingDB(ip string, port int, connectionkeepalive int) *RDB { //cm *ConnectionMap) *RDB {
 	log.Notice("Connecting to ReadingDB at %v:%v...", ip, port)
 	address := ip + ":" + strconv.Itoa(port)
 	tcpaddr, err := net.ResolveTCPAddr("tcp", address)
@@ -92,7 +92,9 @@ func NewReadingDB(ip string, port int, cm *ConnectionMap) *RDB {
 		return nil
 	}
 	log.Notice("...connected!")
-	rdb := &RDB{addr: tcpaddr, In: make(chan *[]byte), cm: cm}
+	rdb := &RDB{addr: tcpaddr,
+		In: make(chan *[]byte),
+		cm: &ConnectionMap{streams: map[string]*Connection{}, keepalive: connectionkeepalive}}
 	return rdb
 }
 
@@ -280,4 +282,8 @@ func (rdb *RDB) receiveData(conn *net.Conn) (SmapResponse, error) {
 		sr.Readings = append(sr.Readings, []float64{float64(*rdg.Timestamp) * 1000, *rdg.Value})
 	}
 	return sr, err
+}
+
+func (rdb *RDB) LiveConnections() int {
+	return rdb.cm.LiveConnections()
 }

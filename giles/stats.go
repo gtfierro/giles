@@ -36,5 +36,5 @@ func status() {
 		len(republisher.Clients),
 		incomingcounter.Reset(),
 		pendingwritescounter.Reset(),
-		cm.LiveConnections())
+		tsdb.LiveConnections())
 }
