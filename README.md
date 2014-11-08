@@ -1,50 +1,32 @@
-#sMAP Archiver
+## Giles
 
-The [sMAP](https://github.com/SoftwareDefinedBuildings/smap) archiver written
-in Go to better handle concurrency and stability, moving away from Python and
-Twisted.
+Given that I am planning on dramatically expanding the range of incoming
+interfaces that Giles supports, there should really be a core library of
+functionality, and the various interfaces should just translate the incoming
+data into a form understood by that library. This will help avoid repeated
+code.
 
-Will initially only implement the `/add` resource, with plans to add
-`/api/query` and the like. This will not change the archiver interface, but
-rather re-implement it in a new language to help with scalability and
-stability.
+So, what are those functions?
 
-Archiver:
-[http://www.cs.berkeley.edu/~stevedh/smap2/archiver.html](http://www.cs.berkeley.edu/~stevedh/smap2/archiver.html)
+timeseries:
 
-Archiver API:
-[http://www.cs.berkeley.edu/~stevedh/smap2/archiver.html#archiverapi](http://www.cs.berkeley.edu/~stevedh/smap2/archiver.html#archiverapi)
+* add data (list of points) -> success=t/f
+* get data (list of ids, start, end) -> list of data, error
+* prev data (list of ids, start, limit) -> list of data, error
+* next data (list of ids, start, limit) -> list of data, error
 
-Data Format:
-[http://www.cs.berkeley.edu/~stevedh/smap2/archiver.html#manual-data-publication-json-edition](http://www.cs.berkeley.edu/~stevedh/smap2/archiver.html#manual-data-publication-json-edition)
+metadata:
 
-`sr/archiver/proto/rdb.proto` is from [readingDB](https://github.com/stevedh/readingdb).
+* get tags (select tags, where tags) -> tag collection, error
+* get uuids (where tags) -> list of uuids, error
+* set tags (update tags, where tags) -> num changed, error
 
-
-## Archiver Interfaces
-
-* `/republish`: if GET request, looks like it just forwards all readings to a
-  new URI. If POST request, there is an attached query that returns a list of
-  UUIDs. The client will only want those UUIDs in this case. In either case,
-  the client will long-poll the `/republish` resource in order to see data as
-  it is pushed to the main archiver.
-
-* `/add`: Data is POSTed to `/add/[api key]`; this resource checks that it is a
-  valid key and then inserts it into the postgres and readingdb databases. We
-  have the readingdb part down, but we will need to combine this with the
-  postgres store -- possibly move to mongodb here.  Also need to keep track of
-  streamids as they are created.
-
-* `/api`: We will want to preserve this piece of code as much as possible,
-  because it handles the building-up of queries for sMAP UUIDs and data. Adjust
-  this to talk to the new mongodb instead of the old postgres instance, and that
-  should take care of most of the functionality
-
-Another piece that is missing will be the creating of new api keys and the
-management of streams. This was previously done through powerdb2, but there
-should be a simplified API, simplified web interface and a command-line utility
-for creating new stream ids.
-
-The command-line utility should read off some credentials from an internal
-config file or environment vars (think AWS creds) and use those as
-authentication to create new subscription keys.
+```go
+AddData(readings []interface{}) -> bool
+GetData(streamids []string, start, end uint64) -> ([]interface{}, error)
+PrevData(streamids []string, start uint64, limit int32) -> ([]interface{}, error)
+NextData(streamids []string, start uint64, limit int32) -> ([]interface{}, error)
+GetTags(select_tags, where_tags map[string]interface{}) -> (map[string]interface{}, error)
+GetUUIDs(where_tags map[string]interface{}) -> ([]string, error)
+SetTags(update_tags, where_tags map[string]interface{}) -> (int, error)
+```
