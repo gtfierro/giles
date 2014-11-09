@@ -1,5 +1,7 @@
 package main
 
+//TODO: probably name this one 'archiver' and rename 'archiver.go' to 'giles.go'
+
 func AddData(readings []interface{}) bool {
 	return true
 }
