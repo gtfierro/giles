@@ -175,9 +175,9 @@ func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	case "data":
 		response, err = tsdb.GetData([]string{uuid}, starttime, endtime)
 	case "prev":
-		response, err = tsdb.Prev([]string{uuid}, starttime, uint32(limit))
+		response, err = tsdb.Prev([]string{uuid}, starttime, int32(limit))
 	case "next":
-		response, err = tsdb.Next([]string{uuid}, starttime, uint32(limit))
+		response, err = tsdb.Next([]string{uuid}, starttime, int32(limit))
 	}
 	if err != nil {
 		log.Error("Error fetching data: %v", err)

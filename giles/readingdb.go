@@ -154,7 +154,7 @@ func (rdb *RDB) sendAndReceive(payload []byte, msgtype MessageType, conn *net.Co
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32) ([]SmapResponse, error) {
+func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
 	var data []byte
@@ -168,8 +168,9 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32) ([]SmapResponse, 
 			return retdata, err
 		}
 		sid := store.GetStreamId(uuid)
+		u_limit := uint32(limit)
 		query := &Nearest{Streamid: &sid, Substream: &substream,
-			Reference: &ref, Direction: &direction, N: &limit}
+			Reference: &ref, Direction: &direction, N: &u_limit}
 		data, err = proto.Marshal(query)
 		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, &conn)
 		sr.UUID = uuid
@@ -184,7 +185,7 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit uint32) ([]SmapResponse, 
 
   [limit] defaults to 1
 */
-func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32) ([]SmapResponse, error) {
+func (rdb *RDB) Next(uuids []string, ref uint64, limit int32) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
 	var data []byte
@@ -198,8 +199,9 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit uint32) ([]SmapResponse, 
 			return retdata, err
 		}
 		sid := store.GetStreamId(uuid)
+		u_limit := uint32(limit)
 		query := &Nearest{Streamid: &sid, Substream: &substream,
-			Reference: &ref, Direction: &direction, N: &limit}
+			Reference: &ref, Direction: &direction, N: &u_limit}
 		data, err = proto.Marshal(query)
 		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, &conn)
 		sr.UUID = uuid

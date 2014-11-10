@@ -75,7 +75,7 @@ type DataTarget struct {
 	Ref         time.Time
 	Start       time.Time
 	End         time.Time
-	Limit       uint32
+	Limit       int32
 	Streamlimit int
 }
 

@@ -107,7 +107,7 @@ func parseDataTarget(tokens *[]string) Target_T {
 			if err != nil {
 				log.Panic(err)
 			}
-			dt.Limit = uint32(limit)
+			dt.Limit = int32(limit)
 			pos += 2
 			continue
 		case "streamlimit":
