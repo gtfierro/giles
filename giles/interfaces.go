@@ -19,4 +19,6 @@ type TSDB interface {
 	GetData([]string, uint64, uint64) ([]SmapResponse, error)
 	GetConnection() (net.Conn, error)
 	LiveConnections() int
+	// Adds a pointer to metadata store for streamid/uuid conversion and the like
+	AddStore(*Store)
 }
