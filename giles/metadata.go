@@ -273,6 +273,46 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	}
 }
 
+func (s *Store) GetTags(target *TagsTarget, where bson.M) ([]bson.M, error) {
+	var res []bson.M
+	var err error
+	var staged *mgo.Query
+	target_bson := target.ToBson()
+	if len(target_bson) == 0 {
+		staged = s.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
+	} else {
+		target_bson["_id"] = 0
+		target_bson["_api"] = 0
+		staged = s.metadata.Find(where).Select(target_bson)
+	}
+	if target.Distinct {
+		var res2 []interface{}
+		err = staged.Distinct(target.Contents[0], &res2)
+	} else {
+		err = staged.All(&res)
+	}
+	return res, err
+
+}
+
+func (s *Store) SetTags(target *SetTarget, where bson.M, apikey string) (bson.M, error) {
+	var res bson.M
+	target_bson := target.Updates
+	uuids := s.GetUUIDs(where)
+	for _, uuid := range uuids {
+		ok, err := s.CanWrite(apikey, uuid)
+		if !ok {
+			return res, err
+		}
+	}
+	info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": target})
+	if err2 != nil {
+		return res, err2
+	}
+	log.Info("Updated %v records", info.Updated)
+	return bson.M{"Updated": info.Updated}, nil
+}
+
 func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 	if apikey != "" {
 		log.Info("query with key: %v", apikey)
@@ -285,38 +325,9 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 	where := ast.Where.ToBson()
 	switch ast.TargetType {
 	case TAGS_TARGET:
-		var staged *mgo.Query
-		target := ast.Target.(*TagsTarget).ToBson()
-		if len(target) == 0 {
-			staged = s.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
-		} else {
-			target["_id"] = 0
-			target["_api"] = 0
-			staged = s.metadata.Find(where).Select(target)
-		}
-		if ast.Target.(*TagsTarget).Distinct {
-			var res2 []interface{}
-			err = staged.Distinct(ast.Target.(*TagsTarget).Contents[0], &res2)
-			d, err = json.Marshal(res2)
-		} else {
-			err = staged.All(&res)
-			d, err = json.Marshal(res)
-		}
+		res, err := s.GetTags(ast.Target.(*TagsTarget), where)
 	case SET_TARGET:
-		target := ast.Target.(*SetTarget).Updates
-		uuids := s.GetUUIDs(where)
-		for _, uuid := range uuids {
-			ok, err := s.CanWrite(apikey, uuid)
-			if !ok {
-				return d, err
-			}
-		}
-		info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": target})
-		if err2 != nil {
-			return d, err2
-		}
-		log.Info("Updated %v records", info.Updated)
-		d, err = json.Marshal(bson.M{"Updated": info.Updated})
+		res, err := s.SetTags(ast.Target.(*SetTarget), where, apikey)
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
 		uuids := s.GetUUIDs(ast.Where.ToBson())
