@@ -17,7 +17,6 @@ type RDBStreamId struct {
 type Store struct {
 	session      *mgo.Session
 	db           *mgo.Database
-	tsdb         TSDB
 	streams      *mgo.Collection
 	metadata     *mgo.Collection
 	pathmetadata *mgo.Collection
