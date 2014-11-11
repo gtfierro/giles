@@ -72,7 +72,7 @@ func QueryHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Error("Error reading query: %v", err)
 	}
-	res, err := a.store.Query(stringquery, key)
+	res, err := a.HandleQuery(string(stringquery), key)
 	if err != nil {
 		log.Error("Error evaluating query: %v", err)
 		rw.WriteHeader(500)

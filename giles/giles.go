@@ -1,9 +1,11 @@
 package giles
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/gorilla/mux"
 	"github.com/op/go-logging"
+	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"os"
 )
@@ -83,6 +85,61 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 	return nil
 }
 
+// Takes the body of the query and the apikey that accompanies the query.
+func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
+	if apikey != "" {
+		log.Info("query with key: %v", apikey)
+	}
+	log.Info(querystring)
+	var data []byte
+	ast := parse(querystring)
+	where := ast.Where.ToBson()
+	switch ast.TargetType {
+	case TAGS_TARGET:
+		bson_target := ast.Target.(*TagsTarget).ToBson()
+		distinct_key := ast.Target.(*TagsTarget).Contents[0]
+		is_distinct := ast.Target.(*TagsTarget).Distinct
+		res, err := a.store.GetTags(bson_target, is_distinct, distinct_key, where)
+		if err != nil {
+			return data, err
+		}
+		data, _ = json.Marshal(res)
+	case SET_TARGET:
+		res, err := a.store.SetTags(ast.Target.(*SetTarget).Updates, apikey, where)
+		if err != nil {
+			return data, err
+		}
+		data, _ = json.Marshal(res)
+	case DATA_TARGET:
+		target := ast.Target.(*DataTarget)
+		uuids, err := a.GetUUIDs(ast.Where.ToBson())
+		if err != nil {
+			return data, err
+		}
+		if target.Streamlimit > -1 {
+			uuids = uuids[:target.Streamlimit] // limit number of streams
+		}
+		var response []SmapResponse
+		switch target.Type {
+		case IN:
+			start := uint64(target.Start.Unix())
+			end := uint64(target.End.Unix())
+			log.Debug("start %v end %v", start, end)
+			response, err = a.GetData(uuids, start, end)
+		case AFTER:
+			ref := uint64(target.Ref.Unix())
+			log.Debug("after %v", ref)
+			response, err = a.NextData(uuids, ref, target.Limit)
+		case BEFORE:
+			ref := uint64(target.Ref.Unix())
+			log.Debug("before %v", ref)
+			response, err = a.PrevData(uuids, ref, target.Limit)
+		}
+		data, _ = json.Marshal(response)
+	}
+	return data, nil
+}
+
 func (a *Archiver) GetData(streamids []string, start, end uint64) ([]SmapResponse, error) {
 	return a.tsdb.GetData(streamids, start, end)
 }
@@ -99,7 +156,7 @@ func (a *Archiver) GetTags(select_tags, where_tags map[string]interface{}) (map[
 	return make(map[string]interface{}), nil
 }
 
-func (a *Archiver) GetUUIDs(where_tags map[string]interface{}) ([]string, error) {
+func (a *Archiver) GetUUIDs(where_tags bson.M) ([]string, error) {
 	return []string{}, nil
 }
 

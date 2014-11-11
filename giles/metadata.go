@@ -1,7 +1,6 @@
 package giles
 
 import (
-	"encoding/json"
 	"errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -312,56 +311,6 @@ func (s *Store) SetTags(updates bson.M, apikey string, where bson.M) (bson.M, er
 	}
 	log.Info("Updated %v records", info.Updated)
 	return bson.M{"Updated": info.Updated}, nil
-}
-
-func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
-	if apikey != "" {
-		log.Info("query with key: %v", apikey)
-	}
-	log.Info(string(stringquery))
-	var d []byte
-	var err error
-	ast := parse(string(stringquery))
-	where := ast.Where.ToBson()
-	switch ast.TargetType {
-	case TAGS_TARGET:
-		bson_target := ast.Target.(*TagsTarget).ToBson()
-		distinct_key := ast.Target.(*TagsTarget).Contents[0]
-		is_distinct := ast.Target.(*TagsTarget).Distinct
-		_, geterr := s.GetTags(bson_target, is_distinct, distinct_key, where)
-		err = geterr
-	case SET_TARGET:
-		_, seterr := s.SetTags(ast.Target.(*SetTarget).Updates, apikey, where)
-		err = seterr
-	case DATA_TARGET:
-		//TODO: break off into seperate method
-		target := ast.Target.(*DataTarget)
-		uuids := s.GetUUIDs(ast.Where.ToBson())
-		if target.Streamlimit > -1 {
-			uuids = uuids[:target.Streamlimit] // limit number of streams
-		}
-		var response []SmapResponse
-		switch target.Type {
-		case IN:
-			start := uint64(target.Start.Unix())
-			end := uint64(target.End.Unix())
-			log.Debug("start %v end %v", start, end)
-			response, err = s.tsdb.GetData(uuids, start, end)
-		case AFTER:
-			ref := uint64(target.Ref.Unix())
-			log.Debug("after %v", ref)
-			response, err = s.tsdb.Next(uuids, ref, target.Limit)
-		case BEFORE:
-			ref := uint64(target.Ref.Unix())
-			log.Debug("before %v", ref)
-			response, err = s.tsdb.Prev(uuids, ref, target.Limit)
-		}
-		if err != nil {
-			return d, err
-		}
-		d, err = json.Marshal(response)
-	}
-	return d, err
 }
 
 /*
