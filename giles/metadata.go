@@ -319,7 +319,6 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		log.Info("query with key: %v", apikey)
 	}
 	log.Info(string(stringquery))
-	var res []bson.M
 	var d []byte
 	var err error
 	ast := parse(string(stringquery))
@@ -329,9 +328,11 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		bson_target := ast.Target.(*TagsTarget).ToBson()
 		distinct_key := ast.Target.(*TagsTarget).Contents[0]
 		is_distinct := ast.Target.(*TagsTarget).Distinct
-		res, err := s.GetTags(bson_target, is_distinct, distinct_key, where)
+		_, geterr := s.GetTags(bson_target, is_distinct, distinct_key, where)
+		err = geterr
 	case SET_TARGET:
-		res, err := s.SetTags(ast.Target.(*SetTarget).Updates, apikey, where)
+		_, seterr := s.SetTags(ast.Target.(*SetTarget).Updates, apikey, where)
+		err = seterr
 	case DATA_TARGET:
 		//TODO: break off into seperate method
 		target := ast.Target.(*DataTarget)
