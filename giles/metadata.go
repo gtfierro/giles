@@ -304,7 +304,7 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		}
 	case SET_TARGET:
 		target := ast.Target.(*SetTarget).Updates
-		uuids := store.GetUUIDs(where)
+		uuids := s.GetUUIDs(where)
 		for _, uuid := range uuids {
 			ok, err := s.CanWrite(apikey, uuid)
 			if !ok {
@@ -319,7 +319,7 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 		d, err = json.Marshal(bson.M{"Updated": info.Updated})
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
-		uuids := store.GetUUIDs(ast.Where.ToBson())
+		uuids := s.GetUUIDs(ast.Where.ToBson())
 		if target.Streamlimit > -1 {
 			uuids = uuids[:target.Streamlimit] // limit number of streams
 		}

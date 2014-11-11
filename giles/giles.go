@@ -3,8 +3,14 @@ package giles
 import (
 	"errors"
 	"github.com/gorilla/mux"
+	"github.com/op/go-logging"
 	"net/http"
+	"os"
 )
+
+var log = logging.MustGetLogger("archiver")
+var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
+var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
 //TODO: probably name this one 'archiver' and rename 'archiver.go' to 'giles.go'
 
@@ -19,6 +25,8 @@ type Archiver struct {
 
 // Creates new archiver
 func NewArchiver(tsdb TSDB, store *Store, address string) *Archiver {
+	logging.SetBackend(logBackend)
+	logging.SetFormatter(logging.MustStringFormatter(format))
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		republisher:          NewRepublisher(),
@@ -61,7 +69,7 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 	if !ok {
 		return errors.New("Unauthorized api key " + apikey)
 	}
-	store.SavePathMetadata(&readings)
+	a.store.SavePathMetadata(&readings)
 	for _, msg := range readings {
 		go a.store.SaveMetadata(msg)
 		go a.republisher.Republish(msg)
@@ -76,11 +84,11 @@ func (a *Archiver) GetData(streamids []string, start, end uint64) ([]SmapRespons
 }
 
 func (a *Archiver) PrevData(streamids []string, start uint64, limit int32) ([]SmapResponse, error) {
-	return tsdb.Prev(streamids, start, limit)
+	return a.tsdb.Prev(streamids, start, limit)
 }
 
 func (a *Archiver) NextData(streamids []string, start uint64, limit int32) ([]SmapResponse, error) {
-	return tsdb.Next(streamids, start, limit)
+	return a.tsdb.Next(streamids, start, limit)
 }
 
 func (a *Archiver) GetTags(select_tags, where_tags map[string]interface{}) (map[string]interface{}, error) {
