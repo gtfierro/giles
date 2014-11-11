@@ -273,21 +273,22 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	}
 }
 
-func (s *Store) GetTags(target *TagsTarget, where bson.M) ([]bson.M, error) {
+// Retrieves the tags indicated by `target` for documents that match the `where` clause. If `is_distinct` is true,
+// then it will return a list of distinct values for the tag `distinct_key`
+func (s *Store) GetTags(target bson.M, is_distinct bool, distinct_key string, where bson.M) ([]bson.M, error) {
 	var res []bson.M
 	var err error
 	var staged *mgo.Query
-	target_bson := target.ToBson()
-	if len(target_bson) == 0 {
+	if len(target) == 0 {
 		staged = s.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
 	} else {
-		target_bson["_id"] = 0
-		target_bson["_api"] = 0
-		staged = s.metadata.Find(where).Select(target_bson)
+		target["_id"] = 0
+		target["_api"] = 0
+		staged = s.metadata.Find(where).Select(target)
 	}
-	if target.Distinct {
+	if is_distinct {
 		var res2 []interface{}
-		err = staged.Distinct(target.Contents[0], &res2)
+		err = staged.Distinct(distinct_key, &res2)
 	} else {
 		err = staged.All(&res)
 	}
@@ -295,9 +296,8 @@ func (s *Store) GetTags(target *TagsTarget, where bson.M) ([]bson.M, error) {
 
 }
 
-func (s *Store) SetTags(target *SetTarget, where bson.M, apikey string) (bson.M, error) {
+func (s *Store) SetTags(updates bson.M, apikey string, where bson.M) (bson.M, error) {
 	var res bson.M
-	target_bson := target.Updates
 	uuids := s.GetUUIDs(where)
 	for _, uuid := range uuids {
 		ok, err := s.CanWrite(apikey, uuid)
@@ -305,7 +305,7 @@ func (s *Store) SetTags(target *SetTarget, where bson.M, apikey string) (bson.M,
 			return res, err
 		}
 	}
-	info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": target})
+	info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": updates})
 	if err2 != nil {
 		return res, err2
 	}
@@ -325,9 +325,12 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 	where := ast.Where.ToBson()
 	switch ast.TargetType {
 	case TAGS_TARGET:
-		res, err := s.GetTags(ast.Target.(*TagsTarget), where)
+		bson_target := ast.Target.(*TagsTarget).ToBson()
+		distinct_key := ast.Target.(*TagsTarget).Contents[0]
+		is_distinct := ast.Target.(*TagsTarget).Distinct
+		res, err := s.GetTags(bson_target, is_distinct, distinct_key, where)
 	case SET_TARGET:
-		res, err := s.SetTags(ast.Target.(*SetTarget), where, apikey)
+		res, err := s.SetTags(ast.Target.(*SetTarget).Updates, apikey, where)
 	case DATA_TARGET:
 		target := ast.Target.(*DataTarget)
 		uuids := s.GetUUIDs(ast.Where.ToBson())

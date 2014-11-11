@@ -6,12 +6,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 )
 
-func unescape(s string) string {
-	return strings.Replace(s, "%3D", "=", -1)
+//TODO need middleware to inject the a *ARchiver pointer into all handlers
+func curryhandler(a *Archiver, f func(*Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		f(q, rw, req)
+	}
 }
 
 /**
@@ -25,7 +27,7 @@ func unescape(s string) string {
  * parts of the metadata tree. That logic takes place in store.SavePathMetadata and
  * store.SaveMetadata
 **/
-func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
+func AddReadingHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	//TODO: add transaction coalescing
 	defer req.Body.Close()
 	vars := mux.Vars(req)
@@ -37,24 +39,11 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte(err.Error()))
 		return
 	}
-	ok, err := store.CheckKey(apikey, messages)
+	err = a.AddData(messages, apikey)
 	if err != nil {
-		log.Info("Error checking API key %v: %v", apikey, err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
-	}
-	if !ok {
-		rw.WriteHeader(400)
-		rw.Write([]byte("Unauthorized api key " + apikey))
-		return
-	}
-	store.SavePathMetadata(&messages)
-	for _, msg := range messages {
-		go store.SaveMetadata(msg)
-		go republisher.Republish(msg)
-		tsdb.Add(msg.Readings)
-		incomingcounter.Mark()
 	}
 	rw.WriteHeader(200)
 }

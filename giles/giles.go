@@ -37,7 +37,7 @@ func NewArchiver(tsdb TSDB, store *Store, address string) *Archiver {
 // Serves HTTP endpoints
 func (a *Archiver) ServeHTTP() {
 	r := mux.NewRouter()
-	r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
+	r.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
 	r.HandleFunc("/republish", RepublishHandler).Methods("POST")
 	r.HandleFunc("/api/query", QueryHandler).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
 	r.HandleFunc("/api/query", QueryHandler).Methods("POST")

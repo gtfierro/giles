@@ -69,3 +69,7 @@ func isStringSliceEqual(x, y []string) bool {
 	}
 	return true
 }
+
+func unescape(s string) string {
+	return strings.Replace(s, "%3D", "=", -1)
+}
