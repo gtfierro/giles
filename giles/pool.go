@@ -17,7 +17,7 @@ type ConnectionMap struct {
 	keepalive int
 }
 
-func (cm *ConnectionMap) Add(uuid string, data *[]byte) {
+func (cm *ConnectionMap) Add(uuid string, data *[]byte, tsdb TSDB) {
 	if conn := cm.streams[uuid]; conn != nil {
 		conn.In <- data
 	} else {
@@ -57,7 +57,8 @@ func (cm *ConnectionMap) watchdog(uuid string) {
 		case data := <-conn.In:
 			timer.Reset(time.Duration(cm.keepalive) * time.Second)
 			timeout = timer.C
-			pendingwritescounter.Mark()
+			//TODO: fix this reference?
+			//pendingwritescounter.Mark()
 			_, err := (*conn.conn).Write(*data)
 			if err != nil {
 				log.Error("Error writing data to ReadingDB", err)

@@ -12,7 +12,7 @@ import (
 //TODO need middleware to inject the a *ARchiver pointer into all handlers
 func curryhandler(a *Archiver, f func(*Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
 	return func(rw http.ResponseWriter, req *http.Request) {
-		f(q, rw, req)
+		f(a, rw, req)
 	}
 }
 
@@ -126,7 +126,7 @@ func DataHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	uuid := vars["uuid"]
 	method := vars["method"]
 
-	streamtimeunit := store.GetUnitofTime(uuid)
+	streamtimeunit := a.store.GetUnitofTime(uuid)
 	// get the unit of time for the query
 	if timeunitstr, found = req.Form["unit"]; !found {
 		querytimeunit = "ms"
@@ -162,11 +162,11 @@ func DataHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	log.Debug("method: %v, limit %v, start: %v, end: %v", method, limit, starttime, endtime)
 	switch method {
 	case "data":
-		response, err = tsdb.GetData([]string{uuid}, starttime, endtime)
+		response, err = a.tsdb.GetData([]string{uuid}, starttime, endtime)
 	case "prev":
-		response, err = tsdb.Prev([]string{uuid}, starttime, int32(limit))
+		response, err = a.tsdb.Prev([]string{uuid}, starttime, int32(limit))
 	case "next":
-		response, err = tsdb.Next([]string{uuid}, starttime, int32(limit))
+		response, err = a.tsdb.Next([]string{uuid}, starttime, int32(limit))
 	}
 	if err != nil {
 		log.Error("Error fetching data: %v", err)

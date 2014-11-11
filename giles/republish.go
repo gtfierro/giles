@@ -18,16 +18,17 @@ type RepublishClient struct {
 type Republisher struct {
 	Clients     [](*RepublishClient)
 	Subscribers map[string][](*RepublishClient)
+	store       *Store
 }
 
 func NewRepublisher() *Republisher {
-	return &Republisher{[](*RepublishClient){}, make(map[string][](*RepublishClient))}
+	return &Republisher{Clients: [](*RepublishClient){}, Subscribers: make(map[string][](*RepublishClient))}
 }
 
 func (r *Republisher) HandleSubscriber(rw http.ResponseWriter, query string) {
 	tokens := tokenize(query)
 	where := parseWhere(&tokens)
-	uuids := store.GetUUIDs(where.ToBson())
+	uuids := r.store.GetUUIDs(where.ToBson())
 	client := &RepublishClient{uuids: uuids, in: make(chan []byte), writer: rw}
 	r.Clients = append(r.Clients, client)
 	for _, uuid := range uuids {

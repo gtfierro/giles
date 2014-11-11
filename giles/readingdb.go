@@ -118,7 +118,7 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 	m := NewMessage(sr)
 
 	data := m.ToBytes()
-	rdb.cm.Add(sr.UUID, &data)
+	rdb.cm.Add(sr.UUID, &data, rdb)
 
 	return true
 }

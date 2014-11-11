@@ -32,9 +32,9 @@ func (c *Counter) Reset() uint64 {
  ** amount of api requests since last call
 **/
 func status() {
-	log.Info("Repub clients:%d--Recv Adds:%d--Pend Write:%d--Live Conn:%d",
-		len(republisher.Clients),
-		incomingcounter.Reset(),
-		pendingwritescounter.Reset(),
-		tsdb.LiveConnections())
+	//log.Info("Repub clients:%d--Recv Adds:%d--Pend Write:%d--Live Conn:%d",
+	//	len(republisher.Clients),
+	//	incomingcounter.Reset(),
+	//	pendingwritescounter.Reset(),
+	//	tsdb.LiveConnections())
 }

@@ -29,9 +29,11 @@ func NewArchiver(tsdb TSDB, store *Store, address string) *Archiver {
 	logging.SetBackend(logBackend)
 	logging.SetFormatter(logging.MustStringFormatter(format))
 	store.tsdb = tsdb
+	republisher := NewRepublisher()
+	republisher.store = store
 	return &Archiver{tsdb: tsdb,
 		store:                store,
-		republisher:          NewRepublisher(),
+		republisher:          republisher,
 		incomingcounter:      NewCounter(),
 		pendingwritescounter: NewCounter()}
 }

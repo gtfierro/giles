@@ -333,6 +333,7 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 	case SET_TARGET:
 		res, err := s.SetTags(ast.Target.(*SetTarget).Updates, apikey, where)
 	case DATA_TARGET:
+		//TODO: break off into seperate method
 		target := ast.Target.(*DataTarget)
 		uuids := s.GetUUIDs(ast.Where.ToBson())
 		if target.Streamlimit > -1 {
