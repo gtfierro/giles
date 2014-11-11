@@ -2,19 +2,14 @@ package main
 
 import (
 	"flag"
-	"github.com/gorilla/mux"
 	"github.com/gtfierro/giles/giles"
-	"net/http"
+	"log"
 	"os"
 	"runtime"
 	"runtime/pprof"
 	"strconv"
 	"time"
 )
-
-// logging config
-var log = logging.MustGetLogger("archiver")
-var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 
 // config flags
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -30,17 +25,17 @@ var benchmarktimer = flag.Int("benchmark", 60, "Number of seconds to benchmark b
 
 func main() {
 	flag.Parse()
-	log.Notice("Serving on port %v", *archiverport)
-	log.Notice("ReadingDB server %v", *readingdbip)
-	log.Notice("ReadingDB port %v", *readingdbport)
-	log.Notice("Mongo server %v", *mongoip)
-	log.Notice("Mongo port %v", *mongoport)
-	log.Notice("Using TSDB %v", *tsdbstring)
-	log.Notice("TSDB Keepalive %v", *tsdbkeepalive)
+	log.Println("Serving on port %v", *archiverport)
+	log.Println("ReadingDB server %v", *readingdbip)
+	log.Println("ReadingDB port %v", *readingdbport)
+	log.Println("Mongo server %v", *mongoip)
+	log.Println("Mongo port %v", *mongoport)
+	log.Println("Using TSDB %v", *tsdbstring)
+	log.Println("TSDB Keepalive %v", *tsdbkeepalive)
 
 	/** Configure CPU profiling */
 	if *cpuprofile != "" {
-		log.Notice("Benchmarking for %v seconds", *benchmarktimer)
+		log.Println("Benchmarking for %v seconds", *benchmarktimer)
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
 			log.Fatal(err)
@@ -55,18 +50,18 @@ func main() {
 		defer pprof.Lookup("block").WriteTo(f2, 1)
 		defer pprof.StopCPUProfile()
 	}
-	republisher = NewRepublisher()
 
 	/** connect to Metadata store*/
-	store = NewStore(*mongoip, *mongoport)
+	store := giles.NewStore(*mongoip, *mongoport)
 	if store == nil {
 		log.Fatal("Error connection to MongoDB instance")
 	}
 
+	var tsdb giles.TSDB
 	switch *tsdbstring {
 	case "readingdb":
 		/** connect to ReadingDB */
-		tsdb = NewReadingDB(*readingdbip, *readingdbport, *tsdbkeepalive)
+		tsdb = giles.NewReadingDB(*readingdbip, *readingdbport, *tsdbkeepalive)
 		if tsdb == nil {
 			log.Fatal("Error connecting to ReadingDB instance")
 		}
@@ -78,11 +73,11 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	a := NewArchiver(tsdb, store, "0.0.0.0:"+strconv.Itoa(*archiverport))
+	a := giles.NewArchiver(tsdb, store, "0.0.0.0:"+strconv.Itoa(*archiverport))
 	go a.ServeHTTP()
 
 	//go periodicCall(1*time.Second, status) // status from stats.go
-	log.Notice("...connected!")
+	log.Println("...connected!")
 	idx := 0
 	for {
 		time.Sleep(5 * time.Second)
