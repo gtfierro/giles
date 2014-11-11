@@ -39,27 +39,7 @@ const (
 	AFTER
 )
 
-type SmapQuery struct {
-	Where      *bson.M
-	Type       string
-	targettype string // either 'data' or 'tags'
-	Contents   []string
-}
-
-func (sq *SmapQuery) Repr() {
-	fmt.Println("Type: ", sq.Type)
-	fmt.Println("Contents:")
-	for _, val := range sq.Contents {
-		fmt.Println(val)
-	}
-	fmt.Println("Where:")
-	if sq.Where != nil {
-		fmt.Println(*(sq.Where))
-	}
-}
-
-type Target_T interface {
-}
+type Target_T interface{}
 
 type TagsTarget struct {
 	Distinct bool
