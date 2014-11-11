@@ -36,12 +36,14 @@ func NewArchiver(tsdb TSDB, store *Store, address string) *Archiver {
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		republisher:          republisher,
+		address:              address,
 		incomingcounter:      NewCounter(),
 		pendingwritescounter: NewCounter()}
 }
 
 // Serves HTTP endpoints
 func (a *Archiver) ServeHTTP() {
+	log.Debug("serving http")
 	r := mux.NewRouter()
 	r.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
 	r.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
@@ -54,6 +56,7 @@ func (a *Archiver) ServeHTTP() {
 	//r.HandleFunc("/ws/tags/uuid", WsTagsHandler).Methods("GET")
 	//r.HandleFunc("/ws/tags/uuid/{uuid}", WsTagsHandler).Methods("GET")
 	http.Handle("/", r)
+	log.Notice("Starting on %v", a.address)
 
 	srv := &http.Server{
 		Addr: a.address,
