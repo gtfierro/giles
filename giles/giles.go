@@ -8,6 +8,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"os"
+	"time"
 )
 
 var log = logging.MustGetLogger("archiver")
@@ -161,4 +162,8 @@ func (a *Archiver) GetUUIDs(where_tags bson.M) ([]string, error) {
 
 func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}) (int, error) {
 	return 0, nil
+}
+
+func (a *Archiver) PrintStatus() {
+	go periodicCall(1*time.Second, a.status) // status from stats.go
 }

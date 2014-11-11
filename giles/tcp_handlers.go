@@ -162,11 +162,11 @@ func DataHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	log.Debug("method: %v, limit %v, start: %v, end: %v", method, limit, starttime, endtime)
 	switch method {
 	case "data":
-		response, err = a.tsdb.GetData([]string{uuid}, starttime, endtime)
+		response, err = a.GetData([]string{uuid}, starttime, endtime)
 	case "prev":
-		response, err = a.tsdb.Prev([]string{uuid}, starttime, int32(limit))
+		response, err = a.PrevData([]string{uuid}, starttime, int32(limit))
 	case "next":
-		response, err = a.tsdb.Next([]string{uuid}, starttime, int32(limit))
+		response, err = a.NextData([]string{uuid}, starttime, int32(limit))
 	}
 	if err != nil {
 		log.Error("Error fetching data: %v", err)
