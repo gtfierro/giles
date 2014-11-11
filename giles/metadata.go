@@ -18,6 +18,7 @@ type RDBStreamId struct {
 type Store struct {
 	session      *mgo.Session
 	db           *mgo.Database
+	tsdb         TSDB
 	streams      *mgo.Collection
 	metadata     *mgo.Collection
 	pathmetadata *mgo.Collection
@@ -343,15 +344,15 @@ func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
 			start := uint64(target.Start.Unix())
 			end := uint64(target.End.Unix())
 			log.Debug("start %v end %v", start, end)
-			response, err = tsdb.GetData(uuids, start, end)
+			response, err = s.tsdb.GetData(uuids, start, end)
 		case AFTER:
 			ref := uint64(target.Ref.Unix())
 			log.Debug("after %v", ref)
-			response, err = tsdb.Next(uuids, ref, target.Limit)
+			response, err = s.tsdb.Next(uuids, ref, target.Limit)
 		case BEFORE:
 			ref := uint64(target.Ref.Unix())
 			log.Debug("before %v", ref)
-			response, err = tsdb.Prev(uuids, ref, target.Limit)
+			response, err = s.tsdb.Prev(uuids, ref, target.Limit)
 		}
 		if err != nil {
 			return d, err

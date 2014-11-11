@@ -23,10 +23,12 @@ type Archiver struct {
 	pendingwritescounter *Counter
 }
 
+// put links from store -> tsdb and vice versa in this constructure
 // Creates new archiver
 func NewArchiver(tsdb TSDB, store *Store, address string) *Archiver {
 	logging.SetBackend(logBackend)
 	logging.SetFormatter(logging.MustStringFormatter(format))
+	store.tsdb = tsdb
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		republisher:          NewRepublisher(),
@@ -38,11 +40,11 @@ func NewArchiver(tsdb TSDB, store *Store, address string) *Archiver {
 func (a *Archiver) ServeHTTP() {
 	r := mux.NewRouter()
 	r.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
-	r.HandleFunc("/republish", RepublishHandler).Methods("POST")
-	r.HandleFunc("/api/query", QueryHandler).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
-	r.HandleFunc("/api/query", QueryHandler).Methods("POST")
-	r.HandleFunc("/api/tags/uuid/{uuid}", TagsHandler).Methods("GET")
-	r.HandleFunc("/api/{method}/uuid/{uuid}", DataHandler).Methods("GET")
+	r.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
+	r.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
+	r.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Methods("POST")
+	r.HandleFunc("/api/tags/uuid/{uuid}", curryhandler(a, TagsHandler)).Methods("GET")
+	r.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
 
 	//r.HandleFunc("/ws/api/query", WsQueryHandler).Methods("POST")
 	//r.HandleFunc("/ws/tags/uuid", WsTagsHandler).Methods("GET")

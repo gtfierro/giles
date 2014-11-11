@@ -52,19 +52,19 @@ func AddReadingHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
  * Receives POST request which contains metadata query. Subscribes the
  * requester to readings from streams which match that metadata query
 **/
-func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
+func RepublishHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Error("Error handling republish: %v", err)
 	}
-	republisher.HandleSubscriber(rw, string(stringquery))
+	a.republisher.HandleSubscriber(rw, string(stringquery))
 }
 
 /**
  * Resolves sMAP queries and returns results
 **/
-func QueryHandler(rw http.ResponseWriter, req *http.Request) {
+func QueryHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux.Vars(req)
 	key := unescape(vars["key"])
@@ -72,7 +72,7 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Error("Error reading query: %v", err)
 	}
-	res, err := store.Query(stringquery, key)
+	res, err := a.store.Query(stringquery, key)
 	if err != nil {
 		log.Error("Error evaluating query: %v", err)
 		rw.WriteHeader(500)
@@ -86,11 +86,11 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 /**
  * Returns metadata for a uuid. A limited GET alternative to the POST query handler
 **/
-func TagsHandler(rw http.ResponseWriter, req *http.Request) {
+func TagsHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	rw.Header().Set("Content-Type", "application/json")
-	jsonres, err := store.TagsUUID(uuid)
+	jsonres, err := a.store.TagsUUID(uuid)
 	if err != nil {
 		log.Error("Error evaluating tags: %v", err)
 		rw.WriteHeader(500)
@@ -109,7 +109,7 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 //TODO: limit should not be unsigned
-func DataHandler(rw http.ResponseWriter, req *http.Request) {
+func DataHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	var starttime, endtime uint64
 	var limit int64
 	var startstr, endstr, timeunitstr, limitstr []string
