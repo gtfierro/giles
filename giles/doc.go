@@ -17,4 +17,4 @@
 // different timeseries or metadata databases or even different implementations
 // of the query language (perhaps over Apache Spark/Mlib?)
 
-package main
+package giles

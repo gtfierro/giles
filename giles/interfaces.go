@@ -1,7 +1,7 @@
 // Defines the common interfaces that components of the archiver must implement
 // in order to be compatible with Giles.
 
-package main
+package giles
 
 import (
 	"net"

@@ -18,7 +18,7 @@ It has these top-level messages:
 	Delete
 	Response
 */
-package main
+package giles
 
 import proto "code.google.com/p/goprotobuf/proto"
 import math "math"
