@@ -138,15 +138,15 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		defer s.apikeylock.Lock()
 		// lock?
 		exists, err := s.apikeyexists(apikey)
-		if !exists {
+		if !exists || err != nil {
 			return false, err
 		}
 		log.Debug("inserting uuid %v with api %v", uuid, apikey)
 		err = s.metadata.Insert(bson.M{"uuid": uuid, "_api": apikey})
-		s.apikcache.Set(uuid, apikey)
 		if err != nil {
 			return false, err
 		}
+		s.apikcache.Set(uuid, apikey)
 	}
 	return true, nil
 }

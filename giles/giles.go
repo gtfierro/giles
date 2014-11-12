@@ -26,11 +26,28 @@ type Archiver struct {
 	pendingwritescounter *Counter
 }
 
-// put links from store -> tsdb and vice versa in this constructure
-// Creates new archiver
-func NewArchiver(tsdb TSDB, store *Store, address string) *Archiver {
+func NewArchiver(archiverport int, readingdbip string, readingdbport int, mongoip string,
+	mongoport int, tsdbstring string, tsdbkeepalive int, address string) *Archiver {
 	logging.SetBackend(logBackend)
 	logging.SetFormatter(logging.MustStringFormatter(format))
+	store := NewStore(mongoip, mongoport)
+	if store == nil {
+		log.Fatal("Error connection to MongoDB instance")
+	}
+
+	var tsdb TSDB
+	switch tsdbstring {
+	case "readingdb":
+		/** connect to ReadingDB */
+		tsdb = NewReadingDB(readingdbip, readingdbport, tsdbkeepalive)
+		if tsdb == nil {
+			log.Fatal("Error connecting to ReadingDB instance")
+		}
+	case "quasar":
+		log.Fatal("quasar")
+	default:
+		log.Fatal(tsdbstring, " is not a valid timeseries database")
+	}
 	republisher := NewRepublisher()
 	republisher.store = store
 	return &Archiver{tsdb: tsdb,
@@ -39,6 +56,7 @@ func NewArchiver(tsdb TSDB, store *Store, address string) *Archiver {
 		address:              address,
 		incomingcounter:      NewCounter(),
 		pendingwritescounter: NewCounter()}
+
 }
 
 // Serves HTTP endpoints
@@ -72,7 +90,7 @@ func (a *Archiver) ServeHTTP() {
 func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) error {
 	ok, err := a.store.CheckKey(apikey, readings)
 	if err != nil {
-		log.Info("Error checking API key %v: %v", apikey, err)
+		log.Error("Error checking API key %v: %v", apikey, err)
 		return err
 	}
 	if !ok {
