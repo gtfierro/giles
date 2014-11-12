@@ -24,6 +24,7 @@ type Archiver struct {
 	republisher          *Republisher
 	incomingcounter      *Counter
 	pendingwritescounter *Counter
+	r                    *mux.Router
 }
 
 func NewArchiver(archiverport int, readingdbip string, readingdbport int, mongoip string,
@@ -55,26 +56,32 @@ func NewArchiver(archiverport int, readingdbip string, readingdbport int, mongoi
 		store:                store,
 		republisher:          republisher,
 		address:              address,
+		r:                    mux.NewRouter(),
 		incomingcounter:      NewCounter(),
 		pendingwritescounter: NewCounter()}
 
 }
 
 // Serves HTTP endpoints
-func (a *Archiver) ServeHTTP() {
-	log.Debug("serving http")
-	r := mux.NewRouter()
-	r.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
-	r.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
-	r.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
-	r.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Methods("POST")
-	r.HandleFunc("/api/tags/uuid/{uuid}", curryhandler(a, TagsHandler)).Methods("GET")
-	r.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
+func (a *Archiver) HandleHTTP() {
+	log.Notice("Handling HTTP/TCP")
+	a.r.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
+	a.r.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
+	a.r.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
+	a.r.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Methods("POST")
+	a.r.HandleFunc("/api/tags/uuid/{uuid}", curryhandler(a, TagsHandler)).Methods("GET")
+	a.r.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
+}
 
-	//r.HandleFunc("/ws/api/query", WsQueryHandler).Methods("POST")
-	//r.HandleFunc("/ws/tags/uuid", WsTagsHandler).Methods("GET")
-	//r.HandleFunc("/ws/tags/uuid/{uuid}", WsTagsHandler).Methods("GET")
-	http.Handle("/", r)
+func (a *Archiver) HandleWebSocket() {
+	log.Debug("Hanadling WebSockets")
+	a.r.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
+	a.r.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
+	a.r.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
+}
+
+func (a *Archiver) Serve() {
+	http.Handle("/", a.r)
 	log.Notice("Starting on %v", a.address)
 
 	srv := &http.Server{
