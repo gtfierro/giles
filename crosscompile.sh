@@ -4,6 +4,6 @@ for platform in $PLATFORMS ; do
 GOOS=${platform%/*}
 GOARCH=${platform#*/}
 echo "building $GOOS-$GOARCH"
-go build
-mv giles giles-$GOOS-$GOARCH
+go build -o archiver
+mv archiver archiver-$GOOS-$GOARCH
 done
