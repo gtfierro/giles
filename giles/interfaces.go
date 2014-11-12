@@ -1,7 +1,7 @@
 // Defines the common interfaces that components of the archiver must implement
 // in order to be compatible with Giles.
 
-package main
+package giles
 
 import (
 	"net"
@@ -19,4 +19,6 @@ type TSDB interface {
 	GetData([]string, uint64, uint64) ([]SmapResponse, error)
 	GetConnection() (net.Conn, error)
 	LiveConnections() int
+	// Adds a pointer to metadata store for streamid/uuid conversion and the like
+	AddStore(*Store)
 }

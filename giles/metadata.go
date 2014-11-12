@@ -1,7 +1,6 @@
-package main
+package giles
 
 import (
-	"encoding/json"
 	"errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -139,15 +138,15 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		defer s.apikeylock.Lock()
 		// lock?
 		exists, err := s.apikeyexists(apikey)
-		if !exists {
+		if !exists || err != nil {
 			return false, err
 		}
 		log.Debug("inserting uuid %v with api %v", uuid, apikey)
 		err = s.metadata.Insert(bson.M{"uuid": uuid, "_api": apikey})
-		s.apikcache.Set(uuid, apikey)
 		if err != nil {
 			return false, err
 		}
+		s.apikcache.Set(uuid, apikey)
 	}
 	return true, nil
 }
@@ -273,78 +272,44 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	}
 }
 
-func (s *Store) Query(stringquery []byte, apikey string) ([]byte, error) {
-	if apikey != "" {
-		log.Info("query with key: %v", apikey)
-	}
-	log.Info(string(stringquery))
+// Retrieves the tags indicated by `target` for documents that match the `where` clause. If `is_distinct` is true,
+// then it will return a list of distinct values for the tag `distinct_key`
+func (s *Store) GetTags(target bson.M, is_distinct bool, distinct_key string, where bson.M) ([]bson.M, error) {
 	var res []bson.M
-	var d []byte
 	var err error
-	ast := parse(string(stringquery))
-	where := ast.Where.ToBson()
-	switch ast.TargetType {
-	case TAGS_TARGET:
-		var staged *mgo.Query
-		target := ast.Target.(*TagsTarget).ToBson()
-		if len(target) == 0 {
-			staged = s.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
-		} else {
-			target["_id"] = 0
-			target["_api"] = 0
-			staged = s.metadata.Find(where).Select(target)
-		}
-		if ast.Target.(*TagsTarget).Distinct {
-			var res2 []interface{}
-			err = staged.Distinct(ast.Target.(*TagsTarget).Contents[0], &res2)
-			d, err = json.Marshal(res2)
-		} else {
-			err = staged.All(&res)
-			d, err = json.Marshal(res)
-		}
-	case SET_TARGET:
-		target := ast.Target.(*SetTarget).Updates
-		uuids := store.GetUUIDs(where)
-		for _, uuid := range uuids {
-			ok, err := s.CanWrite(apikey, uuid)
-			if !ok {
-				return d, err
-			}
-		}
-		info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": target})
-		if err2 != nil {
-			return d, err2
-		}
-		log.Info("Updated %v records", info.Updated)
-		d, err = json.Marshal(bson.M{"Updated": info.Updated})
-	case DATA_TARGET:
-		target := ast.Target.(*DataTarget)
-		uuids := store.GetUUIDs(ast.Where.ToBson())
-		if target.Streamlimit > -1 {
-			uuids = uuids[:target.Streamlimit] // limit number of streams
-		}
-		var response []SmapResponse
-		switch target.Type {
-		case IN:
-			start := uint64(target.Start.Unix())
-			end := uint64(target.End.Unix())
-			log.Debug("start %v end %v", start, end)
-			response, err = tsdb.GetData(uuids, start, end)
-		case AFTER:
-			ref := uint64(target.Ref.Unix())
-			log.Debug("after %v", ref)
-			response, err = tsdb.Next(uuids, ref, target.Limit)
-		case BEFORE:
-			ref := uint64(target.Ref.Unix())
-			log.Debug("before %v", ref)
-			response, err = tsdb.Prev(uuids, ref, target.Limit)
-		}
-		if err != nil {
-			return d, err
-		}
-		d, err = json.Marshal(response)
+	var staged *mgo.Query
+	if len(target) == 0 {
+		staged = s.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
+	} else {
+		target["_id"] = 0
+		target["_api"] = 0
+		staged = s.metadata.Find(where).Select(target)
 	}
-	return d, err
+	if is_distinct {
+		var res2 []interface{}
+		err = staged.Distinct(distinct_key, &res2)
+	} else {
+		err = staged.All(&res)
+	}
+	return res, err
+
+}
+
+func (s *Store) SetTags(updates bson.M, apikey string, where bson.M) (bson.M, error) {
+	var res bson.M
+	uuids := s.GetUUIDs(where)
+	for _, uuid := range uuids {
+		ok, err := s.CanWrite(apikey, uuid)
+		if !ok {
+			return res, err
+		}
+	}
+	info, err2 := s.metadata.UpdateAll(where, bson.M{"$set": updates})
+	if err2 != nil {
+		return res, err2
+	}
+	log.Info("Updated %v records", info.Updated)
+	return bson.M{"Updated": info.Updated}, nil
 }
 
 /*

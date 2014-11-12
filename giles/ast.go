@@ -1,4 +1,4 @@
-package main
+package giles
 
 import (
 	"errors"
@@ -77,10 +77,10 @@ func tokenize(q string) []string {
 /**
  * Handles parsing the data range queries like "data in (start ref, end ref) [limit]"
 **/
-func parseDataTarget(tokens *[]string) Target_T {
+func parseDataTarget(tokens *[]string) (Target_T, error) {
 	var dt = &DataTarget{Streamlimit: -1, Limit: 1}
 	if len(*tokens) == 0 {
-		return dt
+		return dt, nil
 	}
 	// pos = 0 is the word 'data', pos = 1 is our dataquery type
 	switch (*tokens)[1] {
@@ -91,8 +91,7 @@ func parseDataTarget(tokens *[]string) Target_T {
 	case "after":
 		dt.Type = AFTER
 	default:
-		log.Panic("Invalid data query", (*tokens)[1])
-		return dt
+		return dt, errors.New("Invalid data query " + (*tokens)[1])
 	}
 	pos := 2
 	timetokens := []string{}
@@ -105,7 +104,7 @@ func parseDataTarget(tokens *[]string) Target_T {
 		case "limit":
 			limit, err := strconv.ParseUint((*tokens)[pos+1], 10, 64)
 			if err != nil {
-				log.Panic(err)
+				return dt, err
 			}
 			dt.Limit = int32(limit)
 			pos += 2
@@ -113,7 +112,7 @@ func parseDataTarget(tokens *[]string) Target_T {
 		case "streamlimit":
 			limit, err := strconv.ParseInt((*tokens)[pos+1], 10, 64)
 			if err != nil {
-				log.Panic(err)
+				return dt, err
 			}
 			dt.Streamlimit = int(limit)
 			pos += 2
@@ -126,7 +125,7 @@ func parseDataTarget(tokens *[]string) Target_T {
 			if strings.HasSuffix(val, ",") || strings.HasSuffix(val, ")") {
 				time, err := handleTime(timetokens)
 				if err != nil {
-					log.Panic(err)
+					return dt, err
 				}
 				switch dt.Type {
 				case IN:
@@ -145,17 +144,17 @@ func parseDataTarget(tokens *[]string) Target_T {
 	}
 	(*tokens) = []string{}
 ReturnDataTarget:
-	return dt
+	return dt, nil
 }
 
 /*
  * Tags targets can optionally start with 'distinct', or can just be '*'
  * or can contain a list of tag paths.
  */
-func parseTagsTarget(tokens *[]string) Target_T {
+func parseTagsTarget(tokens *[]string) (Target_T, error) {
 	var tt = &TagsTarget{Distinct: false, Contents: []string{}}
 	if len(*tokens) == 0 {
-		return tt
+		return tt, nil
 	}
 	pos := 0
 	if (*tokens)[pos] == "distinct" {
@@ -169,7 +168,7 @@ func parseTagsTarget(tokens *[]string) Target_T {
 			 * and return our Target_T
 			**/
 			(*tokens) = (*tokens)[idx+1:]
-			return tt
+			return tt, nil
 		}
 		// adds the token to the list of contents,
 		// removing a trailing comma if there is one
@@ -178,25 +177,25 @@ func parseTagsTarget(tokens *[]string) Target_T {
 		tt.Contents = append(tt.Contents, tmp)
 	}
 	(*tokens) = []string{}
-	return tt
+	return tt, nil
 }
 
-func parseSetTarget(tokens *[]string) Target_T {
+func parseSetTarget(tokens *[]string) (Target_T, error) {
 	var st = &SetTarget{Updates: bson.M{}}
 	if len(*tokens) == 0 {
-		return st
+		return st, nil
 	}
 	pos := 0
 	for {
 		token := (*tokens)[pos]
 		if token == "where" {
 			(*tokens) = (*tokens)[pos+1:]
-			return st
+			return st, nil
 		}
 		// key is token
 		// check that (*tokens)[pos+1] is an equals sign
 		if (*tokens)[pos+1] != "=" {
-			log.Panic("Invalid syntax for setting tag")
+			return st, errors.New("Invalid syntax for setting tag")
 		}
 		value := (*tokens)[pos+2]
 		token = cleantagstring(token)
@@ -204,7 +203,7 @@ func parseSetTarget(tokens *[]string) Target_T {
 		pos += 3
 	}
 	(*tokens) = []string{}
-	return st
+	return st, nil
 }
 
 func parseWhere(tokens *[]string) *Node {
@@ -266,6 +265,7 @@ func getNodeAt(index int, tokens *[]string) (Node, int) {
 
 func makeAST(tokens []string) (*AST, error) {
 	var ast = &AST{}
+	var err error = nil
 
 	/* QueryType */
 	switch tokens[0] {
@@ -286,21 +286,21 @@ func makeAST(tokens []string) (*AST, error) {
 	switch tmp_type {
 	case "data":
 		ast.TargetType = DATA_TARGET
-		ast.Target = parseDataTarget(&tokens)
+		ast.Target, err = parseDataTarget(&tokens)
 	default:
 		if ast.QueryType == SELECT_TYPE {
 			ast.TargetType = TAGS_TARGET
-			ast.Target = parseTagsTarget(&tokens)
+			ast.Target, err = parseTagsTarget(&tokens)
 		} else if ast.QueryType == SET_TYPE {
 			ast.TargetType = SET_TARGET
-			ast.Target = parseSetTarget(&tokens)
+			ast.Target, err = parseSetTarget(&tokens)
 		}
 	}
 
 	/* Where */
 	ast.Where = parseWhere(&tokens)
 
-	return ast, nil
+	return ast, err
 }
 
 func parse(q string) *AST {

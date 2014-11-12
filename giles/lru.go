@@ -1,4 +1,4 @@
-package main
+package giles
 
 import (
 	"container/list"

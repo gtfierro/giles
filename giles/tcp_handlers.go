@@ -1,4 +1,4 @@
-package main
+package giles
 
 import (
 	"encoding/json"
@@ -6,12 +6,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 )
 
-func unescape(s string) string {
-	return strings.Replace(s, "%3D", "=", -1)
+//TODO need middleware to inject the a *ARchiver pointer into all handlers
+func curryhandler(a *Archiver, f func(*Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		f(a, rw, req)
+	}
 }
 
 /**
@@ -25,7 +27,7 @@ func unescape(s string) string {
  * parts of the metadata tree. That logic takes place in store.SavePathMetadata and
  * store.SaveMetadata
 **/
-func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
+func AddReadingHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	//TODO: add transaction coalescing
 	defer req.Body.Close()
 	vars := mux.Vars(req)
@@ -37,24 +39,11 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte(err.Error()))
 		return
 	}
-	ok, err := store.CheckKey(apikey, messages)
+	err = a.AddData(messages, apikey)
 	if err != nil {
-		log.Info("Error checking API key %v: %v", apikey, err)
 		rw.WriteHeader(500)
 		rw.Write([]byte(err.Error()))
 		return
-	}
-	if !ok {
-		rw.WriteHeader(400)
-		rw.Write([]byte("Unauthorized api key " + apikey))
-		return
-	}
-	store.SavePathMetadata(&messages)
-	for _, msg := range messages {
-		go store.SaveMetadata(msg)
-		go republisher.Republish(msg)
-		tsdb.Add(msg.Readings)
-		incomingcounter.Mark()
 	}
 	rw.WriteHeader(200)
 }
@@ -63,19 +52,19 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
  * Receives POST request which contains metadata query. Subscribes the
  * requester to readings from streams which match that metadata query
 **/
-func RepublishHandler(rw http.ResponseWriter, req *http.Request) {
+func RepublishHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Error("Error handling republish: %v", err)
 	}
-	republisher.HandleSubscriber(rw, string(stringquery))
+	a.republisher.HandleSubscriber(rw, string(stringquery))
 }
 
 /**
  * Resolves sMAP queries and returns results
 **/
-func QueryHandler(rw http.ResponseWriter, req *http.Request) {
+func QueryHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux.Vars(req)
 	key := unescape(vars["key"])
@@ -83,7 +72,7 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Error("Error reading query: %v", err)
 	}
-	res, err := store.Query(stringquery, key)
+	res, err := a.HandleQuery(string(stringquery), key)
 	if err != nil {
 		log.Error("Error evaluating query: %v", err)
 		rw.WriteHeader(500)
@@ -97,11 +86,11 @@ func QueryHandler(rw http.ResponseWriter, req *http.Request) {
 /**
  * Returns metadata for a uuid. A limited GET alternative to the POST query handler
 **/
-func TagsHandler(rw http.ResponseWriter, req *http.Request) {
+func TagsHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	rw.Header().Set("Content-Type", "application/json")
-	jsonres, err := store.TagsUUID(uuid)
+	jsonres, err := a.store.TagsUUID(uuid)
 	if err != nil {
 		log.Error("Error evaluating tags: %v", err)
 		rw.WriteHeader(500)
@@ -120,7 +109,7 @@ func TagsHandler(rw http.ResponseWriter, req *http.Request) {
 }
 
 //TODO: limit should not be unsigned
-func DataHandler(rw http.ResponseWriter, req *http.Request) {
+func DataHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	var starttime, endtime uint64
 	var limit int64
 	var startstr, endstr, timeunitstr, limitstr []string
@@ -137,7 +126,7 @@ func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	uuid := vars["uuid"]
 	method := vars["method"]
 
-	streamtimeunit := store.GetUnitofTime(uuid)
+	streamtimeunit := a.store.GetUnitofTime(uuid)
 	// get the unit of time for the query
 	if timeunitstr, found = req.Form["unit"]; !found {
 		querytimeunit = "ms"
@@ -173,11 +162,11 @@ func DataHandler(rw http.ResponseWriter, req *http.Request) {
 	log.Debug("method: %v, limit %v, start: %v, end: %v", method, limit, starttime, endtime)
 	switch method {
 	case "data":
-		response, err = tsdb.GetData([]string{uuid}, starttime, endtime)
+		response, err = a.GetData([]string{uuid}, starttime, endtime)
 	case "prev":
-		response, err = tsdb.Prev([]string{uuid}, starttime, int32(limit))
+		response, err = a.PrevData([]string{uuid}, starttime, int32(limit))
 	case "next":
-		response, err = tsdb.Next([]string{uuid}, starttime, int32(limit))
+		response, err = a.NextData([]string{uuid}, starttime, int32(limit))
 	}
 	if err != nil {
 		log.Error("Error fetching data: %v", err)
