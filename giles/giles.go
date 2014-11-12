@@ -40,6 +40,7 @@ func NewArchiver(archiverport int, readingdbip string, readingdbport int, mongoi
 	case "readingdb":
 		/** connect to ReadingDB */
 		tsdb = NewReadingDB(readingdbip, readingdbport, tsdbkeepalive)
+		tsdb.AddStore(store)
 		if tsdb == nil {
 			log.Fatal("Error connecting to ReadingDB instance")
 		}
