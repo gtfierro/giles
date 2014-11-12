@@ -51,14 +51,15 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	/** connect to Metadata store*/
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	a := giles.NewArchiver(*archiverport, *readingdbip, *readingdbport,
 		*mongoip, *mongoport, *tsdbstring, *tsdbkeepalive,
 		"0.0.0.0:"+strconv.Itoa(*archiverport))
 	go a.PrintStatus()
-	go a.ServeHTTP()
+	a.HandleHTTP()
+	a.HandleWebSocket()
+	go a.Serve()
 	idx := 0
 	for {
 		time.Sleep(5 * time.Second)
