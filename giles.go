@@ -52,32 +52,13 @@ func main() {
 	}
 
 	/** connect to Metadata store*/
-	store := giles.NewStore(*mongoip, *mongoport)
-	if store == nil {
-		log.Fatal("Error connection to MongoDB instance")
-	}
-
-	var tsdb giles.TSDB
-	switch *tsdbstring {
-	case "readingdb":
-		/** connect to ReadingDB */
-		tsdb = giles.NewReadingDB(*readingdbip, *readingdbport, *tsdbkeepalive)
-		if tsdb == nil {
-			log.Fatal("Error connecting to ReadingDB instance")
-		}
-	case "quasar":
-		log.Fatal("quasar")
-	default:
-		log.Fatal(*tsdbstring, " is not a valid timeseries database")
-	}
-
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	a := giles.NewArchiver(tsdb, store, "0.0.0.0:"+strconv.Itoa(*archiverport))
+	a := giles.NewArchiver(*archiverport, *readingdbip, *readingdbport,
+		*mongoip, *mongoport, *tsdbstring, *tsdbkeepalive,
+		"0.0.0.0:"+strconv.Itoa(*archiverport))
+	go a.PrintStatus()
 	go a.ServeHTTP()
-
-	//go periodicCall(1*time.Second, status) // status from stats.go
-	log.Println("...connected!")
 	idx := 0
 	for {
 		time.Sleep(5 * time.Second)
