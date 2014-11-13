@@ -9,24 +9,21 @@ import (
 	"time"
 )
 
-//TODO need middleware to inject the a *ARchiver pointer into all handlers
 func curryhandler(a *Archiver, f func(*Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
 	return func(rw http.ResponseWriter, req *http.Request) {
 		f(a, rw, req)
 	}
 }
 
-/**
- * Handles POSTing of new data
- * The handleJSON method parses the message received from the sMAP drivers
- * and delivers them as an array. Because metadata is delivered as k/v pairs
- * representing a tree, we have a pre-loop that stores the metadata values at
- * the higher levels of the tree. Then, when we loop through the data to add it
- * to the leaves of the tree (the actual timeseries), we query the prefixes
- * of the timeseries path to get all the 'trickle down' metadata from the higher
- * parts of the metadata tree. That logic takes place in store.SavePathMetadata and
- * store.SaveMetadata
-**/
+// Handles POSTing of new data
+// The handleJSON method parses the message received from the sMAP drivers
+// and delivers them as an array. Because metadata is delivered as k/v pairs
+// representing a tree, we have a pre-loop that stores the metadata values at
+// the higher levels of the tree. Then, when we loop through the data to add it
+// to the leaves of the tree (the actual timeseries), we query the prefixes
+// of the timeseries path to get all the 'trickle down' metadata from the higher
+// parts of the metadata tree. That logic takes place in store.SavePathMetadata and
+// store.SaveMetadata
 func AddReadingHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	//TODO: add transaction coalescing
 	defer req.Body.Close()
@@ -48,10 +45,8 @@ func AddReadingHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	rw.WriteHeader(200)
 }
 
-/**
- * Receives POST request which contains metadata query. Subscribes the
- * requester to readings from streams which match that metadata query
-**/
+// Receives POST request which contains metadata query. Subscribes the
+// requester to readings from streams which match that metadata query
 func RepublishHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
@@ -61,9 +56,7 @@ func RepublishHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	a.republisher.HandleSubscriber(rw, string(stringquery))
 }
 
-/**
- * Resolves sMAP queries and returns results
-**/
+// Resolves sMAP queries and returns results
 func QueryHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux.Vars(req)
@@ -108,7 +101,6 @@ func TagsHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	rw.Write(res)
 }
 
-//TODO: limit should not be unsigned
 func DataHandler(a *Archiver, rw http.ResponseWriter, req *http.Request) {
 	var starttime, endtime uint64
 	var limit int64
