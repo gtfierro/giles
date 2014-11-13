@@ -50,12 +50,12 @@ type Archiver struct {
 }
 
 // Creates a new Archiver instance:
-// - archiverport: HTTP port on which to serve the archiver (default is 8079)
-// - tsdbstring: which timeseries database we are using (default is 'readingdb')
-// - tsdbip, tsdbport: address for instance of timeseries database (default is 'localhost:4242')
-// - tsdbkeepalive: number of seconds to maintain a connection open to the timeseries database
-//   for a given unique identifier (see information on Pool)
-// - mongoip, mongoport: address for MongoDB instance, used for metadata, API keys, etc
+//   - archiverport: HTTP port on which to serve the archiver (default is 8079)
+//   - tsdbstring: which timeseries database we are using (default is 'readingdb')
+//   - tsdbip, tsdbport: address for instance of timeseries database (default is 'localhost:4242')
+//   - tsdbkeepalive: number of seconds to maintain a connection open to the timeseries database
+//     for a given unique identifier (see information on Pool)
+//   - mongoip, mongoport: address for MongoDB instance, used for metadata, API keys, etc
 func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 	mongoport int, tsdbstring string, tsdbkeepalive int, address string) *Archiver {
 	logging.SetBackend(logBackend)
