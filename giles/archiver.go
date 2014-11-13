@@ -33,8 +33,12 @@ var log = logging.MustGetLogger("archiver")
 var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
-//TODO: probably name this one 'archiver' and rename 'archiver.go' to 'giles.go'
-
+// This is the central object for the archiver process and contains most of the requisite
+// logic for the core features of the archiver. One of the focuses of Giles is to facilitate
+// adapting the sMAP protocol to different interfaces; the X_handlers.go files (TCP, WS, etc)
+// provide handler functions that in turn call the archiver's core functions. Most of these
+// core functions use easily usable data formats (such as bson.M), so the handler functions just
+// have to deal with translating data formats
 type Archiver struct {
 	address              string
 	tsdb                 TSDB
@@ -45,7 +49,14 @@ type Archiver struct {
 	r                    *mux.Router
 }
 
-func NewArchiver(archiverport int, readingdbip string, readingdbport int, mongoip string,
+// Creates a new Archiver instance:
+// - archiverport: HTTP port on which to serve the archiver (default is 8079)
+// - tsdbstring: which timeseries database we are using (default is 'readingdb')
+// - tsdbip, tsdbport: address for instance of timeseries database (default is 'localhost:4242')
+// - tsdbkeepalive: number of seconds to maintain a connection open to the timeseries database
+//   for a given unique identifier (see information on Pool)
+// - mongoip, mongoport: address for MongoDB instance, used for metadata, API keys, etc
+func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 	mongoport int, tsdbstring string, tsdbkeepalive int, address string) *Archiver {
 	logging.SetBackend(logBackend)
 	logging.SetFormatter(logging.MustStringFormatter(format))
@@ -58,7 +69,7 @@ func NewArchiver(archiverport int, readingdbip string, readingdbport int, mongoi
 	switch tsdbstring {
 	case "readingdb":
 		/** connect to ReadingDB */
-		tsdb = NewReadingDB(readingdbip, readingdbport, tsdbkeepalive)
+		tsdb = NewReadingDB(tsdbip, tsdbport, tsdbkeepalive)
 		tsdb.AddStore(store)
 		if tsdb == nil {
 			log.Fatal("Error connecting to ReadingDB instance")
@@ -80,7 +91,7 @@ func NewArchiver(archiverport int, readingdbip string, readingdbport int, mongoi
 
 }
 
-// Serves HTTP endpoints
+// Creates routes for the normal HTTP/TCP endpoints. Not served until Archiver.Serve() is called.
 func (a *Archiver) HandleHTTP() {
 	log.Notice("Handling HTTP/TCP")
 	a.r.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
@@ -91,6 +102,8 @@ func (a *Archiver) HandleHTTP() {
 	a.r.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
 }
 
+// Creates routes for WebSocket endpoints. These are the same as the normal HTTP/TCP endpoints, but are
+// preceeded with '/ws/`. Not served until Archiver.Serve() is called.
 func (a *Archiver) HandleWebSocket() {
 	log.Debug("Hanadling WebSockets")
 	a.r.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
@@ -98,6 +111,7 @@ func (a *Archiver) HandleWebSocket() {
 	a.r.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
 }
 
+// Serves all registered endpoints. Doesn't return, so you might want to call this with 'go archiver.Serve()'
 func (a *Archiver) Serve() {
 	http.Handle("/", a.r)
 	log.Notice("Starting on %v", a.address)
