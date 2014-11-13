@@ -23,10 +23,11 @@ func AddReadingHandler(rw http.ResponseWriter, req *http.Request) {
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/add", AddReadingHandler).Methods("POST")
+	r.HandleFunc("/add/{key}", AddReadingHandler).Methods("POST")
 	http.Handle("/", r)
 
 	srv := &http.Server{
-		Addr: "0.0.0.0:5000",
+		Addr: "0.0.0.0:8079",
 	}
 	log.Panic(srv.ListenAndServe())
 }
