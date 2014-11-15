@@ -22,6 +22,13 @@ jsondata = """
             "UnitofMeasure": "V",
             "UnitofTime": "s"
         },
+        "Metadata": {
+            "Site": "Test Site",
+            "Nested": {
+                "key": "value",
+                "other": "value"
+            }
+        },
         "Readings": [[9182731928374, 30]],
         "uuid": "b86df176-6b40-5d58-8f29-3b85f5cfbf1e"
     }
