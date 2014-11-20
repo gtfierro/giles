@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/gtfierro/giles/giles"
+	"github.com/gtfierro/giles/httphandler"
 	"log"
 	"os"
 	"runtime"
@@ -57,7 +58,7 @@ func main() {
 		*mongoip, *mongoport, *tsdbstring, *tsdbkeepalive,
 		"0.0.0.0:"+strconv.Itoa(*archiverport))
 	go a.PrintStatus()
-	a.HandleHTTP()
+	httphandler.Handle(a)
 	a.HandleWebSocket()
 	go a.Serve()
 	idx := 0

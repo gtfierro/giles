@@ -46,7 +46,7 @@ type Archiver struct {
 	republisher          *Republisher
 	incomingcounter      *Counter
 	pendingwritescounter *Counter
-	r                    *mux.Router
+	R                    *mux.Router
 }
 
 // Creates a new Archiver instance:
@@ -85,7 +85,7 @@ func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 		store:                store,
 		republisher:          republisher,
 		address:              address,
-		r:                    mux.NewRouter(),
+		R:                    mux.NewRouter(),
 		incomingcounter:      NewCounter(),
 		pendingwritescounter: NewCounter()}
 
@@ -94,26 +94,26 @@ func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 // Creates routes for the normal HTTP/TCP endpoints. Not served until Archiver.Serve() is called.
 func (a *Archiver) HandleHTTP() {
 	log.Notice("Handling HTTP/TCP")
-	a.r.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
-	a.r.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
-	a.r.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
-	a.r.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Methods("POST")
-	a.r.HandleFunc("/api/tags/uuid/{uuid}", curryhandler(a, TagsHandler)).Methods("GET")
-	a.r.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
+	a.R.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
+	a.R.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
+	a.R.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
+	a.R.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Methods("POST")
+	a.R.HandleFunc("/api/tags/uuid/{uuid}", curryhandler(a, TagsHandler)).Methods("GET")
+	a.R.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
 }
 
 // Creates routes for WebSocket endpoints. These are the same as the normal HTTP/TCP endpoints, but are
 // preceeded with '/ws/`. Not served until Archiver.Serve() is called.
 func (a *Archiver) HandleWebSocket() {
 	log.Debug("Hanadling WebSockets")
-	a.r.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
-	a.r.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
-	a.r.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
+	a.R.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
+	a.R.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
+	a.R.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
 }
 
 // Serves all registered endpoints. Doesn't return, so you might want to call this with 'go archiver.Serve()'
 func (a *Archiver) Serve() {
-	http.Handle("/", a.r)
+	http.Handle("/", a.R)
 	log.Notice("Starting on %v", a.address)
 
 	srv := &http.Server{
@@ -219,6 +219,14 @@ func (a *Archiver) GetTags(select_tags, where_tags map[string]interface{}) (map[
 
 func (a *Archiver) GetUUIDs(where_tags bson.M) ([]string, error) {
 	return []string{}, nil
+}
+
+func (a *Archiver) TagsUUID(uuid string) ([]bson.M, error) {
+	return []bson.M{}, nil
+}
+
+func (a *Archiver) HandleSubscriber(rw http.ResponseWriter, query string) {
+	a.republisher.HandleSubscriber(rw, string(query))
 }
 
 func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}) (int, error) {
