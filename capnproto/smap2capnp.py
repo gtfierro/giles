@@ -2,6 +2,7 @@ import capnp
 import json
 import smap_capnp
 import glob
+from smap.util import buildkv
 
 jsondata = """
 {
@@ -60,22 +61,10 @@ for path, contents in jsonobj.iteritems():
         for i, kv in enumerate(contents.get('Properties').iteritems()):
             msg_properties[i] = smap_capnp.Message.Pair.new_message(key = kv[0], value = kv[1])
     if contents.get('Metadata'):
-        msg_contents = msg.metadata.init('contents', len(contents.get('Metadata')))
-        for i, kv in enumerate(contents.get('Metadata').iteritems()):
-            if isinstance(kv[1], dict):
-                print kv[1], 'is dict'
-                msg_contents[i] = smap_capnp.Dictionary.Pair.new_message()
-                msg_contents[i].key = kv[0]
-                msg_contents[i].dict = smap_capnp.Dictionary.new_message()
-                nested = msg_contents[i].dict.init('contents', len(kv[1]))
-                for ii, kkvv in enumerate(kv[1].iteritems()):
-                    nested[ii].key = kkvv[0]
-                    nested[ii].value = kkvv[1]
-            else:
-                print kv
-                msg_contents[i] = smap_capnp.Dictionary.Pair.new_message()
-                msg_contents[i].key = kv[0]
-                msg_contents[i].value = kv[1]
+        md = buildkv('',contents.get('Metadata'))
+        msg_metadata = msg.init('metadata', len(md))
+        for i, kv in enumerate(md):
+            msg_metadata[i] = smap_capnp.Message.Pair.new_message(key = kv[0], value = kv[1])
     with open('{0}.bin'.format(path.replace('/','_')),'w+b') as f:
         msg.write(f)
 
