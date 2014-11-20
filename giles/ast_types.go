@@ -9,7 +9,7 @@ import (
 /* Type of the query. Are we selecting
    data or deleting data?
 */
-type QueryType_T uint
+type queryType_T uint
 
 const (
 	SELECT_TYPE = iota
@@ -20,7 +20,7 @@ const (
 /*
  * What are returning? Is it tags or data?
  */
-type TargetType_T uint
+type targetType_T uint
 
 const (
 	TAGS_TARGET = iota
@@ -31,7 +31,7 @@ const (
 /*
  * direction of data query
 **/
-type DataQueryType_T uint
+type dataqueryType_T uint
 
 const (
 	IN = iota
@@ -39,19 +39,19 @@ const (
 	AFTER
 )
 
-type Target_T interface{}
+type target_T interface{}
 
-type TagsTarget struct {
+type tagsTarget struct {
 	Distinct bool
 	Contents []string
 }
 
-type SetTarget struct {
+type setTarget struct {
 	Updates bson.M
 }
 
-type DataTarget struct {
-	Type        DataQueryType_T
+type dataTarget struct {
+	Type        dataqueryType_T
 	Ref         time.Time
 	Start       time.Time
 	End         time.Time
@@ -59,7 +59,7 @@ type DataTarget struct {
 	Streamlimit int
 }
 
-func (tt TagsTarget) ToBson() bson.M {
+func (tt tagsTarget) ToBson() bson.M {
 	var item = bson.M{}
 	for _, val := range tt.Contents {
 		if val == "*" {
@@ -72,9 +72,9 @@ func (tt TagsTarget) ToBson() bson.M {
 }
 
 type AST struct {
-	QueryType  QueryType_T
-	TargetType TargetType_T
-	Target     Target_T
+	QueryType  queryType_T
+	TargetType targetType_T
+	Target     target_T
 	Where      *Node
 }
 
@@ -83,15 +83,15 @@ func (ast *AST) Repr() {
 	fmt.Println("TargetType: ", ast.TargetType)
 	fmt.Println("Target:")
 	switch ast.Target.(type) {
-	case (*TagsTarget):
-		fmt.Println("  distinct?:", ast.Target.(*TagsTarget).Distinct)
+	case (*tagsTarget):
+		fmt.Println("  distinct?:", ast.Target.(*tagsTarget).Distinct)
 		fmt.Println("  contents:")
-		for idx, val := range ast.Target.(*TagsTarget).Contents {
+		for idx, val := range ast.Target.(*tagsTarget).Contents {
 			fmt.Println("    ", idx, ":", val)
 		}
-	case (*SetTarget):
+	case (*setTarget):
 		fmt.Println("  set target")
-		fmt.Println("  ", ast.Target.(*SetTarget).Updates)
+		fmt.Println("  ", ast.Target.(*setTarget).Updates)
 	}
 	fmt.Println("Where:")
 	fmt.Println(ast.Where.ToBson())

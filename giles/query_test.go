@@ -7,9 +7,9 @@ import (
 
 /**
 type AST struct {
-	QueryType  QueryType_T
-	TargetType TargetType_T
-	Target     Target_T
+	QueryType  queryType_T
+	TargetType targetType_T
+	Target     target_T
 	Where      *Node
 }
 */
@@ -18,9 +18,9 @@ func TestSimple(t *testing.T) {
 	var query string
 	var ast *AST
 
-	var tt_type = reflect.TypeOf(&TagsTarget{})
-	var dt_type = reflect.TypeOf(&DataTarget{})
-	var st_type = reflect.TypeOf(&SetTarget{})
+	var tt_type = reflect.TypeOf(&tagsTarget{})
+	var dt_type = reflect.TypeOf(&dataTarget{})
+	var st_type = reflect.TypeOf(&setTarget{})
 
 	query = "select *"
 	ast = parse(query)

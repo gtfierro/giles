@@ -77,8 +77,8 @@ func tokenize(q string) []string {
 /**
  * Handles parsing the data range queries like "data in (start ref, end ref) [limit]"
 **/
-func parseDataTarget(tokens *[]string) (Target_T, error) {
-	var dt = &DataTarget{Streamlimit: -1, Limit: 1}
+func parsedataTarget(tokens *[]string) (target_T, error) {
+	var dt = &dataTarget{Streamlimit: -1, Limit: 1}
 	if len(*tokens) == 0 {
 		return dt, nil
 	}
@@ -119,7 +119,7 @@ func parseDataTarget(tokens *[]string) (Target_T, error) {
 			continue
 		case "where": // terminating cases
 			(*tokens) = (*tokens)[pos+1:]
-			goto ReturnDataTarget
+			goto ReturndataTarget
 		default: // parse a time specification
 			timetokens = append(timetokens, val)
 			if strings.HasSuffix(val, ",") || strings.HasSuffix(val, ")") {
@@ -143,7 +143,7 @@ func parseDataTarget(tokens *[]string) (Target_T, error) {
 		pos++ //advance to next token
 	}
 	(*tokens) = []string{}
-ReturnDataTarget:
+ReturndataTarget:
 	return dt, nil
 }
 
@@ -151,8 +151,8 @@ ReturnDataTarget:
  * Tags targets can optionally start with 'distinct', or can just be '*'
  * or can contain a list of tag paths.
  */
-func parseTagsTarget(tokens *[]string) (Target_T, error) {
-	var tt = &TagsTarget{Distinct: false, Contents: []string{}}
+func parsetagsTarget(tokens *[]string) (target_T, error) {
+	var tt = &tagsTarget{Distinct: false, Contents: []string{}}
 	if len(*tokens) == 0 {
 		return tt, nil
 	}
@@ -165,7 +165,7 @@ func parseTagsTarget(tokens *[]string) (Target_T, error) {
 		if val == "where" {
 			/* if we hit this, then we have reached the end of the target
 			 * definition. We alter "tokens" so that it starts with the "where"
-			 * and return our Target_T
+			 * and return our target_T
 			**/
 			(*tokens) = (*tokens)[idx+1:]
 			return tt, nil
@@ -180,8 +180,8 @@ func parseTagsTarget(tokens *[]string) (Target_T, error) {
 	return tt, nil
 }
 
-func parseSetTarget(tokens *[]string) (Target_T, error) {
-	var st = &SetTarget{Updates: bson.M{}}
+func parsesetTarget(tokens *[]string) (target_T, error) {
+	var st = &setTarget{Updates: bson.M{}}
 	if len(*tokens) == 0 {
 		return st, nil
 	}
@@ -286,14 +286,14 @@ func makeAST(tokens []string) (*AST, error) {
 	switch tmp_type {
 	case "data":
 		ast.TargetType = DATA_TARGET
-		ast.Target, err = parseDataTarget(&tokens)
+		ast.Target, err = parsedataTarget(&tokens)
 	default:
 		if ast.QueryType == SELECT_TYPE {
 			ast.TargetType = TAGS_TARGET
-			ast.Target, err = parseTagsTarget(&tokens)
+			ast.Target, err = parsetagsTarget(&tokens)
 		} else if ast.QueryType == SET_TYPE {
 			ast.TargetType = SET_TARGET
-			ast.Target, err = parseSetTarget(&tokens)
+			ast.Target, err = parsesetTarget(&tokens)
 		}
 	}
 

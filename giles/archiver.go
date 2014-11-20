@@ -91,25 +91,14 @@ func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 
 }
 
-// Creates routes for the normal HTTP/TCP endpoints. Not served until Archiver.Serve() is called.
-func (a *Archiver) HandleHTTP() {
-	log.Notice("Handling HTTP/TCP")
-	a.R.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
-	a.R.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
-	a.R.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
-	a.R.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Methods("POST")
-	a.R.HandleFunc("/api/tags/uuid/{uuid}", curryhandler(a, TagsHandler)).Methods("GET")
-	a.R.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
-}
-
 // Creates routes for WebSocket endpoints. These are the same as the normal HTTP/TCP endpoints, but are
 // preceeded with '/ws/`. Not served until Archiver.Serve() is called.
-func (a *Archiver) HandleWebSocket() {
-	log.Debug("Hanadling WebSockets")
-	a.R.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
-	a.R.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
-	a.R.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
-}
+//func (a *Archiver) HandleWebSocket() {
+//	log.Debug("Hanadling WebSockets")
+//	a.R.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
+//	a.R.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
+//	a.R.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
+//}
 
 // Serves all registered endpoints. Doesn't return, so you might want to call this with 'go archiver.Serve()'
 func (a *Archiver) Serve() {
@@ -157,22 +146,22 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	where := ast.Where.ToBson()
 	switch ast.TargetType {
 	case TAGS_TARGET:
-		bson_target := ast.Target.(*TagsTarget).ToBson()
-		distinct_key := ast.Target.(*TagsTarget).Contents[0]
-		is_distinct := ast.Target.(*TagsTarget).Distinct
+		bson_target := ast.Target.(*tagsTarget).ToBson()
+		distinct_key := ast.Target.(*tagsTarget).Contents[0]
+		is_distinct := ast.Target.(*tagsTarget).Distinct
 		res, err := a.store.GetTags(bson_target, is_distinct, distinct_key, where)
 		if err != nil {
 			return data, err
 		}
 		data, _ = json.Marshal(res)
 	case SET_TARGET:
-		res, err := a.store.SetTags(ast.Target.(*SetTarget).Updates, apikey, where)
+		res, err := a.store.SetTags(ast.Target.(*setTarget).Updates, apikey, where)
 		if err != nil {
 			return data, err
 		}
 		data, _ = json.Marshal(res)
 	case DATA_TARGET:
-		target := ast.Target.(*DataTarget)
+		target := ast.Target.(*dataTarget)
 		uuids, err := a.GetUUIDs(ast.Where.ToBson())
 		if err != nil {
 			return data, err

@@ -35,7 +35,7 @@ func NewMessage(sr *SmapReading, store *Store) *Message {
 	var timestamp uint64
 	var value float64
 	var seqno uint64
-	var streamid uint32 = store.GetStreamId(sr.UUID)
+	var streamid uint32 = store.getStreamId(sr.UUID)
 	if streamid == 0 {
 		log.Error("error committing streamid")
 		return nil
@@ -172,7 +172,7 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 		if err != nil {
 			return retdata, err
 		}
-		sid := rdb.store.GetStreamId(uuid)
+		sid := rdb.store.getStreamId(uuid)
 		u_limit := uint32(limit)
 		query := &Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &u_limit}
@@ -203,7 +203,7 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 		if err != nil {
 			return retdata, err
 		}
-		sid := rdb.store.GetStreamId(uuid)
+		sid := rdb.store.getStreamId(uuid)
 		u_limit := uint32(limit)
 		query := &Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &u_limit}
@@ -234,7 +234,7 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, erro
 		if err != nil {
 			return retdata, err
 		}
-		sid := rdb.store.GetStreamId(uuid)
+		sid := rdb.store.getStreamId(uuid)
 		query := &Query{Streamid: &sid, Substream: &substream,
 			Starttime: &start, Endtime: &end, Action: &action}
 		data, err = proto.Marshal(query)

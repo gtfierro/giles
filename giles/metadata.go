@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 )
 
-type RDBStreamId struct {
+type rdbStreamId struct {
 	StreamId uint32
 	UUID     string
 }
@@ -69,7 +69,7 @@ func NewStore(ip string, port int) *Store {
 		log.Fatal("Could not create index on pathmetadata.Path")
 	}
 
-	maxstreamid := &RDBStreamId{}
+	maxstreamid := &rdbStreamId{}
 	streams.Find(bson.M{}).Sort("-streamid").One(&maxstreamid)
 	var maxsid uint32 = 1
 	if maxstreamid != nil {
@@ -78,13 +78,13 @@ func NewStore(ip string, port int) *Store {
 	return &Store{session: session, db: db, streams: streams, metadata: metadata, pathmetadata: pathmetadata, apikeys: apikeys, maxsid: &maxsid, uuidcache: NewLRU(1000), pmdcache: NewLRU(1000), pathcache: NewLRU(1000), apikcache: NewLRU(1000)}
 }
 
-func (s *Store) GetStreamId(uuid string) uint32 {
+func (s *Store) getStreamId(uuid string) uint32 {
 	s.streamlock.Lock()
 	defer s.streamlock.Unlock()
 	if v, found := s.uuidcache.Get(uuid); found {
 		return v.(uint32)
 	}
-	streamid := &RDBStreamId{}
+	streamid := &rdbStreamId{}
 	err := s.streams.Find(bson.M{"uuid": uuid}).One(&streamid)
 	if err != nil {
 		// not found, so create
@@ -341,7 +341,7 @@ func (s *Store) GetUUIDs(where bson.M) []string {
 /*
   Resolve a query to a slice of StreamIds
 */
-func (s *Store) GetStreamIds(where bson.M) []uint32 {
+func (s *Store) getStreamIds(where bson.M) []uint32 {
 	var tmp []bson.M
 	var res []uint32
 	err := s.metadata.Find(where).Select(bson.M{"uuid": 1}).All(&tmp)
@@ -349,7 +349,7 @@ func (s *Store) GetStreamIds(where bson.M) []uint32 {
 		log.Panic(err)
 	}
 	for _, uuid := range tmp {
-		res = append(res, s.GetStreamId(uuid["uuid"].(string)))
+		res = append(res, s.getStreamId(uuid["uuid"].(string)))
 	}
 	return res
 }
