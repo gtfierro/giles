@@ -1,8 +1,8 @@
 package giles
 
 import (
-	"gopkg.in/mgo.v2/bson"
 	"encoding/json"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type SmapReading struct {
@@ -30,4 +30,3 @@ func (sm *SmapMessage) ToJson() []byte {
 	}
 	return b
 }
-

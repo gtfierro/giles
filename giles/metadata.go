@@ -300,7 +300,7 @@ func (s *Store) SetTags(updates bson.M, apikey string, where bson.M) (bson.M, er
 	uuids := s.GetUUIDs(where)
 	for _, uuid := range uuids {
 		ok, err := s.CanWrite(apikey, uuid)
-		if !ok {
+		if !ok || err != nil {
 			return res, err
 		}
 	}
