@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/gtfierro/giles/giles"
 	"github.com/gtfierro/giles/httphandler"
+	"github.com/gtfierro/giles/wshandler"
 	"log"
 	"os"
 	"runtime"
@@ -59,7 +60,7 @@ func main() {
 		"0.0.0.0:"+strconv.Itoa(*archiverport))
 	go a.PrintStatus()
 	httphandler.Handle(a)
-	a.HandleWebSocket()
+	wshandler.Handle(a)
 	go a.Serve()
 	idx := 0
 	for {

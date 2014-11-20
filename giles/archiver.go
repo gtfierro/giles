@@ -91,15 +91,6 @@ func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 
 }
 
-// Creates routes for WebSocket endpoints. These are the same as the normal HTTP/TCP endpoints, but are
-// preceeded with '/ws/`. Not served until Archiver.Serve() is called.
-//func (a *Archiver) HandleWebSocket() {
-//	log.Debug("Hanadling WebSockets")
-//	a.R.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
-//	a.R.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
-//	a.R.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
-//}
-
 // Serves all registered endpoints. Doesn't return, so you might want to call this with 'go archiver.Serve()'
 func (a *Archiver) Serve() {
 	http.Handle("/", a.R)
