@@ -76,3 +76,9 @@ func WsQueryHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request
 func unescape(s string) string {
 	return strings.Replace(s, "%3D", "=", -1)
 }
+
+func curryhandler(a *giles.Archiver, f func(*giles.Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
+	return func(rw http.ResponseWriter, req *http.Request) {
+		f(a, rw, req)
+	}
+}
