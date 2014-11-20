@@ -3,6 +3,7 @@ package giles
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/binary"
+	"github.com/gtfierro/giles/rdbproto"
 	"net"
 	"strconv"
 )
@@ -11,7 +12,7 @@ var streamids = make(map[string]uint32)
 var maxstreamid uint32 = 0
 
 type Header struct {
-	Type   MessageType
+	Type   rdbproto.MessageType
 	Length uint32
 }
 
@@ -43,15 +44,15 @@ func NewMessage(sr *SmapReading, store *Store) *Message {
 	var substream uint32 = 0
 
 	// create ReadingSet
-	readingset := &ReadingSet{Streamid: &streamid,
+	readingset := &rdbproto.ReadingSet{Streamid: &streamid,
 		Substream: &substream,
-		Data:      make([](*Reading), len(sr.Readings))}
+		Data:      make([](*rdbproto.Reading), len(sr.Readings))}
 	// populate readings
 	for i, reading := range sr.Readings {
 		timestamp = reading[0].(uint64)
 		value = reading[1].(float64)
 		seqno = uint64(i)
-		(*readingset).Data[i] = &Reading{Timestamp: &timestamp, Seqno: &seqno, Value: &value}
+		(*readingset).Data[i] = &rdbproto.Reading{Timestamp: &timestamp, Seqno: &seqno, Value: &value}
 	}
 
 	// marshal for sending over wire
@@ -62,7 +63,7 @@ func NewMessage(sr *SmapReading, store *Store) *Message {
 	}
 
 	// create header
-	h := &Header{Type: MessageType_READINGSET, Length: uint32(len(data))}
+	h := &Header{Type: rdbproto.MessageType_READINGSET, Length: uint32(len(data))}
 	m.header = h
 	m.data = data
 	return m
@@ -137,7 +138,7 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 /**
  * What's the common functionality for all the methods? Sending and receiving
 **/
-func (rdb *RDB) sendAndReceive(payload []byte, msgtype MessageType, conn *net.Conn) (SmapResponse, error) {
+func (rdb *RDB) sendAndReceive(payload []byte, msgtype rdbproto.MessageType, conn *net.Conn) (SmapResponse, error) {
 	var sr SmapResponse
 	var err error
 	m := &Message{}
@@ -164,7 +165,7 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 	var retdata = []SmapResponse{}
 	var data []byte
 	var substream uint32 = 0
-	var direction = Nearest_PREV
+	var direction = rdbproto.Nearest_PREV
 	var sr SmapResponse
 
 	for _, uuid := range uuids {
@@ -174,10 +175,10 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 		}
 		sid := rdb.store.getStreamId(uuid)
 		u_limit := uint32(limit)
-		query := &Nearest{Streamid: &sid, Substream: &substream,
+		query := &rdbproto.Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &u_limit}
 		data, err = proto.Marshal(query)
-		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, &conn)
+		sr, err = rdb.sendAndReceive(data, rdbproto.MessageType_NEAREST, &conn)
 		sr.UUID = uuid
 		retdata = append(retdata, sr)
 	}
@@ -195,7 +196,7 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 	var retdata = []SmapResponse{}
 	var data []byte
 	var substream uint32 = 0
-	var direction = Nearest_NEXT
+	var direction = rdbproto.Nearest_NEXT
 	var sr SmapResponse
 
 	for _, uuid := range uuids {
@@ -205,10 +206,10 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 		}
 		sid := rdb.store.getStreamId(uuid)
 		u_limit := uint32(limit)
-		query := &Nearest{Streamid: &sid, Substream: &substream,
+		query := &rdbproto.Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &u_limit}
 		data, err = proto.Marshal(query)
-		sr, err = rdb.sendAndReceive(data, MessageType_NEAREST, &conn)
+		sr, err = rdb.sendAndReceive(data, rdbproto.MessageType_NEAREST, &conn)
 		sr.UUID = uuid
 		retdata = append(retdata, sr)
 	}
@@ -235,10 +236,10 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, erro
 			return retdata, err
 		}
 		sid := rdb.store.getStreamId(uuid)
-		query := &Query{Streamid: &sid, Substream: &substream,
+		query := &rdbproto.Query{Streamid: &sid, Substream: &substream,
 			Starttime: &start, Endtime: &end, Action: &action}
 		data, err = proto.Marshal(query)
-		sr, err = rdb.sendAndReceive(data, MessageType_QUERY, &conn)
+		sr, err = rdb.sendAndReceive(data, rdbproto.MessageType_QUERY, &conn)
 		sr.UUID = uuid
 		retdata = append(retdata, sr)
 	}
@@ -259,7 +260,7 @@ func (rdb *RDB) receiveData(conn *net.Conn) (SmapResponse, error) {
 	_ = binary.BigEndian.Uint32(recv[:4])
 	msglen := binary.BigEndian.Uint32(recv[4:8])
 	// for now, assume the message is a ReadingDB Response protobuf
-	response := &Response{}
+	response := &rdbproto.Response{}
 	// remaining length is the expected length of message - how much we've already received
 	var remaining_length = uint32(0)
 	if uint32(n-8) != msglen {
