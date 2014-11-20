@@ -75,7 +75,7 @@ type AST struct {
 	QueryType  queryType_T
 	TargetType targetType_T
 	Target     target_T
-	Where      *Node
+	Where      *node
 }
 
 func (ast *AST) Repr() {

@@ -206,8 +206,8 @@ func parsesetTarget(tokens *[]string) (target_T, error) {
 	return st, nil
 }
 
-func parseWhere(tokens *[]string) *Node {
-	var stack = [](Node){}
+func parseWhere(tokens *[]string) *node {
+	var stack = [](node){}
 	pos := 0
 	for {
 		if pos == len(*tokens) {
@@ -217,21 +217,21 @@ func parseWhere(tokens *[]string) *Node {
 		case "and":
 			left := stack[len(stack)-1]            // last item off stack
 			stack = stack[:len(stack)-1]           // pop it off
-			right, num := getNodeAt(pos+1, tokens) // next node
-			node := Node{Type: AND_NODE, Left: left, Right: right}
+			right, num := getnodeAt(pos+1, tokens) // next node
+			node := node{Type: AND_NODE, Left: left, Right: right}
 			stack = append(stack, node)
 			pos += 1 + num
 			continue
 		case "or":
 			left := stack[len(stack)-1]            // last item off stack
 			stack = stack[:len(stack)-1]           // pop it off
-			right, num := getNodeAt(pos+1, tokens) // next node
-			node := Node{Type: OR_NODE, Left: left, Right: right}
+			right, num := getnodeAt(pos+1, tokens) // next node
+			node := node{Type: OR_NODE, Left: left, Right: right}
 			stack = append(stack, node)
 			pos += 1 + num
 			continue
 		default:
-			node, num := getNodeAt(pos, tokens)
+			node, num := getnodeAt(pos, tokens)
 			stack = append(stack, node)
 			pos += num
 			continue
@@ -241,20 +241,20 @@ func parseWhere(tokens *[]string) *Node {
 	if len(stack) > 0 {
 		return &stack[0]
 	}
-	return &Node{Type: DEF_NODE}
+	return &node{Type: DEF_NODE}
 }
 
-func getNodeAt(index int, tokens *[]string) (Node, int) {
-	var node = Node{}
+func getnodeAt(index int, tokens *[]string) (node, int) {
+	var node = node{}
 	var numtokens = 0
 	if (*tokens)[index] == "has" {
 		node.Left = (*tokens)[index+1]
-		node.Type = getNodeType((*tokens)[index])
+		node.Type = getnodeType((*tokens)[index])
 		node.Right = ""
 		numtokens = 2
 	} else {
 		node.Left = (*tokens)[index]
-		node.Type = getNodeType((*tokens)[index+1])
+		node.Type = getnodeType((*tokens)[index+1])
 		node.Right = (*tokens)[index+2]
 		numtokens = 3
 	}

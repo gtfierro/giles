@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-type NodeType_T uint
+type nodeType_T uint
 
 const (
 	AND_NODE = iota
@@ -19,7 +19,7 @@ const (
 	DEF_NODE // default
 )
 
-func getNodeType(inp string) NodeType_T {
+func getnodeType(inp string) nodeType_T {
 	switch inp {
 	case "and":
 		return AND_NODE
@@ -42,13 +42,13 @@ func getNodeType(inp string) NodeType_T {
 	}
 }
 
-type Node struct {
-	Type  NodeType_T
+type node struct {
+	Type  nodeType_T
 	Left  interface{}
 	Right interface{}
 }
 
-func (n Node) ToBson() bson.M {
+func (n node) ToBson() bson.M {
 	switch n.Type {
 	case EQ_NODE:
 		return bson.M{n.Left.(string): n.Right.(string)}
@@ -57,15 +57,15 @@ func (n Node) ToBson() bson.M {
 	case NEQ_NODE:
 		return bson.M{"$not": bson.M{n.Left.(string): n.Right.(string)}}
 	case AND_NODE:
-		return bson.M{"$and": []bson.M{n.Left.(Node).ToBson(), n.Right.(Node).ToBson()}}
+		return bson.M{"$and": []bson.M{n.Left.(node).ToBson(), n.Right.(node).ToBson()}}
 	case OR_NODE:
-		return bson.M{"$or": []bson.M{n.Left.(Node).ToBson(), n.Right.(Node).ToBson()}}
+		return bson.M{"$or": []bson.M{n.Left.(node).ToBson(), n.Right.(node).ToBson()}}
 	case HAS_NODE:
 		return bson.M{n.Left.(string): bson.M{"$exists": true}}
 	}
 	return bson.M{}
 }
 
-func (n Node) Length() int {
+func (n node) Length() int {
 	return 0
 }
