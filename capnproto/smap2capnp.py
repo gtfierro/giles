@@ -38,11 +38,11 @@ jsonobj = json.loads(jsondata)
 
 for path, contents in jsonobj.iteritems():
     print '#'*5,'New Message','#'*5
-    print 'path',path
-    print 'uuid', contents.get('uuid')
-    print 'contents', contents.get('Contents')
-    print 'properties', contents.get('Properties')
-    print 'readings', contents.get('Readings')
+    #print 'path',path
+    #print 'uuid', contents.get('uuid')
+    #print 'contents', contents.get('Contents')
+    #print 'properties', contents.get('Properties')
+    #print 'readings', contents.get('Readings')
     print 'metadata', contents.get('Metadata')
     msg = smap_capnp.Message.new_message()
     msg.path = path
@@ -60,9 +60,22 @@ for path, contents in jsonobj.iteritems():
         for i, kv in enumerate(contents.get('Properties').iteritems()):
             msg_properties[i] = smap_capnp.Message.Pair.new_message(key = kv[0], value = kv[1])
     if contents.get('Metadata'):
-        msg_metadata = msg.init('metadata', len(contents.get('Metadata')))
+        msg_contents = msg.metadata.init('contents', len(contents.get('Metadata')))
         for i, kv in enumerate(contents.get('Metadata').iteritems()):
-            msg_metadata[i] = smap_capnp.Message.Pair.new_message(key = kv[0], value = kv[1])
+            if isinstance(kv[1], dict):
+                print kv[1], 'is dict'
+                msg_contents[i] = smap_capnp.Dictionary.Pair.new_message()
+                msg_contents[i].key = kv[0]
+                msg_contents[i].dict = smap_capnp.Dictionary.new_message()
+                nested = msg_contents[i].dict.init('contents', len(kv[1]))
+                for ii, kkvv in enumerate(kv[1].iteritems()):
+                    nested[ii].key = kkvv[0]
+                    nested[ii].value = kkvv[1]
+            else:
+                print kv
+                msg_contents[i] = smap_capnp.Dictionary.Pair.new_message()
+                msg_contents[i].key = kv[0]
+                msg_contents[i].value = kv[1]
     with open('{0}.bin'.format(path.replace('/','_')),'w+b') as f:
         msg.write(f)
 
@@ -70,4 +83,4 @@ print 'now reading back'
 
 for filename in glob.glob('*.bin'):
     msg = smap_capnp.Message.read(open(filename,'rb'))
-    print msg.to_dict()
+    print msg.to_dict().get('metadata','')

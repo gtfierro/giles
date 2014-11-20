@@ -2,6 +2,8 @@
 #$Go.package("giles");
 #$Go.import("github.com/gtfierro/giles/giles");
 
+
+# make dictionary a union type of None, List(pair) and dictionary?
 @0x9f075567e0861f32;
 
 struct Dictionary {
@@ -9,7 +11,10 @@ struct Dictionary {
 
     struct Pair {
         key @0 :Text;
-        value @1 :Text;
+        union {
+            value @1 :Text;
+            dict @2 :Dictionary;
+        }
     }
 }
 
@@ -19,7 +24,7 @@ struct Message {
     readings @2 :List(Reading);
     contents @3 :List(Text);
     properties @4 :List(Pair);
-    metadata @5 :List(Pair);
+    metadata @5 :Dictionary;
 
     struct Reading {
         time @0 :UInt64;
