@@ -15,7 +15,7 @@ It has these top-level messages:
 	Response
 */
 
-package giles
+package rdbproto
 
 import proto "code.google.com/p/goprotobuf/proto"
 import math "math"
