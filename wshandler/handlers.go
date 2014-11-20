@@ -8,6 +8,16 @@ import (
 	"strings"
 )
 
+// Creates routes for WebSocket endpoints. These are the same as the normal HTTP/TCP endpoints, but are
+// preceeded with '/ws/`. Not served until Archiver.Serve() is called.
+func Handle(a *giles.Archiver) {
+	log.Notice("Handling WebSockets")
+	a.R.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
+	a.R.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
+	a.R.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
+}
+
+
 var upgrader = &websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
