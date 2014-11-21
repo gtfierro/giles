@@ -1,7 +1,11 @@
 import argparse
 import base64
 import sys
+import time
+import csv
+from smap.contrib import dtutil
 from pymongo import MongoClient
+from smap.contrib import dtutil
 
 parser = argparse.ArgumentParser(description='Command line help tool for Giles')
 
@@ -20,6 +24,10 @@ parser_streamid.add_argument('-m', '--mongourl', default='localhost:27017', help
 
 parser_rdbdump = subparsers.add_parser('rdbdump', help='Dump ReadingDB streams')
 parser_rdbdump.add_argument('-r','--readingdb',default='localhost:4242',help='ReadingDB URL')
+parser_rdbdump.add_argument('-s','--startyear',help='Year to start pulling data from',type=int,default=2010)
+parser_rdbdump.add_argument('-e','--endyear',help='Year to stop pulling data from',type=int,default=2014)
+parser_rdbdump.add_argument('-b','--blocksize',help='How many streamids to poll at once',type=int,default=10000)
+parser_rdbdump.add_argument('-d','--directory',help='Directory to dump data',type=str,default='.')
 
 parser_smapdump = subparsers.add_parser('smapdump', help='Dump streams from sMAP archiver')
 parser_smapdump.add_argument('-s','--smapurl', default='localhost:8079',help='sMAP Archiver URL')
@@ -28,6 +36,34 @@ parser_smapdump.add_argument('-q','--query', default='select distinct uuid',help
 args = parser.parse_args()
 print args
 
+# readingDB convenience fxns
+def get_times(startyear, endyear):
+    for year in range(startyear,endyear+1):
+        for month in range(1,13):
+            start = "{0}-{1}-{2}".format(month, 1, year)
+            if month < 12:
+                end = "{0}-{1}-{2}".format(month+1, 1, year)
+            else:
+                end = "{0}-{1}-{2}".format(month, 31, year)
+            start, end = map(lambda x: dtutil.dt2ts(dtutil.strptime_tz(x, '%m-%d-%Y')), (start, end))
+            yield start, end-1
+
+def get_streamids(blocksize):
+    for i in range(101,500):
+        print 'block {0} of {1}'.format(i - 101, 500 - 101)
+        yield range(blocksize*i+1, blocksize*i+1+blocksize)
+
+def get_streamids_file(filename, blocksize):
+    with open(filename) as f:
+        reader = csv.reader(f)
+        counter = 0
+        while reader:
+            ids = []
+            counter += 1
+            for i in range(blocksize):
+                ids.append(int(reader.next()[0]))
+            print 'block',counter
+            yield ids
 
 if args.subparsername == 'newkey':
     url,port = args.mongourl.split(':')
@@ -60,9 +96,31 @@ elif args.subparsername == 'rdbdump':
     import readingdb as rdb
     url,port = args.readingdb.split(':')
     rdb.db_setup(url,int(port))
-    db = rdb.db_open(url)
-    print 'not implemented yet'
-    sys.exit(1)
+    db = rdb.db_open(host=url,port=int(port))
+    for streamids in get_streamids(args.blocksize): #get_streamids_file('streamids.csv',args.blocksize):
+        for start,end in get_times(args.startyear,args.endyear):
+            print "pulling {0} to {1} for streamids {2} to {3}".format(start, end, streamids[0], streamids[-1]),
+            sys.stdout.flush()
+            s = time.time()
+            gotdata = False
+            while not gotdata:
+                try:
+                    data = rdb.db_query(streamids, start, end)
+                except Exception as e:
+                    print 'error', e
+                    continue
+                gotdata = True
+            e = time.time()
+            print "in {:.3f} seconds".format(e - s),
+            sys.stdout.flush()
+            for sid, tsdata in zip(streamids, data):
+                if len(tsdata) > 0:
+                    d = pd.DataFrame(tsdata)
+                    with open('{0}/{1}.csv'.format(args.directory, sid), 'a+') as f:
+                        d.to_csv(f, index=False, header=None)
+            s = time.time()
+            print "written to file in {:.3f} seconds".format(s - e)
+    sys.exit(0)
 
 elif args.subparsername == 'smapdump':
     import pandas as pd
