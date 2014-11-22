@@ -135,7 +135,7 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		s.apikcache.Set(uuid, apikey)
 	} else {
 		s.apikeylock.Lock()
-		defer s.apikeylock.Lock()
+		defer s.apikeylock.Unlock()
 		// lock?
 		exists, err := s.apikeyexists(apikey)
 		if !exists || err != nil {
@@ -157,7 +157,7 @@ func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool,
 			continue
 		} // no API key for path metadata
 		ok, err := s.CanWrite(apikey, msg.UUID)
-		if !ok {
+		if !ok || err != nil {
 			return false, err
 		}
 	}
