@@ -1,11 +1,19 @@
 import argparse
 import base64
 import sys
+import os
+import glob
 import time
+import datetime
+import json
 import csv
+import uuid
+import pandas as pd
 from smap.contrib import dtutil
 from pymongo import MongoClient
 from smap.contrib import dtutil
+from smap.archiver.client import SmapClient
+from collections import defaultdict
 
 parser = argparse.ArgumentParser(description='Command line help tool for Giles')
 
@@ -33,10 +41,15 @@ parser_smapdump = subparsers.add_parser('smapdump', help='Dump streams from sMAP
 parser_smapdump.add_argument('-s','--smapurl', default='localhost:8079',help='sMAP Archiver URL')
 parser_smapdump.add_argument('-q','--query', default='select distinct uuid',help='UUID filter query')
 
+parser_import = subparsers.add_parser('import', help='Import data from external file into sMAP')
+parser_import.add_argument('-d', '--delimiter', type=str, default=',', help='Expects each line in the file to be <timestamp><delim><value>. Allows you to specify a custom delimiter')
+parser_import.add_argument('-e', '--header', action="store_true", help='Do the specified files include a header? If so, importer skips the first line')
+parser_import.add_argument('files', nargs='+', type=str, help='File(s) or directory to import. If directory, gilescmd will go 1 level deep and find all files. List of files can also be specified (use commas to separate files)')
+
 args = parser.parse_args()
 print args
 
-# readingDB convenience fxns
+# readingDB export convenience fxns
 def get_times(startyear, endyear):
     for year in range(startyear,endyear+1):
         for month in range(1,13):
@@ -92,7 +105,6 @@ elif args.subparsername == 'streamid':
     sys.exit(0)
 
 elif args.subparsername == 'rdbdump':
-    import pandas as pd
     import readingdb as rdb
     url,port = args.readingdb.split(':')
     rdb.db_setup(url,int(port))
@@ -123,13 +135,6 @@ elif args.subparsername == 'rdbdump':
     sys.exit(0)
 
 elif args.subparsername == 'smapdump':
-    import pandas as pd
-    from smap.archiver.client import SmapClient
-    import time
-    import datetime
-    import json
-    import pandas as pd
-    from collections import defaultdict
     client = SmapClient('http://'+args.smapurl)
     uuids = filter(lambda x: x, client.query(args.query))
     md = {}
@@ -160,3 +165,37 @@ elif args.subparsername == 'smapdump':
             with open(uuid+'.csv', 'a+') as f:
                 d.to_csv(f, index=False, header=None)
     json.dump(md, open('metadata.json','w+'))
+
+elif args.subparsername == 'import':
+    import requests
+    if args.files is None:
+        print 'You must specify file(s) to import'
+        sys.exit(1)
+    files = args.files
+    exists = map(lambda x: os.path.exists(x), files)
+    if not all(exists):
+        notexist = [y for x,y in zip(exists, files) if not x]
+        print 'The following specified files do not exist: {0}'.format(','.join(notexist))
+        sys.exit(1)
+    for f in files:
+        print "Reading",f
+        if not args.header:
+            d = pd.read_csv(f,sep=args.delimiter,header=None)
+        else:
+            d = pd.read_csv(f,sep=args.delimiter)
+        obj = {'/sensor1': {'Readings': [], 'uuid': str(uuid.uuid1())}}
+        row = 0
+        while row*1000 < len(d):
+            data = d[row*1000:(row+1)*1000].to_json(orient='values').replace('.0,',',')
+            if not len(data):
+                break
+            obj['/sensor1']['Readings'] = json.loads(data)
+            row += 1
+            try:
+                resp = requests.post('http://localhost:8079/add/jm-5tEwYdB39T-2cqYwM94kkRJ2-wQ0aNMSmflsjNidsuqBvlA4EtyMSTCYX5VEVhXIyvXFSlrB6dVIfoEIZVg==',data=json.dumps(obj))
+                if not resp.ok:
+                    print resp.content
+                    print obj
+            except:
+                break
+
