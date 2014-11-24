@@ -111,6 +111,7 @@ elif args.subparsername == 'rdbdump':
     url,port = args.readingdb.split(':')
     rdb.db_setup(url,int(port))
     db = rdb.db_open(host=url,port=int(port))
+    streamfile = pd.read_csv(args.streamfile, header=None) if args.streamfile else None
     streamiter = get_streamids(args.blocksize) if not args.streamfile else get_streamids_file(args.streamfile, args.blocksize)
     for streamids in streamiter:
         for start,end in get_times(args.startyear,args.endyear):
@@ -131,6 +132,8 @@ elif args.subparsername == 'rdbdump':
             for sid, tsdata in zip(streamids, data):
                 if len(tsdata) > 0:
                     d = pd.DataFrame(tsdata)
+                    if args.streamfile:
+                        sid = streamfile[streamfile[0] == sid][1].values[0]
                     with open('{0}/{1}.csv'.format(args.directory, sid), 'a+') as f:
                         d.to_csv(f, index=False, header=None)
             s = time.time()
