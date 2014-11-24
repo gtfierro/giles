@@ -80,14 +80,23 @@ func (m *Message) ToBytes() []byte {
 	return onthewire
 }
 
+// This is a translator interface for ReadingDB (adaptive branch --
+// https://github.com/SoftwareDefinedBuildings/readingdb/tree/adaptive) that
+// implements the TSDB interface (look at interfaces.go)
 type RDB struct {
 	addr  *net.TCPAddr
-	conn  net.Conn
 	In    chan *[]byte
 	cm    *ConnectionMap
 	store *Store
 }
 
+// Create a new reference to a ReadingDB instance running at ip:port.
+// Connections for a unique stream identifier will be kept alive for
+// `connectionkeepalive` seconds. All communicaton with ReadingDB is done over
+// a TCP connection that speaks protobuf
+// (https://developers.google.com/protocol-buffers/). For a description and
+// implementation of ReadingDB protobuf, please see
+// https://github.com/gtfierro/giles/tree/master/rdbproto
 func NewReadingDB(ip string, port int, connectionkeepalive int) *RDB {
 	log.Notice("Connecting to ReadingDB at %v:%v...", ip, port)
 	address := ip + ":" + strconv.Itoa(port)

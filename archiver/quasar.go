@@ -6,6 +6,9 @@ import (
 	"strconv"
 )
 
+// This is a translator interface for Quasar
+// (https://github.com/SoftwareDefinedBuildings/quasar) that implements the
+// TSDB interface (look at interfaces.go).
 type QDB struct {
 	addr  *net.TCPAddr
 	q     *quasar.Quasar
@@ -13,6 +16,12 @@ type QDB struct {
 	store *Store
 }
 
+// Create a new reference to a Quasar instance running at ip:port.  Connections
+// for a unique stream identifier will be kept alive for `connectionkeepalive`
+// seconds. All communicaton with Quasar is done over a TCP connection that
+// speaks Capn Proto (http://kentonv.github.io/capnproto/). Quasar can also
+// provide a direct HTTP interface, but we choose to implement only the Capn
+// Proto interface for more efficient transport.
 func NewQuasar(ip string, port int, connectionkeepalive int) *QDB {
 	log.Notice("Conneting to Quasar at %v:%v...", ip, port)
 	address := ip + ":" + strconv.Itoa(port)
