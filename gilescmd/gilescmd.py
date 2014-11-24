@@ -194,6 +194,8 @@ elif args.subparsername == 'import':
         else:
             d = pd.read_csv(f,sep=args.delimiter)
         md = metadata[f.split('/')[-1].split('.')[0]]
+        if 'Path' not in md:
+            continue
         path = md.pop('Path')
         obj = {path: build_recursive(md,suppress=[])}
         row = 0
@@ -204,11 +206,7 @@ elif args.subparsername == 'import':
             obj[path]['Readings'] = json.loads(data)
             row += 1
             try:
-                print obj
                 resp = requests.post('http://localhost:8079/add/jm-5tEwYdB39T-2cqYwM94kkRJ2-wQ0aNMSmflsjNidsuqBvlA4EtyMSTCYX5VEVhXIyvXFSlrB6dVIfoEIZVg==',data=json.dumps(obj))
-                if not resp.ok:
-                    print resp.content
-                    print obj
                 obj[path] = {'uuid': obj['uuid']}
             except:
                 break
