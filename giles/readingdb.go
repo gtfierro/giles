@@ -11,13 +11,13 @@ import (
 var streamids = make(map[string]uint32)
 var maxstreamid uint32 = 0
 
-type Header struct {
+type header struct {
 	Type   rdbproto.MessageType
 	Length uint32
 }
 
 type Message struct {
-	header *Header
+	header *header
 	data   []byte
 }
 
@@ -63,7 +63,7 @@ func NewMessage(sr *SmapReading, store *Store) *Message {
 	}
 
 	// create header
-	h := &Header{Type: rdbproto.MessageType_READINGSET, Length: uint32(len(data))}
+	h := &header{Type: rdbproto.MessageType_READINGSET, Length: uint32(len(data))}
 	m.header = h
 	m.data = data
 	return m
@@ -142,7 +142,7 @@ func (rdb *RDB) sendAndReceive(payload []byte, msgtype rdbproto.MessageType, con
 	var sr SmapResponse
 	var err error
 	m := &Message{}
-	h := &Header{Type: msgtype, Length: uint32(len(payload))}
+	h := &header{Type: msgtype, Length: uint32(len(payload))}
 	m.header = h
 	m.data = payload
 	_, err = (*conn).Write(m.ToBytes())
