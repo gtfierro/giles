@@ -71,6 +71,7 @@ func (tt tagsTarget) ToBson() bson.M {
 	return item
 }
 
+// You can ignore this type -- it is used internally for the query language
 type AST struct {
 	QueryType  queryType_T
 	TargetType targetType_T

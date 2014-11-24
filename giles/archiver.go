@@ -35,10 +35,16 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
 // This is the central object for the archiver process and contains most of the requisite
 // logic for the core features of the archiver. One of the focuses of Giles is to facilitate
-// adapting the sMAP protocol to different interfaces; the X_handlers.go files (TCP, WS, etc)
+// adapting the sMAP protocol to different interfaces; the handlers packages (HTTP, WS, etc)
 // provide handler functions that in turn call the archiver's core functions. Most of these
 // core functions use easily usable data formats (such as bson.M), so the handler functions just
 // have to deal with translating data formats
+//
+// For now, because the metadata interface was designed with a MongoDB backend in mind, most of
+// the in-transit data types for dealing with metadata use the MongoDB interface defined by
+// http://godoc.org/gopkg.in/mgo.v2/bson and http://godoc.org/gopkg.in/mgo.v2. I suggest
+// taking a quick look though their documentation and how they talk to Mongo to get a feel
+// for what the incoming/outgoing data is going to look like.
 type Archiver struct {
 	address              string
 	tsdb                 TSDB
@@ -126,7 +132,14 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 	return nil
 }
 
-// Takes the body of the query and the apikey that accompanies the query.
+// Takes the body of the query and the apikey that accompanies the query. First parses
+// the string query into an intermediary form (the abstract syntax tree as the AST type).
+// Depending on the action, it will check to see if the provided API key grants sufficient
+// permission to return the results. If so, returns those results as []byte (marshaled JSON).
+// Most of this method is just switch statements dependent on different components of the
+// generated AST. Any actual computation is done as calls to the Archiver API, so if you want
+// to use your own query language or handle queries in some external handler, then you shouldn't
+// need to use any of this method; just use the Archiver API
 func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	if apikey != "" {
 		log.Info("query with key: %v", apikey)
@@ -136,6 +149,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	ast := parse(querystring)
 	where := ast.Where.ToBson()
 	switch ast.TargetType {
+	// if we are fetching tags
 	case TAGS_TARGET:
 		bson_target := ast.Target.(*tagsTarget).ToBson()
 		distinct_key := ast.Target.(*tagsTarget).Contents[0]
@@ -145,12 +159,14 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 			return data, err
 		}
 		data, _ = json.Marshal(res)
+		// if we are setting tags
 	case SET_TARGET:
 		res, err := a.store.SetTags(ast.Target.(*setTarget).Updates, apikey, where)
 		if err != nil {
 			return data, err
 		}
 		data, _ = json.Marshal(res)
+		// if we are fetching data
 	case DATA_TARGET:
 		target := ast.Target.(*dataTarget)
 		uuids, err := a.GetUUIDs(ast.Where.ToBson())
@@ -181,34 +197,63 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	return data, nil
 }
 
+// For each of the streamids, fetches all data between start and end (where
+// start < end). Start/end are Unix time in milliseconds
 func (a *Archiver) GetData(streamids []string, start, end uint64) ([]SmapResponse, error) {
 	return a.tsdb.GetData(streamids, start, end)
 }
 
+// For each of the streamids, fetches data before the start time. If limit is < 0, fetches all data.
+// If limit >= 0, fetches only that number of points
 func (a *Archiver) PrevData(streamids []string, start uint64, limit int32) ([]SmapResponse, error) {
 	return a.tsdb.Prev(streamids, start, limit)
 }
 
+// For each of the streamids, fetches data after the start time. If limit is < 0, fetches all data.
+// If limit >= 0, fetches only that number of points
 func (a *Archiver) NextData(streamids []string, start uint64, limit int32) ([]SmapResponse, error) {
 	return a.tsdb.Next(streamids, start, limit)
 }
 
+// For all streams that match the provided where clause in where_tags, returns the values of the requested
+// tags. where_tags is a bson.M object that follows the same syntax as a MongoDB query. select_tags is
+// a map[string]int corresponding to which tags we wish returned. A value of 1 means the tag will be
+// returned (and ignores all other tags), and a value of 0 means the tag will NOT be returned (and all
+// other tags will be).
+//
+// Not yet implemented!
 func (a *Archiver) GetTags(select_tags, where_tags map[string]interface{}) (map[string]interface{}, error) {
 	return make(map[string]interface{}), nil
 }
 
+// Returns a list of UUIDs for all streams that match the provided 'where' clause. where_tags is a bson.M
+// object that follows the same syntax as a MongoDB query. This query is executed against the underlying
+// metadata store. As we move into supporting multiple possible metadata storage solutions, this interface
+// may change.
+//
+// Not yet implemented!
 func (a *Archiver) GetUUIDs(where_tags bson.M) ([]string, error) {
 	return []string{}, nil
 }
 
+// Returns all tags for the stream with the provided UUID
+//
+// Not yet implemented!
 func (a *Archiver) TagsUUID(uuid string) ([]bson.M, error) {
 	return []bson.M{}, nil
 }
 
+// For all streams that match the WHERE clause in the provided query string,
+// will push all subsequent incoming information (data and tags) on those streams
+// to the client associated with the provided http.ResponseWriter.
+//
+// For now, this query is evaluated only once at the time of subscription.
 func (a *Archiver) HandleSubscriber(rw http.ResponseWriter, query string) {
 	a.republisher.HandleSubscriber(rw, string(query))
 }
 
+// For all streams that match the provided where clause in where_tags, sets the key-value
+// pairs specified in update_tags.
 func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}) (int, error) {
 	return 0, nil
 }
