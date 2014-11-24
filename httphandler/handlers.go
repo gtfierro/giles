@@ -1,3 +1,17 @@
+// License stuff
+
+// Package httphandler implements an HTTP interface to the Archiver API at
+// http://godoc.org/github.com/gtfierro/giles/archiver
+//
+// Overview
+//
+// This HTTP interface to the sMAP archiver presents most of the expected
+// interface as described in the Archiver documentation at
+// http://pythonhosted.org/Smap/en/2.0/archiver.html. With the exception of
+// DELETE action and the /api/query interface, this interface matches what is
+// expected.
+//
+// For sample usage, look at https://github.com/gtfierro/giles/blob/master/giles/giles.go
 package httphandler
 
 import (
@@ -42,6 +56,23 @@ func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.Response
 // of the timeseries path to get all the 'trickle down' metadata from the higher
 // parts of the metadata tree. That logic takes place in store.SavePathMetadata and
 // store.SaveMetadata
+//
+// An example of a valid sMAP object is
+//    {
+//      "/sensor0" : {
+//        "Metadata" : {
+//          "SourceName" : "Test Source",
+//            "Location" : { "City" : "Berkeley" }
+//        },
+//          "Properties": {
+//            "Timezone": "America/Los_Angeles",
+//            "UnitofMeasure": "Watt",
+//            "ReadingType": "double"
+//          },
+//          "Readings" : [[1351043674000, 0], [1351043675000, 1]],
+//          "uuid" : "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"
+//      }
+//    }
 func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 	//TODO: add transaction coalescing
 	defer req.Body.Close()
