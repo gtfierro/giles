@@ -50,8 +50,8 @@ type Archiver struct {
 	tsdb                 TSDB
 	store                *Store
 	republisher          *Republisher
-	incomingcounter      *Counter
-	pendingwritescounter *Counter
+	incomingcounter      *counter
+	pendingwritescounter *counter
 	R                    *mux.Router
 }
 
@@ -93,8 +93,8 @@ func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 		republisher:          republisher,
 		address:              address,
 		R:                    mux.NewRouter(),
-		incomingcounter:      NewCounter(),
-		pendingwritescounter: NewCounter()}
+		incomingcounter:      newCounter(),
+		pendingwritescounter: newCounter()}
 
 }
 

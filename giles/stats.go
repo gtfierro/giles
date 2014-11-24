@@ -4,19 +4,19 @@ import (
 	"sync/atomic"
 )
 
-type Counter struct {
+type counter struct {
 	Count uint64
 }
 
-func NewCounter() *Counter {
-	return &Counter{Count: 0}
+func newCounter() *counter {
+	return &counter{Count: 0}
 }
 
-func (c *Counter) Mark() {
+func (c *counter) Mark() {
 	atomic.AddUint64(&c.Count, 1)
 }
 
-func (c *Counter) Reset() uint64 {
+func (c *counter) Reset() uint64 {
 	var returncount = c.Count
 	atomic.StoreUint64(&c.Count, 0)
 	return returncount
