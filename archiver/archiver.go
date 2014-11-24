@@ -82,7 +82,11 @@ func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 			log.Fatal("Error connecting to ReadingDB instance")
 		}
 	case "quasar":
-		log.Fatal("quasar")
+		tsdb = NewQuasar(tsdbip, tsdbport, tsdbkeepalive)
+		tsdb.AddStore(store)
+		if tsdb == nil {
+			log.Fatal("Error connecting to Quasar instance")
+		}
 	default:
 		log.Fatal(tsdbstring, " is not a valid timeseries database")
 	}
@@ -260,5 +264,5 @@ func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}) (int,
 }
 
 func (a *Archiver) PrintStatus() {
-	go periodicCall(1*time.Second, a.status) // status from stats.go
+	go periodicCall(5*time.Second, a.status) // status from stats.go
 }
