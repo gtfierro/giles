@@ -1,4 +1,4 @@
-package giles
+package archiver
 
 import (
 	"code.google.com/p/go-uuid/uuid"

@@ -1,4 +1,4 @@
-package giles
+package archiver
 
 import (
 	"gopkg.in/mgo.v2/bson"

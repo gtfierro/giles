@@ -16,7 +16,7 @@
 // of course, but treating them as separate entities means that we can use
 // different timeseries or metadata databases or even different implementations
 // of the query language (perhaps over Apache Spark/Mlib?)
-package giles
+package archiver
 
 import (
 	"encoding/json"
