@@ -1,3 +1,15 @@
+// License stuff
+
+// Package wshandler implements a WebSockets interface to the Archiver API at
+// http://godoc.org/github.com/gtfierro/giles/archiver
+//
+// Overview
+//
+// The WebSockets interface expects data to be in the same JSON format as the HTTP
+// interface. The routes are the same too, but are prefixed with '/ws', so '/api/query'
+// becomes '/ws/api/query'.
+//
+// A DDP interface is also planned for the Giles Archiver
 package wshandler
 
 import (
@@ -16,7 +28,6 @@ func Handle(a *archiver.Archiver) {
 	a.R.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
 	a.R.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
 }
-
 
 var upgrader = &websocket.Upgrader{
 	ReadBufferSize:  1024,
