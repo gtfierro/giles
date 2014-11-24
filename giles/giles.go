@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/gtfierro/giles/giles"
+	"github.com/gtfierro/giles/archiver"
 	"github.com/gtfierro/giles/httphandler"
 	"github.com/gtfierro/giles/wshandler"
 	"log"
@@ -55,7 +55,7 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	a := giles.NewArchiver(*archiverport, *readingdbip, *readingdbport,
+	a := archiver.NewArchiver(*archiverport, *readingdbip, *readingdbport,
 		*mongoip, *mongoport, *tsdbstring, *tsdbkeepalive,
 		"0.0.0.0:"+strconv.Itoa(*archiverport))
 	go a.PrintStatus()
