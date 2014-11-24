@@ -28,7 +28,12 @@ func NewRepublisher() *Republisher {
 func (r *Republisher) HandleSubscriber(rw http.ResponseWriter, query string) {
 	tokens := tokenize(query)
 	where := parseWhere(&tokens)
-	uuids := r.store.GetUUIDs(where.ToBson())
+	uuids, err := r.store.GetUUIDs(where.ToBson())
+	if err != nil {
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
 	client := &RepublishClient{uuids: uuids, in: make(chan []byte), writer: rw}
 	r.Clients = append(r.Clients, client)
 	for _, uuid := range uuids {

@@ -297,7 +297,10 @@ func (s *Store) GetTags(target bson.M, is_distinct bool, distinct_key string, wh
 
 func (s *Store) SetTags(updates bson.M, apikey string, where bson.M) (bson.M, error) {
 	var res bson.M
-	uuids := s.GetUUIDs(where)
+	uuids, err := s.GetUUIDs(where)
+	if err != nil {
+		return res, err
+	}
 	for _, uuid := range uuids {
 		ok, err := s.CanWrite(apikey, uuid)
 		if !ok || err != nil {
@@ -325,17 +328,17 @@ func (s *Store) TagsUUID(uuid string) ([]bson.M, error) {
 /*
   Resolve a query to a slice of UUIDs
 */
-func (s *Store) GetUUIDs(where bson.M) []string {
+func (s *Store) GetUUIDs(where bson.M) ([]string, error) {
 	var tmp []bson.M
+	var res = []string{}
 	err := s.metadata.Find(where).Select(bson.M{"uuid": 1}).All(&tmp)
 	if err != nil {
-		log.Panic(err)
+		return res, err
 	}
-	var res = []string{}
 	for _, uuid := range tmp {
 		res = append(res, uuid["uuid"].(string))
 	}
-	return res
+	return res, nil
 }
 
 /*

@@ -225,27 +225,21 @@ func (a *Archiver) NextData(streamids []string, start uint64, limit int32) ([]Sm
 // a map[string]int corresponding to which tags we wish returned. A value of 1 means the tag will be
 // returned (and ignores all other tags), and a value of 0 means the tag will NOT be returned (and all
 // other tags will be).
-//
-// Not yet implemented!
-func (a *Archiver) GetTags(select_tags, where_tags map[string]interface{}) (map[string]interface{}, error) {
-	return make(map[string]interface{}), nil
+func (a *Archiver) GetTags(select_tags, where_tags bson.M) ([]bson.M, error) {
+	return a.store.GetTags(select_tags, false, "", where_tags)
 }
 
 // Returns a list of UUIDs for all streams that match the provided 'where' clause. where_tags is a bson.M
 // object that follows the same syntax as a MongoDB query. This query is executed against the underlying
 // metadata store. As we move into supporting multiple possible metadata storage solutions, this interface
 // may change.
-//
-// Not yet implemented!
 func (a *Archiver) GetUUIDs(where_tags bson.M) ([]string, error) {
-	return []string{}, nil
+	return a.store.GetUUIDs(where_tags)
 }
 
 // Returns all tags for the stream with the provided UUID
-//
-// Not yet implemented!
 func (a *Archiver) TagsUUID(uuid string) ([]bson.M, error) {
-	return []bson.M{}, nil
+	return a.store.TagsUUID(uuid)
 }
 
 // For all streams that match the WHERE clause in the provided query string,
@@ -259,6 +253,8 @@ func (a *Archiver) HandleSubscriber(rw http.ResponseWriter, query string) {
 
 // For all streams that match the provided where clause in where_tags, sets the key-value
 // pairs specified in update_tags.
+//
+// Not yet implemented!
 func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}) (int, error) {
 	return 0, nil
 }
