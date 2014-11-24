@@ -36,6 +36,7 @@ parser_rdbdump.add_argument('-s','--startyear',help='Year to start pulling data 
 parser_rdbdump.add_argument('-e','--endyear',help='Year to stop pulling data from',type=int,default=2014)
 parser_rdbdump.add_argument('-b','--blocksize',help='How many streamids to poll at once',type=int,default=10000)
 parser_rdbdump.add_argument('-d','--directory',help='Directory to dump data',type=str,default='.')
+parser_rdbdump.add_argument('-f','--streamfile',help='CSV file where each line is streamid,uuid. If specified, dumped files will be stored with UUID as filename. Else, streamid used as filename')
 
 parser_smapdump = subparsers.add_parser('smapdump', help='Dump streams from sMAP archiver')
 parser_smapdump.add_argument('-s','--smapurl', default='localhost:8079',help='sMAP Archiver URL')
@@ -44,6 +45,7 @@ parser_smapdump.add_argument('-q','--query', default='select distinct uuid',help
 parser_import = subparsers.add_parser('import', help='Import data from external file into sMAP')
 parser_import.add_argument('-d', '--delimiter', type=str, default=',', help='Expects each line in the file to be <timestamp><delim><value>. Allows you to specify a custom delimiter')
 parser_import.add_argument('-e', '--header', action="store_true", help='Do the specified files include a header? If so, importer skips the first line')
+parser_import.add_argument('-m', '--metadata', type=str, help='Metadata file containing k/v = uuid/metadata. Used to lookup Path names')
 parser_import.add_argument('files', nargs='+', type=str, help='File(s) or directory to import. If directory, gilescmd will go 1 level deep and find all files. List of files can also be specified (use commas to separate files)')
 
 args = parser.parse_args()
@@ -109,7 +111,8 @@ elif args.subparsername == 'rdbdump':
     url,port = args.readingdb.split(':')
     rdb.db_setup(url,int(port))
     db = rdb.db_open(host=url,port=int(port))
-    for streamids in get_streamids(args.blocksize): #get_streamids_file('streamids.csv',args.blocksize):
+    streamiter = get_streamids(args.blocksize) if not args.streamfile else get_streamids_file(args.streamfile, args.blocksize)
+    for streamids in streamiter:
         for start,end in get_times(args.startyear,args.endyear):
             print "pulling {0} to {1} for streamids {2} to {3}".format(start, end, streamids[0], streamids[-1]),
             sys.stdout.flush()
@@ -158,9 +161,7 @@ elif args.subparsername == 'smapdump':
         for uuid, uuiddata in zip(uuids, res):
             d = pd.DataFrame(uuiddata)
             d[0] = d[0] * 1000
-            #d[0] = d[0].astype(str).replace('.0','')
             d[0] = d[0].astype(int)
-            #d[0] = pd.to_datetime(d[0])
             if not d[0].any(): continue
             with open(uuid+'.csv', 'a+') as f:
                 d.to_csv(f, index=False, header=None)
