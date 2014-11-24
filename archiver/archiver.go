@@ -253,10 +253,9 @@ func (a *Archiver) HandleSubscriber(rw http.ResponseWriter, query string) {
 
 // For all streams that match the provided where clause in where_tags, sets the key-value
 // pairs specified in update_tags.
-//
-// Not yet implemented!
-func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}) (int, error) {
-	return 0, nil
+func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}, apikey string) (int, error) {
+	res, err := a.store.SetTags(update_tags, apikey, where_tags)
+	return res["Updated"].(int), err
 }
 
 func (a *Archiver) PrintStatus() {

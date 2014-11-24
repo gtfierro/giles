@@ -315,9 +315,7 @@ func (s *Store) SetTags(updates bson.M, apikey string, where bson.M) (bson.M, er
 	return bson.M{"Updated": info.Updated}, nil
 }
 
-/*
-   Return all metadata for a certain UUID
-*/
+// Return all metadata for a certain UUID
 func (s *Store) TagsUUID(uuid string) ([]bson.M, error) {
 	staged := s.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"_id": 0, "_api": 0})
 	res := []bson.M{}
@@ -325,9 +323,7 @@ func (s *Store) TagsUUID(uuid string) ([]bson.M, error) {
 	return res, err
 }
 
-/*
-  Resolve a query to a slice of UUIDs
-*/
+// Resolve a query to a slice of UUIDs
 func (s *Store) GetUUIDs(where bson.M) ([]string, error) {
 	var tmp []bson.M
 	var res = []string{}
@@ -341,9 +337,7 @@ func (s *Store) GetUUIDs(where bson.M) ([]string, error) {
 	return res, nil
 }
 
-/*
-  Resolve a query to a slice of StreamIds
-*/
+// Resolve a query to a slice of StreamIds
 func (s *Store) getStreamIds(where bson.M) []uint32 {
 	var tmp []bson.M
 	var res []uint32
@@ -357,6 +351,8 @@ func (s *Store) getStreamIds(where bson.M) []uint32 {
 	return res
 }
 
+// retrieve the unit of time for the stream identified by the given UUID.
+// Should return one of ns, us, ms, s; defaults to ms
 func (s *Store) GetUnitofTime(uuid string) string {
 	var res bson.M
 	err := s.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"Properties.UnitofTime": 1}).One(&res)
