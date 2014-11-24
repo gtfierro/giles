@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-type Connection struct {
+type connection struct {
 	conn *net.Conn
 	In   chan *[]byte
 }
 
 type ConnectionMap struct {
 	sync.Mutex
-	streams   map[string]*Connection
+	streams   map[string]*connection
 	keepalive int
 }
 
@@ -29,7 +29,7 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte, tsdb TSDB) {
 		if err != nil {
 			log.Panic("Error connecting to TSDB")
 		}
-		conn = &Connection{conn: &c, In: make(chan *[]byte)}
+		conn = &connection{conn: &c, In: make(chan *[]byte)}
 		if _, found := cm.streams[uuid]; !found {
 			cm.streams[uuid] = conn
 			go cm.watchdog(uuid)

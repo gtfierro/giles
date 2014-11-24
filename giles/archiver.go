@@ -62,6 +62,7 @@ type Archiver struct {
 //   - tsdbkeepalive: number of seconds to maintain a connection open to the timeseries database
 //     for a given unique identifier (see information on Pool)
 //   - mongoip, mongoport: address for MongoDB instance, used for metadata, API keys, etc
+//TODO: replace with an ArchiverConfig struct -- much better than a shitton of arguments
 func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
 	mongoport int, tsdbstring string, tsdbkeepalive int, address string) *Archiver {
 	logging.SetBackend(logBackend)
