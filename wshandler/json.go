@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-var log = logging.MustGetLogger("httphandler")
+var log = logging.MustGetLogger("wshandler")
 var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
