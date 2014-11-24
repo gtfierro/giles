@@ -3,7 +3,7 @@ package httphandler
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/gtfierro/giles/giles"
+	"github.com/gtfierro/giles/archiver"
 	"github.com/op/go-logging"
 	"io/ioutil"
 	"net/http"
@@ -17,7 +17,7 @@ var log = logging.MustGetLogger("httphandler")
 var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
-func Handle(a *giles.Archiver) {
+func Handle(a *archiver.Archiver) {
 	log.Notice("Handling HTTP/TCP")
 	a.R.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
 	a.R.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
@@ -27,7 +27,7 @@ func Handle(a *giles.Archiver) {
 	//a.R.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
 }
 
-func curryhandler(a *giles.Archiver, f func(*giles.Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
+func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
 	return func(rw http.ResponseWriter, req *http.Request) {
 		f(a, rw, req)
 	}
@@ -42,7 +42,7 @@ func curryhandler(a *giles.Archiver, f func(*giles.Archiver, http.ResponseWriter
 // of the timeseries path to get all the 'trickle down' metadata from the higher
 // parts of the metadata tree. That logic takes place in store.SavePathMetadata and
 // store.SaveMetadata
-func AddReadingHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
+func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 	//TODO: add transaction coalescing
 	defer req.Body.Close()
 	vars := mux.Vars(req)
@@ -65,7 +65,7 @@ func AddReadingHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Requ
 
 // Receives POST request which contains metadata query. Subscribes the
 // requester to readings from streams which match that metadata query
-func RepublishHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
+func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -75,7 +75,7 @@ func RepublishHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Reque
 }
 
 // Resolves sMAP queries and returns results
-func QueryHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
+func QueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	vars := mux.Vars(req)
 	key := unescape(vars["key"])
@@ -97,7 +97,7 @@ func QueryHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) 
 /**
  * Returns metadata for a uuid. A limited GET alternative to the POST query handler
 **/
-func TagsHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
+func TagsHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	uuid := vars["uuid"]
 	rw.Header().Set("Content-Type", "application/json")
@@ -119,7 +119,7 @@ func TagsHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
 	rw.Write(res)
 }
 
-//func DataHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
+//func DataHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 //	var starttime, endtime uint64
 //	var limit int64
 //	var startstr, endstr, timeunitstr, limitstr []string

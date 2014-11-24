@@ -3,14 +3,14 @@ package wshandler
 import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/gtfierro/giles/giles"
+	"github.com/gtfierro/giles/archiver"
 	"net/http"
 	"strings"
 )
 
 // Creates routes for WebSocket endpoints. These are the same as the normal HTTP/TCP endpoints, but are
 // preceeded with '/ws/`. Not served until Archiver.Serve() is called.
-func Handle(a *giles.Archiver) {
+func Handle(a *archiver.Archiver) {
 	log.Notice("Handling WebSockets")
 	a.R.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
 	a.R.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
@@ -23,7 +23,7 @@ var upgrader = &websocket.Upgrader{
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true }}
 
-func WsAddReadingHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
+func WsAddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 	ws, err := upgrader.Upgrade(rw, req, nil)
 	if err != nil {
 		log.Error("Error establishing websocket: %v", err)
@@ -48,7 +48,7 @@ func WsAddReadingHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Re
 	ws.WriteJSON(map[string]string{"status": "ok"})
 }
 
-func WsTagsHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
+func WsTagsHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 	ws, err := upgrader.Upgrade(rw, req, nil)
 	if err != nil {
 		log.Error("Error establishing websocket: %v", err)
@@ -63,7 +63,7 @@ func WsTagsHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request)
 	log.Debug("got uuid %v", uuid, ws)
 }
 
-func WsQueryHandler(a *giles.Archiver, rw http.ResponseWriter, req *http.Request) {
+func WsQueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
 	ws, err := upgrader.Upgrade(rw, req, nil)
 	if err != nil {
 		log.Error("Error: %v", err)
@@ -77,7 +77,7 @@ func unescape(s string) string {
 	return strings.Replace(s, "%3D", "=", -1)
 }
 
-func curryhandler(a *giles.Archiver, f func(*giles.Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
+func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
 	return func(rw http.ResponseWriter, req *http.Request) {
 		f(a, rw, req)
 	}

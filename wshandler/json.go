@@ -3,7 +3,7 @@ package wshandler
 import (
 	"encoding/json"
 	simplejson "github.com/bitly/go-simplejson"
-	"github.com/gtfierro/giles/giles"
+	"github.com/gtfierro/giles/archiver"
 	"github.com/op/go-logging"
 	"gopkg.in/mgo.v2/bson"
 	"io"
@@ -27,7 +27,7 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 This should not do any fancy sMAP-related work; that's a job for the store. Here we just return the
 object-versions of all the data.
 */
-func handleJSON(r io.Reader) (map[string]*giles.SmapMessage, error) {
+func handleJSON(r io.Reader) (map[string]*archiver.SmapMessage, error) {
 	/*
 	 * we receive a bunch of top-level keys that we don't know, so we unmarshal them into a
 	 * map, and then parse each of the internal objects individually
@@ -37,7 +37,7 @@ func handleJSON(r io.Reader) (map[string]*giles.SmapMessage, error) {
 	decoder.UseNumber()
 	var e error
 	var rawmessage map[string]*json.RawMessage
-	var decodedjson = map[string]*giles.SmapMessage{}
+	var decodedjson = map[string]*archiver.SmapMessage{}
 	err := decoder.Decode(&rawmessage)
 	if err != nil {
 		return decodedjson, err
@@ -53,7 +53,7 @@ func handleJSON(r io.Reader) (map[string]*giles.SmapMessage, error) {
 		// get uuid
 		uuid := js.Get("uuid").MustString("")
 
-		message := &giles.SmapMessage{Path: path, UUID: uuid, Contents: []string{}}
+		message := &archiver.SmapMessage{Path: path, UUID: uuid, Contents: []string{}}
 
 		// get metadata
 		localmetadata := js.Get("Metadata").MustMap()
@@ -77,7 +77,7 @@ func handleJSON(r io.Reader) (map[string]*giles.SmapMessage, error) {
 
 		// get readings
 		readingarray := js.Get("Readings").MustArray()
-		sr := &giles.SmapReading{UUID: uuid}
+		sr := &archiver.SmapReading{UUID: uuid}
 		srs := make([][]interface{}, len(readingarray))
 		for idx, readings := range readingarray {
 			reading := readings.([]interface{})
