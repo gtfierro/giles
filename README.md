@@ -1,5 +1,18 @@
 ## Giles
 
+### Install
+
+You will need go version >= 1.3.
+
+```bash
+go get github.com/gtfierro/giles/giles
+go install github.com/gtfierro/giles/giles
+```
+
+You can now run the `giles` comand. You can see the usage with `giles -h`.
+
+### Explanation
+
 Given that I am planning on dramatically expanding the range of incoming
 interfaces that Giles supports, there should really be a core library of
 functionality, and the various interfaces should just translate the incoming
