@@ -4,6 +4,9 @@ import (
 	"sync/atomic"
 )
 
+// This is a helper type for basic counting stats. Calling counter.Mark()
+// will atomically add 1 to the internal count. Calling counter.Reset() will
+// return the current count and return the count to 0
 type counter struct {
 	Count uint64
 }

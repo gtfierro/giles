@@ -11,6 +11,9 @@ import (
 var streamids = make(map[string]uint32)
 var maxstreamid uint32 = 0
 
+// Because we can send different types of protobuf messages,
+// we include this prefixed header to all outgoing packets
+// to ReadingDB to identify what kind of action we are doing
 type header struct {
 	Type   rdbproto.MessageType
 	Length uint32
