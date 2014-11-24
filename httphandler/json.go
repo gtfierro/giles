@@ -75,6 +75,7 @@ func handleJSON(r io.Reader) (map[string]*giles.SmapMessage, error) {
 		srs := make([][]interface{}, len(readingarray))
 		for idx, readings := range readingarray {
 			reading := readings.([]interface{})
+			//TODO: if reading[0],reading[1] are not actually json.Number, then the cast fails
 			ts, e := strconv.ParseUint(string(reading[0].(json.Number)), 10, 64)
 			if e != nil {
 				return decodedjson, e
