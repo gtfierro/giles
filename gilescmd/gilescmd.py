@@ -12,6 +12,7 @@ import pandas as pd
 from smap.contrib import dtutil
 from pymongo import MongoClient
 from smap.contrib import dtutil
+from smap.util import build_recursive
 from smap.archiver.client import SmapClient
 from collections import defaultdict
 
@@ -175,7 +176,11 @@ elif args.subparsername == 'import':
     if args.files is None:
         print 'You must specify file(s) to import'
         sys.exit(1)
+    if not args.metadata:
+        print 'Please specify a metadata file'
+        sys.exit(1)
     files = args.files
+    metadata = json.load(open(args.metadata)) if args.metadata else None
     exists = map(lambda x: os.path.exists(x), files)
     if not all(exists):
         notexist = [y for x,y in zip(exists, files) if not x]
@@ -183,23 +188,28 @@ elif args.subparsername == 'import':
         sys.exit(1)
     for f in files:
         print "Reading",f
+        # get data from file
         if not args.header:
             d = pd.read_csv(f,sep=args.delimiter,header=None)
         else:
             d = pd.read_csv(f,sep=args.delimiter)
-        obj = {'/sensor1': {'Readings': [], 'uuid': str(uuid.uuid1())}}
+        md = metadata[f.split('/')[-1].split('.')[0]]
+        path = md.pop('Path')
+        obj = {path: build_recursive(md,suppress=[])}
         row = 0
         while row*1000 < len(d):
             data = d[row*1000:(row+1)*1000].to_json(orient='values').replace('.0,',',')
             if not len(data):
                 break
-            obj['/sensor1']['Readings'] = json.loads(data)
+            obj[path]['Readings'] = json.loads(data)
             row += 1
             try:
+                print obj
                 resp = requests.post('http://localhost:8079/add/jm-5tEwYdB39T-2cqYwM94kkRJ2-wQ0aNMSmflsjNidsuqBvlA4EtyMSTCYX5VEVhXIyvXFSlrB6dVIfoEIZVg==',data=json.dumps(obj))
                 if not resp.ok:
                     print resp.content
                     print obj
+                obj[path] = {'uuid': obj['uuid']}
             except:
                 break
 
