@@ -11,6 +11,14 @@ type connection struct {
 	In   chan *[]byte
 }
 
+// Giles can create a connection to readingdb for each UUID representing a timeseries. To avoid
+// unnecessarily reopening connections, it maintains a map of UUIDs to watchdog goroutines.
+// Each goroutine has a timeout (defaults to 30s) -- if it does not receive a pending write
+// for its UUID within the time out, it closes the connection to readingdb, and refreshes
+// the timout when it receives a reading.
+//
+// Using the pool.ConnectionMap interface is by no means necessary, but it can help with
+// the parallelization of writes to the timeseries database
 type ConnectionMap struct {
 	sync.Mutex
 	streams   map[string]*connection
@@ -37,13 +45,6 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte, tsdb TSDB) {
 	}
 }
 
-/*
- * Giles creates a connection to readingdb for each UUID representing a timeseries. To avoid
- * unnecessarily reopening connections, it maintains a map of UUIDs to watchdog goroutines.
- * Each goroutine has a timeout (defaults to 30s) -- if it does not receive a pending write
- * for its UUID within the time out, it closes the connection to readingdb, and refreshes
- * the timout when it receives a reading.
-**/
 func (cm *ConnectionMap) watchdog(uuid string) {
 	var timeout <-chan time.Time
 	timer := time.NewTimer(time.Duration(cm.keepalive) * time.Second)
