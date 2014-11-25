@@ -1,7 +1,8 @@
 package archiver
 
 import (
-	"github.com/SoftwareDefinedBuildings/quasar"
+	"github.com/SoftwareDefinedBuildings/quasar/cpinterface"
+	capn "github.com/glycerine/go-capnproto"
 	"net"
 	"strconv"
 )
@@ -11,7 +12,6 @@ import (
 // TSDB interface (look at interfaces.go).
 type QDB struct {
 	addr  *net.TCPAddr
-	q     *quasar.Quasar
 	cm    *ConnectionMap
 	store *Store
 }
@@ -35,6 +35,23 @@ func NewQuasar(ip string, port int, connectionkeepalive int) *QDB {
 }
 
 func (q *QDB) Add(sr *SmapReading) bool {
+	if len(sr.Readings) == 0 {
+		return false
+	}
+	//buf := bytes.Buffer{}
+	seg := capn.NewBuffer(nil)
+	req := cpinterface.NewRootRequest(seg)
+	ins := req.InsertValues()
+	ins.SetUuid([]byte(sr.UUID))
+	rl := cpinterface.NewRecordList(seg, len(sr.Readings))
+	rla := rl.ToArray()
+	for i, val := range sr.Readings {
+		rla[i].SetTime(int64(val[0].(uint64)))
+		rla[i].SetValue(val[1].(float64))
+	}
+	ins.SetValues(rl)
+	conn, _ := q.GetConnection()
+	seg.WriteTo(conn)
 	return true
 }
 
@@ -51,7 +68,11 @@ func (q *QDB) GetData(uuids []string, start uint64, end uint64) ([]SmapResponse,
 }
 
 func (q *QDB) GetConnection() (net.Conn, error) {
-	return nil, nil
+	conn, err := net.DialTCP("tcp", nil, q.addr)
+	if err == nil {
+		conn.SetKeepAlive(true)
+	}
+	return conn, err
 }
 
 func (q *QDB) LiveConnections() int {
