@@ -95,5 +95,7 @@ func (ast *AST) Repr() {
 		fmt.Println("  ", ast.Target.(*setTarget).Updates)
 	}
 	fmt.Println("Where:")
-	fmt.Println(ast.Where.ToBson())
+	if ast.Where != nil {
+		fmt.Println(ast.Where.ToBson())
+	}
 }
