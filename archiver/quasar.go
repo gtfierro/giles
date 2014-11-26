@@ -59,13 +59,12 @@ func (q *QDB) Add(sr *SmapReading) bool {
 	if len(sr.Readings) == 0 {
 		return false
 	}
-	//buf := bytes.Buffer{}
+	uuid := uuid.Parse(sr.UUID)
 	seg := capn.NewBuffer(nil)
 	req := cpinterface.NewRootRequest(seg)
-	ins := req.InsertValues()
-	uuid := uuid.Parse(sr.UUID)
+	req.SetEchoTag(0)
+	ins := cpinterface.NewCmdInsertValues(seg)
 	ins.SetUuid([]byte(uuid))
-	log.Debug("UUID: %v", uuid)
 	rl := cpinterface.NewRecordList(seg, len(sr.Readings))
 	rla := rl.ToArray()
 	for i, val := range sr.Readings {
@@ -75,7 +74,6 @@ func (q *QDB) Add(sr *SmapReading) bool {
 	ins.SetValues(rl)
 	ins.SetSync(false)
 	req.SetInsertValues(ins)
-	log.Debug("writing %v echo tag %v", req.Which(), req.EchoTag())
 	conn, err := q.GetConnection()
 	if err != nil {
 		log.Error("Error getting connection %v", err)
