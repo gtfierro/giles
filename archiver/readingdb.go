@@ -166,12 +166,9 @@ func (rdb *RDB) sendAndReceive(payload []byte, msgtype rdbproto.MessageType, con
 	return sr, err
 }
 
-/*
-  Retrieves the last [limit] readings before (and including)
-  [ref] for all streams that match query [w]
-
-  [limit] defaults to 1
-*/
+// Retrieves the last [limit] readings before (and including)
+// [ref] for all streams that match query [w]
+// [limit] defaults to 1
 func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
@@ -197,12 +194,9 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 	return retdata, err
 }
 
-/*
-  Retrieves the last [limit] readings after (and including)
-  [ref] for all streams that match query [w]
-
-  [limit] defaults to 1
-*/
+// Retrieves the last [limit] readings after (and including)
+// [ref] for all streams that match query [w]
+// [limit] defaults to 1
 func (rdb *RDB) Next(uuids []string, ref uint64, limit int32) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
@@ -228,10 +222,8 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 	return retdata, err
 }
 
-/*
-  Retrieves all data between (and including) [start] and [end]
-  for all streams matching query [w]
-*/
+// Retrieves all data between (and including) [start] and [end]
+// for all streams matching query [w]
 func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, error) {
 	if start > end {
 		start, end = end, start

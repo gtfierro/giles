@@ -1,6 +1,8 @@
 package archiver
 
 import (
+	"code.google.com/p/go-uuid/uuid"
+	"errors"
 	"github.com/SoftwareDefinedBuildings/quasar/cpinterface"
 	capn "github.com/glycerine/go-capnproto"
 	"net"
@@ -48,7 +50,7 @@ func (q *QDB) receive(conn *net.Conn) {
 			log.Error("Received error status code when writing %v", req.StatusCode())
 		}
 	case cpinterface.RESPONSE_RECORDS:
-		log.Debug("qsv %v", req.Records())
+		parseResponseRecords(&req)
 	}
 
 }
@@ -61,7 +63,9 @@ func (q *QDB) Add(sr *SmapReading) bool {
 	seg := capn.NewBuffer(nil)
 	req := cpinterface.NewRootRequest(seg)
 	ins := req.InsertValues()
-	ins.SetUuid([]byte(sr.UUID))
+	uuid := uuid.Parse(sr.UUID)
+	ins.SetUuid([]byte(uuid))
+	log.Debug("UUID: %v", uuid)
 	rl := cpinterface.NewRecordList(seg, len(sr.Readings))
 	rla := rl.ToArray()
 	for i, val := range sr.Readings {
@@ -69,6 +73,7 @@ func (q *QDB) Add(sr *SmapReading) bool {
 		rla[i].SetValue(val[1].(float64))
 	}
 	ins.SetValues(rl)
+	ins.SetSync(false)
 	req.SetInsertValues(ins)
 	log.Debug("writing %v echo tag %v", req.Which(), req.EchoTag())
 	conn, err := q.GetConnection()
@@ -89,8 +94,10 @@ func (q *QDB) Prev(uuids []string, start uint64, limit int32) ([]SmapResponse, e
 	seg := capn.NewBuffer(nil)
 	req := cpinterface.NewRootRequest(seg)
 	qnv := req.QueryNearestValue()
-	qnv.SetBackward(false) // set to query previous values
-	qnv.SetUuid([]byte(uuids[0]))
+	qnv.SetBackward(true) // set to query previous values
+	uuid := uuid.Parse(uuids[0])
+	qnv.SetUuid([]byte(uuid))
+	log.Debug("prev UUID: %v", uuid)
 	qnv.SetTime(int64(start))
 	req.SetQueryNearestValue(qnv)
 	conn, err := q.GetConnection()
@@ -108,6 +115,26 @@ func (q *QDB) Prev(uuids []string, start uint64, limit int32) ([]SmapResponse, e
 }
 
 func (q *QDB) Next(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
+	seg := capn.NewBuffer(nil)
+	req := cpinterface.NewRootRequest(seg)
+	qnv := req.QueryNearestValue()
+	qnv.SetBackward(false) // set to query next values
+	uuid := uuid.Parse(uuids[0])
+	qnv.SetUuid([]byte(uuid))
+	log.Debug("next UUID: %v", uuid)
+	qnv.SetTime(int64(start))
+	req.SetQueryNearestValue(qnv)
+	conn, err := q.GetConnection()
+	log.Debug("writing %v echo tag %v", req.Which(), req.EchoTag())
+	if err != nil {
+		log.Error("Error getting connection %v", err)
+		return []SmapResponse{}, err
+	}
+	_, err = seg.WriteTo(conn)
+	if err != nil {
+		return []SmapResponse{}, err
+	}
+	q.receive(&conn)
 	return []SmapResponse{}, nil
 }
 
@@ -129,4 +156,15 @@ func (q *QDB) LiveConnections() int {
 
 func (q *QDB) AddStore(s *Store) {
 	q.store = s
+}
+
+func parseResponseRecords(resp *cpinterface.Response) ([]SmapResponse, error) {
+	var ret []SmapResponse
+	if resp.StatusCode() != 0 {
+		return ret, errors.New("Error when reading from Quasar:" + resp.StatusCode().String())
+	}
+	for i, rec := range resp.Records().Values().ToArray() {
+		log.Debug("idx %v value %v", i, rec)
+	}
+	return ret, nil
 }
