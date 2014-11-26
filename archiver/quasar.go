@@ -34,6 +34,25 @@ func NewQuasar(ip string, port int, connectionkeepalive int) *QDB {
 	return &QDB{addr: tcpaddr}
 }
 
+func (q *QDB) receive(conn *net.Conn) {
+	seg, err := capn.ReadFromStream(*conn, nil)
+	if err != nil {
+		log.Error("Error receiving data from Quasar %v", err)
+		return
+	}
+	req := cpinterface.ReadRootResponse(seg)
+
+	switch req.Which() {
+	case cpinterface.RESPONSE_VOID:
+		if req.StatusCode() != cpinterface.STATUSCODE_OK {
+			log.Error("Received error status code when writing %v", req.StatusCode())
+		}
+	case cpinterface.REQUEST_QUERYSTANDARDVALUES:
+		log.Debug("qsv")
+	}
+
+}
+
 func (q *QDB) Add(sr *SmapReading) bool {
 	if len(sr.Readings) == 0 {
 		return false
@@ -50,8 +69,19 @@ func (q *QDB) Add(sr *SmapReading) bool {
 		rla[i].SetValue(val[1].(float64))
 	}
 	ins.SetValues(rl)
-	conn, _ := q.GetConnection()
-	seg.WriteTo(conn)
+	req.SetInsertValues(ins)
+	log.Debug("writing %v echo tag %v", req.Which(), req.EchoTag())
+	conn, err := q.GetConnection()
+	if err != nil {
+		log.Error("Error getting connection %v", err)
+		return false
+	}
+	_, err = seg.WriteTo(conn)
+	if err != nil {
+		log.Error("Error writing %v", err)
+		return false
+	}
+	q.receive(&conn)
 	return true
 }
 
