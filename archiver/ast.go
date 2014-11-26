@@ -138,6 +138,12 @@ func parsedataTarget(tokens *[]string) (target_T, error) {
 					dt.Ref = time
 				}
 				timetokens = []string{}
+			} else {
+				time, err := handleTime(timetokens)
+				if err != nil {
+					return dt, err
+				}
+				dt.Ref = time
 			}
 		}
 		pos++ //advance to next token
