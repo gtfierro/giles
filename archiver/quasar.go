@@ -47,8 +47,8 @@ func (q *QDB) receive(conn *net.Conn) {
 		if req.StatusCode() != cpinterface.STATUSCODE_OK {
 			log.Error("Received error status code when writing %v", req.StatusCode())
 		}
-	case cpinterface.REQUEST_QUERYSTANDARDVALUES:
-		log.Debug("qsv")
+	case cpinterface.RESPONSE_RECORDS:
+		log.Debug("qsv %v", req.Records())
 	}
 
 }
@@ -86,6 +86,24 @@ func (q *QDB) Add(sr *SmapReading) bool {
 }
 
 func (q *QDB) Prev(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
+	seg := capn.NewBuffer(nil)
+	req := cpinterface.NewRootRequest(seg)
+	qnv := req.QueryNearestValue()
+	qnv.SetBackward(false) // set to query previous values
+	qnv.SetUuid([]byte(uuids[0]))
+	qnv.SetTime(int64(start))
+	req.SetQueryNearestValue(qnv)
+	conn, err := q.GetConnection()
+	log.Debug("writing %v echo tag %v", req.Which(), req.EchoTag())
+	if err != nil {
+		log.Error("Error getting connection %v", err)
+		return []SmapResponse{}, err
+	}
+	_, err = seg.WriteTo(conn)
+	if err != nil {
+		return []SmapResponse{}, err
+	}
+	q.receive(&conn)
 	return []SmapResponse{}, nil
 }
 
