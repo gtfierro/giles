@@ -118,6 +118,7 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 			return ret, err
 		}
 		sr, err := q.receive(&conn)
+		sr.UUID = uu
 		ret[i] = sr
 	}
 	return ret, nil
