@@ -1,7 +1,7 @@
 package archiver
 
 import (
-	"code.google.com/p/go-uuid/uuid"
+	uuidlib "code.google.com/p/go-uuid/uuid"
 	"errors"
 	"github.com/SoftwareDefinedBuildings/quasar/cpinterface"
 	capn "github.com/glycerine/go-capnproto"
@@ -68,7 +68,7 @@ func (q *QDB) Add(sr *SmapReading) bool {
 	if len(sr.Readings) == 0 {
 		return false
 	}
-	uuid := uuid.Parse(sr.UUID)
+	uuid := uuidlib.Parse(sr.UUID)
 	seg := capn.NewBuffer(nil)
 	req := cpinterface.NewRootRequest(seg)
 	req.SetEchoTag(0)
@@ -97,53 +97,38 @@ func (q *QDB) Add(sr *SmapReading) bool {
 	return true
 }
 
-//TODO: make this function perform for all UUIDs it is given, not just 1
+func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapResponse, error) {
+	var ret = make([]SmapResponse, len(uuids))
+	for i, uu := range uuids {
+		seg := capn.NewBuffer(nil)
+		req := cpinterface.NewRootRequest(seg)
+		qnv := cpinterface.NewCmdQueryNearestValue(seg)
+		qnv.SetBackward(backwards)
+		uuid := uuidlib.Parse(uu)
+		qnv.SetUuid([]byte(uuid))
+		qnv.SetTime(int64(start))
+		req.SetQueryNearestValue(qnv)
+		conn, err := q.GetConnection()
+		if err != nil {
+			log.Error("Error getting connection %v", err)
+			return ret, err
+		}
+		_, err = seg.WriteTo(conn) // here, ignoring # bytes written
+		if err != nil {
+			return ret, err
+		}
+		sr, err := q.receive(&conn)
+		ret[i] = sr
+	}
+	return ret, nil
+}
+
 func (q *QDB) Prev(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
-	seg := capn.NewBuffer(nil)
-	req := cpinterface.NewRootRequest(seg)
-	qnv := cpinterface.NewCmdQueryNearestValue(seg)
-	qnv.SetBackward(true) // set to query previous values
-	uuid := uuid.Parse(uuids[0])
-	qnv.SetUuid([]byte(uuid))
-	log.Debug("data before %v for UUID: %v", start, uuid)
-	qnv.SetTime(int64(start))
-	req.SetQueryNearestValue(qnv)
-	conn, err := q.GetConnection()
-	log.Debug("writing %v echo tag %v", req.Which(), req.EchoTag())
-	if err != nil {
-		log.Error("Error getting connection %v", err)
-		return []SmapResponse{}, err
-	}
-	_, err = seg.WriteTo(conn)
-	if err != nil {
-		return []SmapResponse{}, err
-	}
-	sr, err := q.receive(&conn)
-	return []SmapResponse{sr}, nil
+	return q.queryNearestValue(uuids, start, limit, true)
 }
 
 func (q *QDB) Next(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
-	seg := capn.NewBuffer(nil)
-	req := cpinterface.NewRootRequest(seg)
-	qnv := cpinterface.NewCmdQueryNearestValue(seg)
-	qnv.SetBackward(false) // set to query next values
-	uuid := uuid.Parse(uuids[0])
-	qnv.SetUuid([]byte(uuid))
-	log.Debug("data after %v for UUID: %v", int64(start), uuid)
-	qnv.SetTime(int64(start))
-	req.SetQueryNearestValue(qnv)
-	conn, err := q.GetConnection()
-	log.Debug("writing %v echo tag %v", req.Which(), req.EchoTag())
-	if err != nil {
-		log.Error("Error getting connection %v", err)
-		return []SmapResponse{}, err
-	}
-	_, err = seg.WriteTo(conn)
-	if err != nil {
-		return []SmapResponse{}, err
-	}
-	sr, err := q.receive(&conn)
-	return []SmapResponse{sr}, nil
+	return q.queryNearestValue(uuids, start, limit, false)
 }
 
 func (q *QDB) GetData(uuids []string, start uint64, end uint64) ([]SmapResponse, error) {
