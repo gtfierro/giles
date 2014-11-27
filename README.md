@@ -11,6 +11,8 @@ go install github.com/gtfierro/giles/giles
 
 You can now run the `giles` comand. You can see the usage with `giles -h`.
 
+Documentation is available at http://godoc.org/github.com/gtfierro/giles
+
 ### Explanation
 
 Given that I am planning on dramatically expanding the range of incoming
@@ -19,7 +21,7 @@ functionality, and the various interfaces should just translate the incoming
 data into a form understood by that library. This will help avoid repeated
 code.
 
-So, what are those functions?
+So, what are those functions? (Interface has changed slightly, so these are **outdated**)
 
 timeseries:
 

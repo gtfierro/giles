@@ -36,22 +36,31 @@ func NewQuasar(ip string, port int, connectionkeepalive int) *QDB {
 	return &QDB{addr: tcpaddr}
 }
 
-func (q *QDB) receive(conn *net.Conn) {
+func (q *QDB) receive(conn *net.Conn) (SmapResponse, error) {
+	var sr = SmapResponse{}
 	seg, err := capn.ReadFromStream(*conn, nil)
 	if err != nil {
 		log.Error("Error receiving data from Quasar %v", err)
-		return
+		return sr, err
 	}
-	req := cpinterface.ReadRootResponse(seg)
+	resp := cpinterface.ReadRootResponse(seg)
 
-	switch req.Which() {
+	switch resp.Which() {
 	case cpinterface.RESPONSE_VOID:
-		if req.StatusCode() != cpinterface.STATUSCODE_OK {
-			log.Error("Received error status code when writing %v", req.StatusCode())
+		if resp.StatusCode() != cpinterface.STATUSCODE_OK {
+			log.Error("Received error status code when writing: %v", resp.StatusCode())
 		}
 	case cpinterface.RESPONSE_RECORDS:
-		parseResponseRecords(&req)
+		if resp.StatusCode() != 0 {
+			return sr, errors.New("Error when reading from Quasar:" + resp.StatusCode().String())
+		}
+		sr.Readings = [][]float64{}
+		for _, rec := range resp.Records().Values().ToArray() {
+			sr.Readings = append(sr.Readings, []float64{float64(rec.Time() * 1000), rec.Value()})
+		}
+		return sr, nil
 	}
+	return sr, nil
 
 }
 
@@ -88,14 +97,15 @@ func (q *QDB) Add(sr *SmapReading) bool {
 	return true
 }
 
+//TODO: make this function perform for all UUIDs it is given, not just 1
 func (q *QDB) Prev(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
 	seg := capn.NewBuffer(nil)
 	req := cpinterface.NewRootRequest(seg)
-	qnv := req.QueryNearestValue()
+	qnv := cpinterface.NewCmdQueryNearestValue(seg)
 	qnv.SetBackward(true) // set to query previous values
 	uuid := uuid.Parse(uuids[0])
 	qnv.SetUuid([]byte(uuid))
-	log.Debug("prev UUID: %v", uuid)
+	log.Debug("data before %v for UUID: %v", start, uuid)
 	qnv.SetTime(int64(start))
 	req.SetQueryNearestValue(qnv)
 	conn, err := q.GetConnection()
@@ -108,18 +118,18 @@ func (q *QDB) Prev(uuids []string, start uint64, limit int32) ([]SmapResponse, e
 	if err != nil {
 		return []SmapResponse{}, err
 	}
-	q.receive(&conn)
-	return []SmapResponse{}, nil
+	sr, err := q.receive(&conn)
+	return []SmapResponse{sr}, nil
 }
 
 func (q *QDB) Next(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
 	seg := capn.NewBuffer(nil)
 	req := cpinterface.NewRootRequest(seg)
-	qnv := req.QueryNearestValue()
+	qnv := cpinterface.NewCmdQueryNearestValue(seg)
 	qnv.SetBackward(false) // set to query next values
 	uuid := uuid.Parse(uuids[0])
 	qnv.SetUuid([]byte(uuid))
-	log.Debug("next UUID: %v", uuid)
+	log.Debug("data after %v for UUID: %v", int64(start), uuid)
 	qnv.SetTime(int64(start))
 	req.SetQueryNearestValue(qnv)
 	conn, err := q.GetConnection()
@@ -132,8 +142,8 @@ func (q *QDB) Next(uuids []string, start uint64, limit int32) ([]SmapResponse, e
 	if err != nil {
 		return []SmapResponse{}, err
 	}
-	q.receive(&conn)
-	return []SmapResponse{}, nil
+	sr, err := q.receive(&conn)
+	return []SmapResponse{sr}, nil
 }
 
 func (q *QDB) GetData(uuids []string, start uint64, end uint64) ([]SmapResponse, error) {
@@ -154,15 +164,4 @@ func (q *QDB) LiveConnections() int {
 
 func (q *QDB) AddStore(s *Store) {
 	q.store = s
-}
-
-func parseResponseRecords(resp *cpinterface.Response) ([]SmapResponse, error) {
-	var ret []SmapResponse
-	if resp.StatusCode() != 0 {
-		return ret, errors.New("Error when reading from Quasar:" + resp.StatusCode().String())
-	}
-	for i, rec := range resp.Records().Values().ToArray() {
-		log.Debug("idx %v value %v", i, rec)
-	}
-	return ret, nil
 }
