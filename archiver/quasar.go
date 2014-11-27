@@ -36,7 +36,7 @@ func NewQuasar(ip string, port int, connectionkeepalive int) *QDB {
 	return &QDB{addr: tcpaddr}
 }
 
-func (q *QDB) receive(conn *net.Conn) (SmapResponse, error) {
+func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
 	var sr = SmapResponse{}
 	seg, err := capn.ReadFromStream(*conn, nil)
 	if err != nil {
@@ -93,7 +93,7 @@ func (q *QDB) Add(sr *SmapReading) bool {
 		log.Error("Error writing %v", err)
 		return false
 	}
-	q.receive(&conn)
+	q.receive(&conn, -1)
 	return true
 }
 
@@ -117,7 +117,7 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 		if err != nil {
 			return ret, err
 		}
-		sr, err := q.receive(&conn)
+		sr, err := q.receive(&conn, limit)
 		sr.UUID = uu
 		ret[i] = sr
 	}
@@ -133,7 +133,30 @@ func (q *QDB) Next(uuids []string, start uint64, limit int32) ([]SmapResponse, e
 }
 
 func (q *QDB) GetData(uuids []string, start uint64, end uint64) ([]SmapResponse, error) {
-	return []SmapResponse{}, nil
+	var ret = make([]SmapResponse, len(uuids))
+	for i, uu := range uuids {
+		seg := capn.NewBuffer(nil)
+		req := cpinterface.NewRootRequest(seg)
+		qnv := cpinterface.NewCmdQueryStandardValues(seg)
+		uuid := uuidlib.Parse(uu)
+		qnv.SetUuid([]byte(uuid))
+		qnv.SetStartTime(int64(start))
+		qnv.SetEndTime(int64(end))
+		req.SetQueryStandardValues(qnv)
+		conn, err := q.GetConnection()
+		if err != nil {
+			log.Error("Error getting connection %v", err)
+			return ret, err
+		}
+		_, err = seg.WriteTo(conn) // here, ignoring # bytes written
+		if err != nil {
+			return ret, err
+		}
+		sr, err := q.receive(&conn, -1)
+		sr.UUID = uu
+		ret[i] = sr
+	}
+	return ret, nil
 }
 
 func (q *QDB) GetConnection() (net.Conn, error) {
