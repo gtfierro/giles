@@ -46,3 +46,17 @@ func (sm *SmapMessage) ToJson() []byte {
 	}
 	return b
 }
+
+// unit of time indicators
+type UnitOfTime uint
+
+const (
+	// nanoseconds 1000000000
+	UOT_NS = iota
+	// microseconds 1000000
+	UOT_US
+	// milliseconds 1000
+	UOT_MS
+	// seconds 1
+	UOT_S
+)
