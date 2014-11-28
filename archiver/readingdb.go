@@ -108,7 +108,7 @@ func NewReadingDB(ip string, port int, connectionkeepalive int) *RDB {
 	log.Notice("...connected!")
 	rdb := &RDB{addr: tcpaddr,
 		In: make(chan *[]byte),
-		cm: &ConnectionMap{streams: map[string]*connection{}, keepalive: connectionkeepalive}}
+		cm: NewConnectionMap(connectionkeepalive)}
 	return rdb
 }
 

@@ -33,7 +33,8 @@ func NewQuasar(ip string, port int, connectionkeepalive int) *QDB {
 		return nil
 	}
 	log.Notice("...connected!")
-	return &QDB{addr: tcpaddr}
+	return &QDB{addr: tcpaddr,
+		cm: NewConnectionMap(connectionkeepalive)}
 }
 
 func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {

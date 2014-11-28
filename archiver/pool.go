@@ -25,6 +25,10 @@ type ConnectionMap struct {
 	keepalive int
 }
 
+func NewConnectionMap(connectionkeepalive int) *ConnectionMap {
+	return &ConnectionMap{streams: map[string]*connection{}, keepalive: connectionkeepalive}
+}
+
 // Sends data to the specified timeseries database instance. Assumes the
 // data is associated with the accompanying uuid so it can reuse that connection.
 // Calling cm.Add will create a connection if there isn't one, or send data
