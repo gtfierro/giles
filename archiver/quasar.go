@@ -55,7 +55,11 @@ func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
 			return sr, errors.New("Error when reading from Quasar:" + resp.StatusCode().String())
 		}
 		sr.Readings = [][]float64{}
-		for _, rec := range resp.Records().Values().ToArray() {
+		log.Debug("limit %v, num values %v", limit, len(resp.Records().Values().ToArray()))
+		for i, rec := range resp.Records().Values().ToArray() {
+			if limit > -1 && int32(i) >= limit {
+				break
+			}
 			sr.Readings = append(sr.Readings, []float64{float64(rec.Time() * 1000), rec.Value()})
 		}
 		return sr, nil
@@ -124,6 +128,9 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 	return ret, nil
 }
 
+// Currently, I haven't figured out the beset way to get Quasar to get me responses to
+// queries such as "the last 10 values before now". Currently, Prev and Next will
+// just return the single closest value
 func (q *QDB) Prev(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
 	return q.queryNearestValue(uuids, start, limit, true)
 }
