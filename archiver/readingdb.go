@@ -141,15 +141,7 @@ func (rdb *RDB) Add(sr *SmapReading) bool {
 	return true
 }
 
-/**
- * For all the ReadingDB methods, we need to remember that this should really try to act like a
-   standalone package (ish). Given this constraint, we should not require using methods from the
-   metadata store. These methods will return SmapResponse structs
-**/
-
-/**
- * What's the common functionality for all the methods? Sending and receiving
-**/
+// Sends a packet, constructs header, and then listens on that connection and returns the response
 func (rdb *RDB) sendAndReceive(payload []byte, msgtype rdbproto.MessageType, conn *net.Conn) (SmapResponse, error) {
 	var sr SmapResponse
 	var err error
