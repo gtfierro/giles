@@ -132,15 +132,16 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 // Currently, I haven't figured out the beset way to get Quasar to get me responses to
 // queries such as "the last 10 values before now". Currently, Prev and Next will
 // just return the single closest value
-func (q *QDB) Prev(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
+func (q *QDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
 	return q.queryNearestValue(uuids, start, limit, true)
 }
 
-func (q *QDB) Next(uuids []string, start uint64, limit int32) ([]SmapResponse, error) {
+func (q *QDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
+	start = convertTime(start, uot, UOT_MS)
 	return q.queryNearestValue(uuids, start, limit, false)
 }
 
-func (q *QDB) GetData(uuids []string, start uint64, end uint64) ([]SmapResponse, error) {
+func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapResponse, error) {
 	var ret = make([]SmapResponse, len(uuids))
 	for i, uu := range uuids {
 		seg := capn.NewBuffer(nil)

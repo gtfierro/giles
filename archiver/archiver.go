@@ -205,19 +205,19 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 // For each of the streamids, fetches all data between start and end (where
 // start < end). Start/end are Unix time in milliseconds
 func (a *Archiver) GetData(streamids []string, start, end uint64) ([]SmapResponse, error) {
-	return a.tsdb.GetData(streamids, start, end)
+	return a.tsdb.GetData(streamids, start, end, UOT_MS)
 }
 
 // For each of the streamids, fetches data before the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points
 func (a *Archiver) PrevData(streamids []string, start uint64, limit int32) ([]SmapResponse, error) {
-	return a.tsdb.Prev(streamids, start, limit)
+	return a.tsdb.Prev(streamids, start, limit, UOT_MS)
 }
 
 // For each of the streamids, fetches data after the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points
 func (a *Archiver) NextData(streamids []string, start uint64, limit int32) ([]SmapResponse, error) {
-	return a.tsdb.Next(streamids, start, limit)
+	return a.tsdb.Next(streamids, start, limit, UOT_MS)
 }
 
 // For all streams that match the provided where clause in where_tags, returns the values of the requested

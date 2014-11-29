@@ -161,13 +161,14 @@ func (rdb *RDB) sendAndReceive(payload []byte, msgtype rdbproto.MessageType, con
 // Retrieves the last [limit] readings before (and including)
 // [ref] for all streams that match query [w]
 // [limit] defaults to 1
-func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32) ([]SmapResponse, error) {
+func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
 	var data []byte
 	var substream uint32 = 0
 	var direction = rdbproto.Nearest_PREV
 	var sr SmapResponse
+	ref = convertTime(ref, uot, UOT_MS)
 
 	for _, uuid := range uuids {
 		conn, err := rdb.GetConnection()
@@ -189,13 +190,14 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 // Retrieves the last [limit] readings after (and including)
 // [ref] for all streams that match query [w]
 // [limit] defaults to 1
-func (rdb *RDB) Next(uuids []string, ref uint64, limit int32) ([]SmapResponse, error) {
+func (rdb *RDB) Next(uuids []string, ref uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
 	var err error
 	var retdata = []SmapResponse{}
 	var data []byte
 	var substream uint32 = 0
 	var direction = rdbproto.Nearest_NEXT
 	var sr SmapResponse
+	ref = convertTime(ref, uot, UOT_MS)
 
 	for _, uuid := range uuids {
 		conn, err := rdb.GetConnection()
@@ -216,7 +218,7 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit int32) ([]SmapResponse, e
 
 // Retrieves all data between (and including) [start] and [end]
 // for all streams matching query [w]
-func (rdb *RDB) GetData(uuids []string, start, end uint64) ([]SmapResponse, error) {
+func (rdb *RDB) GetData(uuids []string, start, end uint64, uot UnitOfTime) ([]SmapResponse, error) {
 	if start > end {
 		start, end = end, start
 	}
