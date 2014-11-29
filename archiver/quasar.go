@@ -143,6 +143,8 @@ func (q *QDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([
 
 func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapResponse, error) {
 	var ret = make([]SmapResponse, len(uuids))
+	start = convertTime(start, uot, UOT_MS)
+	end = convertTime(end, uot, UOT_MS)
 	for i, uu := range uuids {
 		seg := capn.NewBuffer(nil)
 		req := cpinterface.NewRootRequest(seg)
