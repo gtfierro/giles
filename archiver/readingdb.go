@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"github.com/gtfierro/giles/rdbproto"
 	"net"
-	"strconv"
 )
 
 var streamids = make(map[string]uint32)
@@ -97,16 +96,10 @@ type RDB struct {
 // (https://developers.google.com/protocol-buffers/). For a description and
 // implementation of ReadingDB protobuf, please see
 // https://github.com/gtfierro/giles/tree/master/rdbproto
-func NewReadingDB(ip string, port int, connectionkeepalive int) *RDB {
-	log.Notice("Connecting to ReadingDB at %v:%v...", ip, port)
-	address := ip + ":" + strconv.Itoa(port)
-	tcpaddr, err := net.ResolveTCPAddr("tcp", address)
-	if err != nil {
-		log.Panic("Error resolving TCP address", address, err)
-		return nil
-	}
+func NewReadingDB(address net.TCPAddr, connectionkeepalive int) *RDB {
+	log.Notice("Connecting to ReadingDB at %v...", address.String())
 	log.Notice("...connected!")
-	rdb := &RDB{addr: tcpaddr,
+	rdb := &RDB{addr: &address,
 		In: make(chan *[]byte),
 		cm: NewConnectionMap(connectionkeepalive)}
 	return rdb

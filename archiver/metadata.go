@@ -4,7 +4,7 @@ import (
 	"errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"strconv"
+	"net"
 	"sync"
 	"sync/atomic"
 )
@@ -30,10 +30,9 @@ type Store struct {
 	apikcache    *LRU
 }
 
-func NewStore(ip string, port int) *Store {
-	log.Notice("Connecting to MongoDB at %v:%v...", ip, port)
-	address := ip + ":" + strconv.Itoa(port)
-	session, err := mgo.Dial(address)
+func NewStore(address net.TCPAddr) *Store {
+	log.Notice("Connecting to MongoDB at %v...", address.String())
+	session, err := mgo.Dial(address.String())
 	if err != nil {
 		log.Critical("Could not connect to MongoDB: %v", err)
 		return nil

@@ -6,7 +6,6 @@ import (
 	"github.com/SoftwareDefinedBuildings/quasar/cpinterface"
 	capn "github.com/glycerine/go-capnproto"
 	"net"
-	"strconv"
 )
 
 // This is a translator interface for Quasar
@@ -24,16 +23,9 @@ type QDB struct {
 // speaks Capn Proto (http://kentonv.github.io/capnproto/). Quasar can also
 // provide a direct HTTP interface, but we choose to implement only the Capn
 // Proto interface for more efficient transport.
-func NewQuasar(ip string, port int, connectionkeepalive int) *QDB {
-	log.Notice("Conneting to Quasar at %v:%v...", ip, port)
-	address := ip + ":" + strconv.Itoa(port)
-	tcpaddr, err := net.ResolveTCPAddr("tcp", address)
-	if err != nil {
-		log.Panic("Error resolving TCP address", address, err)
-		return nil
-	}
-	log.Notice("...connected!")
-	return &QDB{addr: tcpaddr,
+func NewQuasar(address net.TCPAddr, connectionkeepalive int) *QDB {
+	log.Notice("Conneting to Quasar at %v...", address.String())
+	return &QDB{addr: &address,
 		cm: NewConnectionMap(connectionkeepalive)}
 }
 

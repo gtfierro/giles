@@ -63,39 +63,38 @@ type Archiver struct {
 //     for a given unique identifier (see information on Pool)
 //   - mongoip, mongoport: address for MongoDB instance, used for metadata, API keys, etc
 //TODO: replace with an ArchiverConfig struct -- much better than a shitton of arguments
-func NewArchiver(archiverport int, tsdbip string, tsdbport int, mongoip string,
-	mongoport int, tsdbstring string, tsdbkeepalive int, address string) *Archiver {
+func NewArchiver(c *Config) *Archiver {
 	logging.SetBackend(logBackend)
 	logging.SetFormatter(logging.MustStringFormatter(format))
-	store := NewStore(mongoip, mongoport)
+	store := NewStore(c.MongoAddress)
 	if store == nil {
 		log.Fatal("Error connection to MongoDB instance")
 	}
 
 	var tsdb TSDB
-	switch tsdbstring {
+	switch c.TSDB {
 	case "readingdb":
 		/** connect to ReadingDB */
-		tsdb = NewReadingDB(tsdbip, tsdbport, tsdbkeepalive)
+		tsdb = NewReadingDB(c.TSDBAddress, c.Keepalive)
 		tsdb.AddStore(store)
 		if tsdb == nil {
 			log.Fatal("Error connecting to ReadingDB instance")
 		}
 	case "quasar":
-		tsdb = NewQuasar(tsdbip, tsdbport, tsdbkeepalive)
+		tsdb = NewQuasar(c.TSDBAddress, c.Keepalive)
 		tsdb.AddStore(store)
 		if tsdb == nil {
 			log.Fatal("Error connecting to Quasar instance")
 		}
 	default:
-		log.Fatal(tsdbstring, " is not a valid timeseries database")
+		log.Fatal(c.TSDB, " is not a valid timeseries database")
 	}
 	republisher := NewRepublisher()
 	republisher.store = store
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		republisher:          republisher,
-		address:              address,
+		address:              ":" + string(c.Port),
 		R:                    mux.NewRouter(),
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter()}
