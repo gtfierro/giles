@@ -27,6 +27,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -92,9 +93,9 @@ func NewArchiver(c *Config) *Archiver {
 	}
 	republisher := NewRepublisher()
 	republisher.store = store
-	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+string(c.Port))
+	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+strconv.Itoa(c.Port))
 	if err != nil {
-		log.Fatal("Error resolving address %v", "0.0.0.0:"+string(c.Port))
+		log.Fatal("Error resolving address %v: %v", "0.0.0.0:"+strconv.Itoa(c.Port), err)
 	}
 	return &Archiver{tsdb: tsdb,
 		store:                store,
