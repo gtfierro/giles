@@ -24,6 +24,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/op/go-logging"
 	"gopkg.in/mgo.v2/bson"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -46,7 +47,7 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 // taking a quick look though their documentation and how they talk to Mongo to get a feel
 // for what the incoming/outgoing data is going to look like.
 type Archiver struct {
-	address              string
+	address              *net.TCPAddr
 	tsdb                 TSDB
 	store                *Store
 	republisher          *Republisher
@@ -91,10 +92,14 @@ func NewArchiver(c *Config) *Archiver {
 	}
 	republisher := NewRepublisher()
 	republisher.store = store
+	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+string(c.Port))
+	if err != nil {
+		log.Fatal("Error resolving address %v", "0.0.0.0:"+string(c.Port))
+	}
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		republisher:          republisher,
-		address:              ":" + string(c.Port),
+		address:              address,
 		R:                    mux.NewRouter(),
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter()}
@@ -104,10 +109,10 @@ func NewArchiver(c *Config) *Archiver {
 // Serves all registered endpoints. Doesn't return, so you might want to call this with 'go archiver.Serve()'
 func (a *Archiver) Serve() {
 	http.Handle("/", a.R)
-	log.Notice("Starting on %v", a.address)
+	log.Notice("Starting on %v", a.address.String())
 
 	srv := &http.Server{
-		Addr: a.address,
+		Addr: a.address.String(),
 	}
 	srv.ListenAndServe()
 }
