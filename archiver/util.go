@@ -67,14 +67,3 @@ func isStringSliceEqual(x, y []string) bool {
 func unescape(s string) string {
 	return strings.Replace(s, "%3D", "=", -1)
 }
-
-// Takes a timestamp with accompanying unit of time 'stream_uot' and
-// converts it to the unit of time 'target_uot'
-func convertTime(time uint64, stream_uot, target_uot UnitOfTime) uint64 {
-	unitmultiplier := map[UnitOfTime]uint64{
-		UOT_NS: 1000000000,
-		UOT_US: 1000000,
-		UOT_MS: 1000,
-		UOT_S:  1}
-	return time / unitmultiplier[stream_uot] * unitmultiplier[target_uot]
-}

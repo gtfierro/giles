@@ -10,29 +10,27 @@ import (
 
 var supported_formats = []string{"1/2/2006", "1-2-2006", "1/2/2006 04:15", "1-2-2006 04:15", "2006-1-2 15:04:05"}
 
-/**
- * Takes a string specifying a time, and returns a canonical Time object representing that string.
- * To consider: should this instead return the kind of timestamp expected by ReadingDB? Or can that
- * be handled by another method? I think the latter is the way to go on this, that way I can use
- * this method for displaying and the like
- *
- * Need to support the following:
- * now
- * now -1h
- * now +1h -10m
- * %m/%d/%Y
- * %m-%d-%Y
- * %m/%d/%Y %M:%H
- * %m-%d-%Y %M:%H
- * %Y-%m-%dT%H:%M:%S
-
- Go time layout: Mon Jan 2 15:04:05 -0700 MST 2006
- * 01/02/2006
- * 01-02-2006
- * 01/02/2006 04:15
- * 01-02-2006 04:15
- * 2006-01-02 15:04:05
-**/
+// Takes a string specifying a time, and returns a canonical Time object representing that string.
+// To consider: should this instead return the kind of timestamp expected by ReadingDB? Or can that
+// be handled by another method? I think the latter is the way to go on this, that way I can use
+// this method for displaying and the like
+//
+// Need to support the following:
+// now
+// now -1h
+// now +1h -10m
+// %m/%d/%Y
+// %m-%d-%Y
+// %m/%d/%Y %M:%H
+// %m-%d-%Y %M:%H
+// %Y-%m-%dT%H:%M:%S
+//
+// Go time layout: Mon Jan 2 15:04:05 -0700 MST 2006
+// * 01/02/2006
+// * 01-02-2006
+// * 01/02/2006 04:15
+// * 01-02-2006 04:15
+// * 2006-01-02 15:04:05
 func handleTime(portions []string) (time.Time, error) {
 	ret := time.Now()
 	idx := len(portions) - 1
@@ -66,9 +64,7 @@ func handleTime(portions []string) (time.Time, error) {
 	return ret, nil
 }
 
-/**
- * Takes a duration string like -1d, +5minutes, etc and returns a time.Duration object
-**/
+// Takes a duration string like -1d, +5minutes, etc and returns a time.Duration object
 func parseIntoDuration(str string) (time.Duration, error) {
 	var d time.Duration
 	/**
@@ -105,4 +101,15 @@ func parseIntoDuration(str string) (time.Duration, error) {
 	}
 
 	return d, nil
+}
+
+// Takes a timestamp with accompanying unit of time 'stream_uot' and
+// converts it to the unit of time 'target_uot'
+func convertTime(time uint64, stream_uot, target_uot UnitOfTime) uint64 {
+	unitmultiplier := map[UnitOfTime]uint64{
+		UOT_NS: 1000000000,
+		UOT_US: 1000000,
+		UOT_MS: 1000,
+		UOT_S:  1}
+	return time / unitmultiplier[stream_uot] * unitmultiplier[target_uot]
 }
