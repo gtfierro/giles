@@ -125,6 +125,7 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 // queries such as "the last 10 values before now". Currently, Prev and Next will
 // just return the single closest value
 func (q *QDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
+	start = convertTime(start, uot, UOT_MS)
 	return q.queryNearestValue(uuids, start, limit, true)
 }
 

@@ -143,6 +143,8 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 // generated AST. Any actual computation is done as calls to the Archiver API, so if you want
 // to use your own query language or handle queries in some external handler, then you shouldn't
 // need to use any of this method; just use the Archiver API
+//
+//TODO: expand the query language to allow the specification of units of time
 func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	if apikey != "" {
 		log.Info("query with key: %v", apikey)
@@ -185,15 +187,15 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 			start := uint64(target.Start.Unix())
 			end := uint64(target.End.Unix())
 			log.Debug("start %v end %v", start, end)
-			response, err = a.GetData(uuids, start, end)
+			response, err = a.GetData(uuids, start, end, UOT_MS)
 		case AFTER:
 			ref := uint64(target.Ref.Unix())
 			log.Debug("after %v", ref)
-			response, err = a.NextData(uuids, ref, target.Limit)
+			response, err = a.NextData(uuids, ref, target.Limit, UOT_MS)
 		case BEFORE:
 			ref := uint64(target.Ref.Unix())
 			log.Debug("before %v", ref)
-			response, err = a.PrevData(uuids, ref, target.Limit)
+			response, err = a.PrevData(uuids, ref, target.Limit, UOT_MS)
 		}
 		data, _ = json.Marshal(response)
 	}
@@ -201,21 +203,24 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 }
 
 // For each of the streamids, fetches all data between start and end (where
-// start < end). Start/end are Unix time in milliseconds
-func (a *Archiver) GetData(streamids []string, start, end uint64) ([]SmapResponse, error) {
-	return a.tsdb.GetData(streamids, start, end, UOT_MS)
+// start < end). The units for start/end are given by query_uot. We give the units
+// so that each time series database can convert the incoming timestamps to whatever
+// it needs (most of these will query the metadata store for the unit of time for the
+// data stream it is accessing)
+func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot UnitOfTime) ([]SmapResponse, error) {
+	return a.tsdb.GetData(streamids, start, end, query_uot)
 }
 
 // For each of the streamids, fetches data before the start time. If limit is < 0, fetches all data.
-// If limit >= 0, fetches only that number of points
-func (a *Archiver) PrevData(streamids []string, start uint64, limit int32) ([]SmapResponse, error) {
-	return a.tsdb.Prev(streamids, start, limit, UOT_MS)
+// If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
+func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapResponse, error) {
+	return a.tsdb.Prev(streamids, start, limit, query_uot)
 }
 
 // For each of the streamids, fetches data after the start time. If limit is < 0, fetches all data.
-// If limit >= 0, fetches only that number of points
-func (a *Archiver) NextData(streamids []string, start uint64, limit int32) ([]SmapResponse, error) {
-	return a.tsdb.Next(streamids, start, limit, UOT_MS)
+// If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
+func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapResponse, error) {
+	return a.tsdb.Next(streamids, start, limit, query_uot)
 }
 
 // For all streams that match the provided where clause in where_tags, returns the values of the requested
