@@ -30,7 +30,7 @@ type Store struct {
 	apikcache    *LRU
 }
 
-func NewStore(address net.TCPAddr) *Store {
+func NewStore(address *net.TCPAddr) *Store {
 	log.Notice("Connecting to MongoDB at %v...", address.String())
 	session, err := mgo.Dial(address.String())
 	if err != nil {

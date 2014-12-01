@@ -96,10 +96,10 @@ type RDB struct {
 // (https://developers.google.com/protocol-buffers/). For a description and
 // implementation of ReadingDB protobuf, please see
 // https://github.com/gtfierro/giles/tree/master/rdbproto
-func NewReadingDB(address net.TCPAddr, connectionkeepalive int) *RDB {
+func NewReadingDB(address *net.TCPAddr, connectionkeepalive int) *RDB {
 	log.Notice("Connecting to ReadingDB at %v...", address.String())
 	log.Notice("...connected!")
-	rdb := &RDB{addr: &address,
+	rdb := &RDB{addr: address,
 		In: make(chan *[]byte),
 		cm: NewConnectionMap(connectionkeepalive)}
 	return rdb

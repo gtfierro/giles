@@ -23,9 +23,9 @@ type QDB struct {
 // speaks Capn Proto (http://kentonv.github.io/capnproto/). Quasar can also
 // provide a direct HTTP interface, but we choose to implement only the Capn
 // Proto interface for more efficient transport.
-func NewQuasar(address net.TCPAddr, connectionkeepalive int) *QDB {
+func NewQuasar(address *net.TCPAddr, connectionkeepalive int) *QDB {
 	log.Notice("Conneting to Quasar at %v...", address.String())
-	return &QDB{addr: &address,
+	return &QDB{addr: address,
 		cm: NewConnectionMap(connectionkeepalive)}
 }
 

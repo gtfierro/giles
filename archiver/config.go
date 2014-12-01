@@ -11,9 +11,9 @@ type Config struct {
 	// which timeseries database is being used: "readingdb" or "quasar"
 	TSDB string
 	// IP:Port of the timeseries database
-	TSDBAddress net.TCPAddr
+	TSDBAddress *net.TCPAddr
 	// IP:Port of the MongoDB instance
-	MongoAddress net.TCPAddr
+	MongoAddress *net.TCPAddr
 	// How long each connection to the timeseries database is kept open
 	Keepalive int
 }
