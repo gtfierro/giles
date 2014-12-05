@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/gtfierro/giles/archiver"
+	"github.com/gtfierro/giles/cphandler"
 	"github.com/gtfierro/giles/httphandler"
 	"github.com/gtfierro/giles/wshandler"
 	"log"
@@ -72,6 +73,12 @@ func main() {
 	go a.PrintStatus()
 	httphandler.Handle(a)
 	wshandler.Handle(a)
+	cphandler.Handle(a)
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:8002")
+	if err != nil {
+		log.Println("Error resolving UDP address for capn proto: %v", err)
+	}
+	go cphandler.ServeUDP(addr)
 	go a.Serve()
 	idx := 0
 	for {
