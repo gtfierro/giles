@@ -1,6 +1,6 @@
-#using Go = import "go.capnp";
-#$Go.package("giles");
-#$Go.import("github.com/gtfierro/giles/giles");
+using Go = import "go.capnp";
+$Go.package("cphandler");
+$Go.import("github.com/gtfierro/giles/cphandler");
 
 
 # make dictionary a union type of None, List(pair) and dictionary?
