@@ -79,6 +79,14 @@ def capnp2json(capnpmsg):
             ret[tlk] = tlv
     return ret
     
+def build_request(jsondata):
+    messages = json2capnp(jsondata)
+    req = smap_capnp.Request.new_message()
+    writeData = req.init('writeData')
+    msglist = writeData.init('messages', len(messages))
+    for i, item in enumerate(messages):
+        msglist[i] = item
+    return req
 
 jsondata = """
 {
@@ -121,9 +129,10 @@ for msg in capnpmsgs:
     print "after"
     print recv
 
+
 import socket
 IP = "0.0.0.0"
 PORT = 8002
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-#s.sendto(msg.to_bytes(), (IP, PORT))
+req = build_request(jsonobj)
+s.sendto(req.to_bytes(), (IP, PORT))
