@@ -37,6 +37,11 @@ jsondata = """
 """
 jsonobj = json.loads(jsondata)
 
+import socket
+IP = "0.0.0.0"
+PORT = 8002
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 for path, contents in jsonobj.iteritems():
     print '#'*5,'New Message','#'*5
     #print 'path',path
@@ -65,11 +70,5 @@ for path, contents in jsonobj.iteritems():
         msg_metadata = msg.init('metadata', len(md))
         for i, kv in enumerate(md):
             msg_metadata[i] = smap_capnp.Message.Pair.new_message(key = kv[0], value = kv[1])
-    with open('{0}.bin'.format(path.replace('/','_')),'w+b') as f:
-        msg.write(f)
 
-print 'now reading back'
-
-for filename in glob.glob('*.bin'):
-    msg = smap_capnp.Message.read(open(filename,'rb'))
-    print msg.to_dict().get('metadata','')
+    s.sendto(msg.to_bytes(), (IP, PORT))

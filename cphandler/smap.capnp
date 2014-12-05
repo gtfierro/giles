@@ -2,6 +2,8 @@ using Go = import "go.capnp";
 $Go.package("cphandler");
 $Go.import("github.com/gtfierro/giles/cphandler");
 
+#TODO: have message types to distinguish between different actions
+
 
 # make dictionary a union type of None, List(pair) and dictionary?
 @0x9f075567e0861f32;
