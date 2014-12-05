@@ -2,5 +2,8 @@
 giles/giles
 gilescmd/gilescmd
 
+# build directories
+gilescmd/build
+
 # compiled python
 *.pyc

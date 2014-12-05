@@ -1,3 +1,5 @@
+#!/usr/bin/env Python
+
 import argparse
 import base64
 import sys
