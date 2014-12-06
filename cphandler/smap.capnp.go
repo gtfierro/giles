@@ -16,9 +16,9 @@ const (
 	REQUEST_WRITEDATA Request_Which = 1
 )
 
-func NewRequest(s *C.Segment) Request      { return Request(s.NewStruct(8, 1)) }
-func NewRootRequest(s *C.Segment) Request  { return Request(s.NewRootStruct(8, 1)) }
-func AutoNewRequest(s *C.Segment) Request  { return Request(s.NewStructAR(8, 1)) }
+func NewRequest(s *C.Segment) Request      { return Request(s.NewStruct(8, 2)) }
+func NewRootRequest(s *C.Segment) Request  { return Request(s.NewRootStruct(8, 2)) }
+func AutoNewRequest(s *C.Segment) Request  { return Request(s.NewStructAR(8, 2)) }
 func ReadRootRequest(s *C.Segment) Request { return Request(s.Root(0).ToStruct()) }
 func (s Request) Which() Request_Which     { return Request_Which(C.Struct(s).Get16(0)) }
 func (s Request) SetVoid()                 { C.Struct(s).Set16(0, 0) }
@@ -27,6 +27,8 @@ func (s Request) SetWriteData(v ReqWriteData) {
 	C.Struct(s).Set16(0, 1)
 	C.Struct(s).SetObject(0, C.Object(v))
 }
+func (s Request) Apikey() string     { return C.Struct(s).GetObject(1).ToText() }
+func (s Request) SetApikey(v string) { C.Struct(s).SetObject(1, s.Segment.NewText(v)) }
 
 // capn.JSON_enabled == false so we stub MarshallJSON().
 func (s Request) MarshalJSON() (bs []byte, err error) { return }
@@ -34,7 +36,7 @@ func (s Request) MarshalJSON() (bs []byte, err error) { return }
 type Request_List C.PointerList
 
 func NewRequestList(s *C.Segment, sz int) Request_List {
-	return Request_List(s.NewCompositeList(8, 1, sz))
+	return Request_List(s.NewCompositeList(8, 2, sz))
 }
 func (s Request_List) Len() int         { return C.PointerList(s).Len() }
 func (s Request_List) At(i int) Request { return Request(C.PointerList(s).At(i).ToStruct()) }

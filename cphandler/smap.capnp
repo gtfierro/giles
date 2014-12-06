@@ -10,6 +10,7 @@ struct Request {
 		void	@0 :Void;
 		writeData @1 :ReqWriteData;
 	}
+	apikey	@2 :Text;
 }
 
 # struct for writing data to the archiver
