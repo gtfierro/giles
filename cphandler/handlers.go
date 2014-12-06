@@ -35,7 +35,6 @@ func ServeUDP(a *archiver.Archiver, udpaddr *net.UDPAddr) {
 		switch req.Which() {
 
 		case REQUEST_WRITEDATA:
-			log.Debug("got a writedata")
 			AddReadings(a, req)
 
 		case REQUEST_VOID:

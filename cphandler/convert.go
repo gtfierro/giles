@@ -22,14 +22,12 @@ func CapnpToStruct(messages []SmapMessage) map[string]*archiver.SmapMessage {
 
 		// Metadata
 		for _, pair := range msg.Metadata().ToArray() {
-			log.Debug("k,v : %v : %v", pair.Key(), pair.Value())
 			key := strings.Replace(pair.Key(), "/", ".", -1)
 			sm.Metadata[key] = pair.Value()
 		}
 
 		// Properties
 		for _, pair := range msg.Properties().ToArray() {
-			log.Debug("k,v : %v : %v", pair.Key(), pair.Value())
 			key := strings.Replace(pair.Key(), "/", ".", -1)
 			sm.Properties[key] = pair.Value()
 		}
