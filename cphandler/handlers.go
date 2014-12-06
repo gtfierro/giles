@@ -1,6 +1,8 @@
 package cphandler
 
 import (
+	"bytes"
+	capn "github.com/glycerine/go-capnproto"
 	"github.com/gtfierro/giles/archiver"
 	"github.com/op/go-logging"
 	"net"
@@ -15,18 +17,35 @@ func Handle(a *archiver.Archiver) {
 	log.Notice("Handling Capn Proto")
 }
 
-func ServeUDP(udpaddr *net.UDPAddr) {
+func ServeUDP(a *archiver.Archiver, udpaddr *net.UDPAddr) {
 	conn, err := net.ListenUDP("udp", udpaddr)
 	if err != nil {
 		log.Error("Error on listening: %v", err)
 	}
 	defer conn.Close()
 	for {
-		buf := make([]byte, 1024)
+		buf := make([]byte, 4096)
 		n, err := conn.Read(buf)
+		buffer := bytes.NewBuffer(buf[:n])
+		segment, err := capn.ReadFromStream(buffer, nil)
 		if err != nil {
 			log.Debug("Error recv: %v", err)
 		}
-		log.Debug("receiv bytes %v", buf[:n])
+		req := ReadRootRequest(segment)
+		switch req.Which() {
+
+		case REQUEST_WRITEDATA:
+			log.Debug("got a writedata")
+			AddReadings(a, req.WriteData().Messages().ToArray())
+
+		case REQUEST_VOID:
+			log.Debug("got a void")
+		}
+
 	}
+}
+
+func AddReadings(a *archiver.Archiver, messages []SmapMessage) {
+	smapmsgs := CapnpToStruct(messages)
+	a.AddData(smapmsgs, "")
 }
