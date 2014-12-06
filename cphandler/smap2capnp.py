@@ -121,13 +121,13 @@ jsondata = """
 """
 # turn string into json obj
 jsonobj = json.loads(jsondata)
-print "before"
-print jsonobj
-capnpmsgs = json2capnp(jsonobj)
-for msg in capnpmsgs:
-    recv = capnp2json(msg)
-    print "after"
-    print recv
+#print "before"
+#print jsonobj
+#capnpmsgs = json2capnp(jsonobj)
+#for msg in capnpmsgs:
+#    recv = capnp2json(msg)
+#    print "after"
+#    print recv
 
 
 import socket
@@ -135,4 +135,5 @@ IP = "0.0.0.0"
 PORT = 8002
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 req = build_request(jsonobj)
+print req
 s.sendto(req.to_bytes(), (IP, PORT))
