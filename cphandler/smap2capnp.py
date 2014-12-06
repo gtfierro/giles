@@ -8,6 +8,8 @@ from smap.util import buildkv, build_recursive
 Need a python library to translate sMAP messages back and forth between JSON and Capnproto
 """
 
+apikey = "30tznFNq7R-mPqFITaGT-nh3kt9v6bH7oY4gwioJQAm7wa1ik43oOPZDpA2CIAxoVK4Qn-ZO1F5ZTlLpXpgAsQ=="
+
 def json2capnp(jsonobj):
     """
     Expecting a sMAP report json object where the toplevel keys are paths
@@ -79,9 +81,10 @@ def capnp2json(capnpmsg):
             ret[tlk] = tlv
     return ret
     
-def build_request(jsondata):
+def build_request(jsondata, apikey):
     messages = json2capnp(jsondata)
     req = smap_capnp.Request.new_message()
+    req.apikey = apikey
     writeData = req.init('writeData')
     msglist = writeData.init('messages', len(messages))
     for i, item in enumerate(messages):
@@ -134,6 +137,6 @@ import socket
 IP = "0.0.0.0"
 PORT = 8002
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-req = build_request(jsonobj)
+req = build_request(jsonobj, apikey)
 print req
 s.sendto(req.to_bytes(), (IP, PORT))
