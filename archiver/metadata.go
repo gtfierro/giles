@@ -140,6 +140,9 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		if !exists || err != nil {
 			return false, err
 		}
+		if uuid == "" {
+			return false, err
+		}
 		log.Debug("inserting uuid %v with api %v", uuid, apikey)
 		err = s.metadata.Insert(bson.M{"uuid": uuid, "_api": apikey})
 		if err != nil {

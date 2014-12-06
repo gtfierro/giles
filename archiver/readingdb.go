@@ -122,7 +122,7 @@ func (rdb *RDB) AddStore(store *Store) {
 // committed to the underlying store. Returns True if there were readings to be committed,
 // and False if there were no readings found in the incoming message
 func (rdb *RDB) Add(sr *SmapReading) bool {
-	if len(sr.Readings) == 0 {
+	if sr.Readings == nil || len(sr.Readings) == 0 {
 		return false
 	}
 

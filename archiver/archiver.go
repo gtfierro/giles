@@ -129,8 +129,11 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 	for _, msg := range readings {
 		go a.store.SaveMetadata(msg)
 		go a.republisher.Republish(msg)
-		a.tsdb.Add(msg.Readings)
 		a.incomingcounter.Mark()
+		if msg.Readings == nil {
+			continue
+		}
+		a.tsdb.Add(msg.Readings)
 	}
 	return nil
 }
