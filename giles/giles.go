@@ -78,7 +78,7 @@ func main() {
 	if err != nil {
 		log.Println("Error resolving UDP address for capn proto: %v", err)
 	}
-	go cphandler.ServeUDP(addr)
+	go cphandler.ServeUDP(a, addr)
 	go a.Serve()
 	idx := 0
 	for {
