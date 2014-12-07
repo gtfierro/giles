@@ -3,7 +3,7 @@ import shutil
 import os
 
 setup(name="gilescmd",
-      version="0.2",
+      version="0.2.1",
       description="Command-line utility accompanying the Giles sMAP archiver",
       author="Gabe Fierro",
       author_email="fierro@eecs.berkeley.edu",
