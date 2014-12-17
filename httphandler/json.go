@@ -2,6 +2,7 @@ package httphandler
 
 import (
 	"encoding/json"
+	"errors"
 	simplejson "github.com/bitly/go-simplejson"
 	"github.com/gtfierro/giles/archiver"
 	"gopkg.in/mgo.v2/bson"
@@ -75,12 +76,19 @@ func handleJSON(r io.Reader) (map[string]*archiver.SmapMessage, error) {
 		srs := make([][]interface{}, len(readingarray))
 		for idx, readings := range readingarray {
 			reading := readings.([]interface{})
-			//TODO: if reading[0],reading[1] are not actually json.Number, then the cast fails
-			ts, e := strconv.ParseUint(string(reading[0].(json.Number)), 10, 64)
+			ts_num, ok := reading[0].(json.Number)
+			if !ok {
+				return decodedjson, errors.New("Timestamp is not a number")
+			}
+			ts, e := strconv.ParseUint(string(ts_num), 10, 64)
 			if e != nil {
 				return decodedjson, e
 			}
-			val, e := strconv.ParseFloat(string(reading[1].(json.Number)), 64)
+			val_num, ok := reading[1].(json.Number)
+			if !ok {
+				return decodedjson, errors.New("Value is not a number")
+			}
+			val, e := strconv.ParseFloat(string(val_num), 64)
 			if e != nil {
 				return decodedjson, e
 			}
