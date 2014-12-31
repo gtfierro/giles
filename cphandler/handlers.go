@@ -37,6 +37,9 @@ func ServeUDP(a *archiver.Archiver, udpaddr *net.UDPAddr) {
 		case REQUEST_WRITEDATA:
 			AddReadings(a, req)
 
+		case REQUEST_QUERY:
+			DoQuery(a, req)
+
 		case REQUEST_VOID:
 			log.Debug("got a void")
 		}
@@ -47,4 +50,8 @@ func ServeUDP(a *archiver.Archiver, udpaddr *net.UDPAddr) {
 func AddReadings(a *archiver.Archiver, req Request) {
 	smapmsgs := CapnpToStruct(req.WriteData().Messages().ToArray())
 	a.AddData(smapmsgs, req.Apikey())
+}
+
+func DoQuery(a *archiver.Archiver, req Request) {
+	//res, err := a.HandleQuery(req.Query().Query(), req.Apikey())
 }

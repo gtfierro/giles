@@ -14,6 +14,7 @@ type Request_Which uint16
 const (
 	REQUEST_VOID      Request_Which = 0
 	REQUEST_WRITEDATA Request_Which = 1
+	REQUEST_QUERY     Request_Which = 2
 )
 
 func NewRequest(s *C.Segment) Request      { return Request(s.NewStruct(8, 2)) }
@@ -27,8 +28,10 @@ func (s Request) SetWriteData(v ReqWriteData) {
 	C.Struct(s).Set16(0, 1)
 	C.Struct(s).SetObject(0, C.Object(v))
 }
-func (s Request) Apikey() string     { return C.Struct(s).GetObject(1).ToText() }
-func (s Request) SetApikey(v string) { C.Struct(s).SetObject(1, s.Segment.NewText(v)) }
+func (s Request) Query() ReqQuery     { return ReqQuery(C.Struct(s).GetObject(0).ToStruct()) }
+func (s Request) SetQuery(v ReqQuery) { C.Struct(s).Set16(0, 2); C.Struct(s).SetObject(0, C.Object(v)) }
+func (s Request) Apikey() string      { return C.Struct(s).GetObject(1).ToText() }
+func (s Request) SetApikey(v string)  { C.Struct(s).SetObject(1, s.Segment.NewText(v)) }
 
 // capn.JSON_enabled == false so we stub MarshallJSON().
 func (s Request) MarshalJSON() (bs []byte, err error) { return }
@@ -70,6 +73,30 @@ func (s ReqWriteData_List) ToArray() []ReqWriteData {
 	return *(*[]ReqWriteData)(unsafe.Pointer(C.PointerList(s).ToArray()))
 }
 func (s ReqWriteData_List) Set(i int, item ReqWriteData) { C.PointerList(s).Set(i, C.Object(item)) }
+
+type ReqQuery C.Struct
+
+func NewReqQuery(s *C.Segment) ReqQuery      { return ReqQuery(s.NewStruct(0, 1)) }
+func NewRootReqQuery(s *C.Segment) ReqQuery  { return ReqQuery(s.NewRootStruct(0, 1)) }
+func AutoNewReqQuery(s *C.Segment) ReqQuery  { return ReqQuery(s.NewStructAR(0, 1)) }
+func ReadRootReqQuery(s *C.Segment) ReqQuery { return ReqQuery(s.Root(0).ToStruct()) }
+func (s ReqQuery) Query() string             { return C.Struct(s).GetObject(0).ToText() }
+func (s ReqQuery) SetQuery(v string)         { C.Struct(s).SetObject(0, s.Segment.NewText(v)) }
+
+// capn.JSON_enabled == false so we stub MarshallJSON().
+func (s ReqQuery) MarshalJSON() (bs []byte, err error) { return }
+
+type ReqQuery_List C.PointerList
+
+func NewReqQueryList(s *C.Segment, sz int) ReqQuery_List {
+	return ReqQuery_List(s.NewCompositeList(0, 1, sz))
+}
+func (s ReqQuery_List) Len() int          { return C.PointerList(s).Len() }
+func (s ReqQuery_List) At(i int) ReqQuery { return ReqQuery(C.PointerList(s).At(i).ToStruct()) }
+func (s ReqQuery_List) ToArray() []ReqQuery {
+	return *(*[]ReqQuery)(unsafe.Pointer(C.PointerList(s).ToArray()))
+}
+func (s ReqQuery_List) Set(i int, item ReqQuery) { C.PointerList(s).Set(i, C.Object(item)) }
 
 type Response C.Struct
 

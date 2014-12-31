@@ -9,6 +9,7 @@ struct Request {
 	union {
 		void	@0 :Void;
 		writeData @1 :ReqWriteData;
+        query @3 :ReqQuery;
 	}
 	apikey	@2 :Text;
 }
@@ -18,7 +19,12 @@ struct ReqWriteData {
 	messages	@0 :List(SmapMessage);
 }
 
-# base struct for all responses received from the Giles archiver
+# struct for queries against archiver
+struct ReqQuery {
+    query @0 :Text;
+}
+
+# base struct for all responses sent from the Giles archiver
 struct Response {
 	status	@0	:StatusCode;
 	messages	@1 :List(SmapMessage);
