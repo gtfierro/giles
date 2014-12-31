@@ -231,7 +231,7 @@ func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query
 // a map[string]int corresponding to which tags we wish returned. A value of 1 means the tag will be
 // returned (and ignores all other tags), and a value of 0 means the tag will NOT be returned (and all
 // other tags will be).
-func (a *Archiver) GetTags(select_tags, where_tags bson.M) ([]bson.M, error) {
+func (a *Archiver) GetTags(select_tags, where_tags bson.M) ([]interface{}, error) {
 	return a.store.GetTags(select_tags, false, "", where_tags)
 }
 

@@ -276,8 +276,8 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 
 // Retrieves the tags indicated by `target` for documents that match the `where` clause. If `is_distinct` is true,
 // then it will return a list of distinct values for the tag `distinct_key`
-func (s *Store) GetTags(target bson.M, is_distinct bool, distinct_key string, where bson.M) ([]bson.M, error) {
-	var res []bson.M
+func (s *Store) GetTags(target bson.M, is_distinct bool, distinct_key string, where bson.M) ([]interface{}, error) {
+	var res []interface{}
 	var err error
 	var staged *mgo.Query
 	if len(target) == 0 {
@@ -290,10 +290,11 @@ func (s *Store) GetTags(target bson.M, is_distinct bool, distinct_key string, wh
 	if is_distinct {
 		var res2 []interface{}
 		err = staged.Distinct(distinct_key, &res2)
+		return res2, err
 	} else {
 		err = staged.All(&res)
+		return res, err
 	}
-	return res, err
 
 }
 
