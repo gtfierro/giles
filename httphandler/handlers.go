@@ -16,8 +16,8 @@ package httphandler
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
 	"github.com/gtfierro/giles/archiver"
+	"github.com/julienschmidt/httprouter"
 	"github.com/op/go-logging"
 	"io/ioutil"
 	"net/http"
@@ -33,17 +33,17 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
 func Handle(a *archiver.Archiver) {
 	log.Notice("Handling HTTP/TCP")
-	a.R.HandleFunc("/add/{key}", curryhandler(a, AddReadingHandler)).Methods("POST")
-	a.R.HandleFunc("/republish", curryhandler(a, RepublishHandler)).Methods("POST")
-	a.R.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Queries("key", "{key:[A-Za-z0-9-_=%]+}").Methods("POST")
-	a.R.HandleFunc("/api/query", curryhandler(a, QueryHandler)).Methods("POST")
-	a.R.HandleFunc("/api/tags/uuid/{uuid}", curryhandler(a, TagsHandler)).Methods("GET")
+	a.R.POST("/add/:key", curryhandler(a, AddReadingHandler))
+	a.R.POST("/republish", curryhandler(a, RepublishHandler))
+	a.R.POST("/api/query?:key", curryhandler(a, QueryHandler))
+	//a.R.POST("/api/query", curryhandler(a, QueryHandler))
+	a.R.GET("/api/tags/uuid/:uuid", curryhandler(a, TagsHandler))
 	//a.R.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
 }
 
-func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
-	return func(rw http.ResponseWriter, req *http.Request) {
-		f(a, rw, req)
+func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.ResponseWriter, *http.Request, httprouter.Params)) func(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	return func(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+		f(a, rw, req, ps)
 	}
 }
 
@@ -73,11 +73,10 @@ func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.Response
 //          "uuid" : "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"
 //      }
 //    }
-func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
+func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	//TODO: add transaction coalescing
 	defer req.Body.Close()
-	vars := mux.Vars(req)
-	apikey := unescape(vars["key"])
+	apikey := ps.ByName("key")
 	messages, err := handleJSON(req.Body)
 	if err != nil {
 		log.Error("Error handling JSON: %v", err)
@@ -96,7 +95,7 @@ func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.R
 
 // Receives POST request which contains metadata query. Subscribes the
 // requester to readings from streams which match that metadata query
-func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
+func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -106,10 +105,9 @@ func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Re
 }
 
 // Resolves sMAP queries and returns results
-func QueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
+func QueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	defer req.Body.Close()
-	vars := mux.Vars(req)
-	key := unescape(vars["key"])
+	key := unescape(ps.ByName("key"))
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Error("Error reading query: %v", err)
@@ -128,9 +126,8 @@ func QueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Reques
 /**
  * Returns metadata for a uuid. A limited GET alternative to the POST query handler
 **/
-func TagsHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
-	uuid := vars["uuid"]
+func TagsHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	uuid := ps.ByName("uuid")
 	rw.Header().Set("Content-Type", "application/json")
 	jsonres, err := a.TagsUUID(uuid)
 	if err != nil {
