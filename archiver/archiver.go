@@ -21,7 +21,7 @@ package archiver
 import (
 	"encoding/json"
 	"errors"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 	"github.com/op/go-logging"
 	"gopkg.in/mgo.v2/bson"
 	"net"
@@ -54,7 +54,7 @@ type Archiver struct {
 	republisher          *Republisher
 	incomingcounter      *counter
 	pendingwritescounter *counter
-	R                    *mux.Router
+	R                    *httprouter.Router
 }
 
 // Creates a new Archiver instance:
@@ -94,7 +94,7 @@ func NewArchiver(c *Config) *Archiver {
 		store:                store,
 		republisher:          republisher,
 		address:              address,
-		R:                    mux.NewRouter(),
+		R:                    httprouter.New(),
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter()}
 
@@ -174,7 +174,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 			return data, err
 		}
 		data, _ = json.Marshal(res)
-		// if we are fetching data
+	// if we are fetching data
 	case DATA_TARGET:
 		target := ast.Target.(*dataTarget)
 		uuids, err := a.GetUUIDs(ast.Where.ToBson())
