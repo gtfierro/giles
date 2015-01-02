@@ -13,9 +13,9 @@
 package wshandler
 
 import (
-	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/gtfierro/giles/archiver"
+	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strings"
 )
@@ -24,9 +24,9 @@ import (
 // preceeded with '/ws/`. Not served until Archiver.Serve() is called.
 func Handle(a *archiver.Archiver) {
 	log.Notice("Handling WebSockets")
-	a.R.HandleFunc("/ws/api/query", curryhandler(a, WsQueryHandler)).Methods("POST")
-	a.R.HandleFunc("/ws/tags/uuid", curryhandler(a, WsTagsHandler)).Methods("GET")
-	a.R.HandleFunc("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler)).Methods("GET")
+	a.R.POST("/ws/api/query", curryhandler(a, WsQueryHandler))
+	a.R.GET("/ws/tags/uuid", curryhandler(a, WsTagsHandler))
+	a.R.GET("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler))
 }
 
 var upgrader = &websocket.Upgrader{
@@ -34,15 +34,14 @@ var upgrader = &websocket.Upgrader{
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true }}
 
-func WsAddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
+func WsAddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	ws, err := upgrader.Upgrade(rw, req, nil)
 	if err != nil {
 		log.Error("Error establishing websocket: %v", err)
 		return
 	}
 	msgtype, msg, err := ws.ReadMessage()
-	vars := mux.Vars(req)
-	apikey := unescape(vars["key"])
+	apikey := unescape(ps.ByName("key"))
 	messages, err := handleJSON(req.Body)
 	if err != nil {
 		log.Error("Error handling JSON: %v", err)
@@ -59,7 +58,7 @@ func WsAddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http
 	ws.WriteJSON(map[string]string{"status": "ok"})
 }
 
-func WsTagsHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
+func WsTagsHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	ws, err := upgrader.Upgrade(rw, req, nil)
 	if err != nil {
 		log.Error("Error establishing websocket: %v", err)
@@ -67,14 +66,13 @@ func WsTagsHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Reque
 	}
 	msgtype, msg, err := ws.ReadMessage()
 	log.Debug("msgtype: %v, msg: %v, err: %v", msgtype, msg, err)
-	vars := mux.Vars(req)
-	uuid := vars["uuid"]
+	uuid := ps.ByName("uuid")
 	res, err := a.TagsUUID(uuid)
 	ws.WriteJSON(res)
 	log.Debug("got uuid %v", uuid, ws)
 }
 
-func WsQueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
+func WsQueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	ws, err := upgrader.Upgrade(rw, req, nil)
 	if err != nil {
 		log.Error("Error: %v", err)
@@ -88,8 +86,8 @@ func unescape(s string) string {
 	return strings.Replace(s, "%3D", "=", -1)
 }
 
-func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.ResponseWriter, *http.Request)) func(rw http.ResponseWriter, req *http.Request) {
-	return func(rw http.ResponseWriter, req *http.Request) {
-		f(a, rw, req)
+func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.ResponseWriter, *http.Request, httprouter.Params)) func(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	return func(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+		f(a, rw, req, ps)
 	}
 }
