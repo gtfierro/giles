@@ -1,20 +1,29 @@
 package archiver
 
 import (
+	"bytes"
 	uuidlib "code.google.com/p/go-uuid/uuid"
 	"errors"
-	"github.com/SoftwareDefinedBuildings/quasar/cpinterface"
 	capn "github.com/glycerine/go-capnproto"
 	"net"
+	"sync"
 )
 
 // This is a translator interface for Quasar
 // (https://github.com/SoftwareDefinedBuildings/quasar) that implements the
 // TSDB interface (look at interfaces.go).
 type QDB struct {
-	addr  *net.TCPAddr
-	cm    *ConnectionMap
-	store *Store
+	addr       *net.TCPAddr
+	cm         *ConnectionMap
+	store      *Store
+	packetpool sync.Pool
+	bufferpool sync.Pool
+}
+
+type QuasarReading struct {
+	seg *capn.Segment
+	req *Request
+	ins *CmdInsertValues
 }
 
 // Create a new reference to a Quasar instance running at ip:port.  Connections
@@ -26,7 +35,27 @@ type QDB struct {
 func NewQuasar(address *net.TCPAddr, connectionkeepalive int) *QDB {
 	log.Notice("Conneting to Quasar at %v...", address.String())
 	return &QDB{addr: address,
-		cm: NewConnectionMap(connectionkeepalive)}
+		cm: NewConnectionMap(connectionkeepalive),
+		packetpool: sync.Pool{
+			New: func() interface{} {
+				seg := capn.NewBuffer(nil)
+				req := NewRootRequest(seg)
+				req.SetEchoTag(0)
+				ins := NewCmdInsertValues(seg)
+				ins.SetSync(false)
+				return QuasarReading{
+					seg: seg,
+					req: &req,
+					ins: &ins,
+				}
+			},
+		},
+		bufferpool: sync.Pool{
+			New: func() interface{} {
+				return bytes.NewBuffer(make([]byte, 0, 200)) // 200 byte buffer
+			},
+		},
+	}
 }
 
 func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
@@ -36,14 +65,14 @@ func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
 		log.Error("Error receiving data from Quasar %v", err)
 		return sr, err
 	}
-	resp := cpinterface.ReadRootResponse(seg)
+	resp := ReadRootResponse(seg)
 
 	switch resp.Which() {
-	case cpinterface.RESPONSE_VOID:
-		if resp.StatusCode() != cpinterface.STATUSCODE_OK {
+	case RESPONSE_VOID:
+		if resp.StatusCode() != STATUSCODE_OK {
 			log.Error("Received error status code when writing: %v", resp.StatusCode())
 		}
-	case cpinterface.RESPONSE_RECORDS:
+	case RESPONSE_RECORDS:
 		if resp.StatusCode() != 0 {
 			return sr, errors.New("Error when reading from Quasar:" + resp.StatusCode().String())
 		}
@@ -66,31 +95,25 @@ func (q *QDB) Add(sr *SmapReading) bool {
 		return false
 	}
 	uuid := uuidlib.Parse(sr.UUID)
-	seg := capn.NewBuffer(nil)
-	req := cpinterface.NewRootRequest(seg)
-	req.SetEchoTag(0)
-	ins := cpinterface.NewCmdInsertValues(seg)
-	ins.SetUuid([]byte(uuid))
-	rl := cpinterface.NewRecordList(seg, len(sr.Readings))
+	qr := q.packetpool.Get().(QuasarReading)
+	qr.ins.SetUuid([]byte(uuid))
+	rl := NewRecordList(qr.seg, len(sr.Readings))
 	rla := rl.ToArray()
 	for i, val := range sr.Readings {
 		rla[i].SetTime(int64(val[0].(uint64)))
 		rla[i].SetValue(val[1].(float64))
 	}
-	ins.SetValues(rl)
-	ins.SetSync(false)
-	req.SetInsertValues(ins)
-	conn, err := q.GetConnection()
-	if err != nil {
-		log.Error("Error getting connection %v", err)
-		return false
-	}
-	_, err = seg.WriteTo(conn)
+	qr.ins.SetValues(rl)
+	qr.req.SetInsertValues(*qr.ins)
+	buf := q.bufferpool.Get().(*bytes.Buffer)
+	_, err := qr.seg.WriteTo(buf)
 	if err != nil {
 		log.Error("Error writing %v", err)
 		return false
 	}
-	q.receive(&conn, -1)
+	data := buf.Bytes()
+	q.cm.Add(sr.UUID, &data, q)
+	q.packetpool.Put(qr)
 	return true
 }
 
@@ -98,8 +121,8 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 	var ret = make([]SmapResponse, len(uuids))
 	for i, uu := range uuids {
 		seg := capn.NewBuffer(nil)
-		req := cpinterface.NewRootRequest(seg)
-		qnv := cpinterface.NewCmdQueryNearestValue(seg)
+		req := NewRootRequest(seg)
+		qnv := NewCmdQueryNearestValue(seg)
 		qnv.SetBackward(backwards)
 		uuid := uuidlib.Parse(uu)
 		qnv.SetUuid([]byte(uuid))
@@ -140,8 +163,8 @@ func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) 
 	end = convertTime(end, uot, UOT_MS)
 	for i, uu := range uuids {
 		seg := capn.NewBuffer(nil)
-		req := cpinterface.NewRootRequest(seg)
-		qnv := cpinterface.NewCmdQueryStandardValues(seg)
+		req := NewRootRequest(seg)
+		qnv := NewCmdQueryStandardValues(seg)
 		uuid := uuidlib.Parse(uu)
 		qnv.SetUuid([]byte(uuid))
 		qnv.SetStartTime(int64(start))
