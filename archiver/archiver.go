@@ -265,5 +265,5 @@ func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}, apike
 }
 
 func (a *Archiver) PrintStatus() {
-	go periodicCall(5*time.Second, a.status) // status from stats.go
+	go periodicCall(1*time.Second, a.status) // status from stats.go
 }
