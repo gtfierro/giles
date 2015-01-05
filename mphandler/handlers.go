@@ -24,21 +24,31 @@ func ServeTCP(a *archiver.Archiver, tcpaddr *net.TCPAddr) {
 	if err != nil {
 		log.Error("Error on listening: %v", err)
 	}
-	var v interface{} // value to decode/encode into
 
 	go func() {
 		for {
-			buf := make([]byte, 1024)
 			conn, err := listener.Accept()
 			if err != nil {
 				log.Error("Error accepting connection: %v", err)
 			}
-			n, _ := conn.Read(buf)
-			dec := codec.NewDecoderBytes(buf[:n], &mh)
-			err = dec.Decode(&v)
-			AddReadings(a, v.(map[string]interface{}))
+			go handleConn(a, conn)
 		}
 	}()
+}
+
+func handleConn(a *archiver.Archiver, conn net.Conn) {
+	var v interface{} // value to decode/encode into
+	buf := make([]byte, 1024)
+	for {
+		n, _ := conn.Read(buf)
+		if n == 0 {
+			continue
+		}
+		log.Debug("in: %v", buf[:n])
+		dec := codec.NewDecoderBytes(buf[:n], &mh)
+		dec.Decode(&v)
+		AddReadings(a, v.(map[string]interface{}))
+	}
 }
 
 func AddReadings(a *archiver.Archiver, input map[string]interface{}) {
@@ -49,20 +59,28 @@ func AddReadings(a *archiver.Archiver, input map[string]interface{}) {
 		if !ok {
 			continue
 		}
-		if readings, found := md.(map[string]interface{})["Readings"]; found {
-			log.Debug("readings %v", readings, len(readings.([]interface{})))
+		if readings, found := m["Readings"]; found {
 			uuid := string(m["uuid"].([]uint8))
 			sm := &archiver.SmapMessage{Path: path,
-				UUID:       uuid,
-				Metadata:   m["Metadata"].(map[string]interface{}),
-				Properties: m["Properties"].(map[string]interface{})}
+				UUID: uuid,
+			}
+			if metadata, found := m["Metadata"]; found {
+				sm.Metadata = metadata.(map[string]interface{})
+			}
+			if properties, found := m["Properties"]; found {
+				sm.Properties = properties.(map[string]interface{})
+			}
 			sr := &archiver.SmapReading{UUID: uuid}
 			srs := make([][]interface{}, len(readings.([]interface{})))
 			for idx, smr := range readings.([]interface{}) {
+				time, ok := smr.([]interface{})[0].(uint64)
+				if !ok { // is int64
+					time = uint64(smr.([]interface{})[0].(int64))
+				}
 				if value, ok := smr.([]interface{})[1].(float64); !ok {
-					srs[idx] = []interface{}{smr.([]interface{})[0].(uint64), smr.([]interface{})[1].(int64)}
+					srs[idx] = []interface{}{time, float64(smr.([]interface{})[1].(int64))}
 				} else {
-					srs[idx] = []interface{}{smr.([]interface{})[0].(uint64), value}
+					srs[idx] = []interface{}{time, value}
 				}
 			}
 			sr.Readings = srs
