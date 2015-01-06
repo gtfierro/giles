@@ -23,3 +23,9 @@ var mybytes = []byte{134, 168, 77, 101, 116, 97, 100, 97, 116, 97, 128, 164, 80,
 func TestDecode(t *testing.T) {
 	decode(mybytes)
 }
+
+func BenchmarkDecode(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		decode(mybytes)
+	}
+}

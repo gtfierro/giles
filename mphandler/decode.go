@@ -34,18 +34,18 @@ func isarray(b byte) bool {
 // returns deocded string and number of consumed bytes
 func getstring(input *[]byte, offset int) (string, int) {
 	length := int((*input)[offset] & 0x1f)
-	fmt.Println("found string with length", length)
 	if length == 0 {
 		return "", 1
 	}
 	return string((*input)[offset+1 : offset+1+length]), length + 1
 }
 
-func getUint32(input *[]byte, offset int) (uint32, int) {
-	return uint32((*input)[offset+0])<<24 |
-		uint32((*input)[offset+1])<<16 |
-		uint32((*input)[offset+2])<<8 |
-		uint32((*input)[offset+3]), 4
+// return uint64 anyway
+func getUint32(input *[]byte, offset int) (uint64, int) {
+	return uint64((*input)[offset+0])<<24 |
+		uint64((*input)[offset+1])<<16 |
+		uint64((*input)[offset+2])<<8 |
+		uint64((*input)[offset+3]), 4
 }
 
 func getStr16(input *[]byte, offset int) (string, int) {
@@ -60,7 +60,6 @@ func getarray(input *[]byte, offset int) ([]interface{}, int) {
 	length := int((*input)[offset] & 0xf)
 	initialoffset := offset
 	offset += 1
-	fmt.Println("array w/ length", length)
 	if length == 0 {
 		return nil, 1
 	}
@@ -75,7 +74,6 @@ func getarray(input *[]byte, offset int) ([]interface{}, int) {
 		} else if (*input)[offset] < 0x7f { // positive fixint
 			value = uint64((*input)[offset])
 			consumed = 1
-			fmt.Println("offset", offset)
 		} else { // is a number, probably
 			switch (*input)[offset] {
 			case 0xce:
@@ -87,7 +85,6 @@ func getarray(input *[]byte, offset int) ([]interface{}, int) {
 		}
 		offset += consumed
 		ret = append(ret, value)
-		fmt.Println("array value:", value)
 	}
 	return ret, offset - initialoffset
 }
@@ -96,7 +93,6 @@ func getmap(input *[]byte, offset int) (map[string]interface{}, int) {
 	length := int((*input)[offset] & 0xf)
 	initialoffset := offset
 	offset += 1
-	fmt.Println("got map of length", length, "so it has", length*2, "elements")
 	if length == 0 {
 		return nil, 1
 	}
@@ -105,12 +101,9 @@ func getmap(input *[]byte, offset int) (map[string]interface{}, int) {
 		var value interface{}
 		var consumed int
 		// get key, assuming is string
-		fmt.Println("string?", (*input)[offset])
 		key, consumed := getstring(input, offset)
-		fmt.Println("key:", key)
 		offset += consumed
 		// get value
-		fmt.Println("value byte", (*input)[offset])
 		if isstring((*input)[offset]) {
 			value, consumed = getstring(input, offset)
 		} else if isarray((*input)[offset]) {
@@ -122,7 +115,6 @@ func getmap(input *[]byte, offset int) (map[string]interface{}, int) {
 		} else {
 			fmt.Println("actualy is dolan", (*input)[offset], offset)
 		}
-		fmt.Println("value:", value)
 		offset += consumed
 		ret[key] = value
 	}
@@ -135,7 +127,6 @@ func decode(input []byte) ([]byte, map[string]interface{}) {
 	// length * 2 is number of elements
 	if ismap(input[idx]) {
 		mymap, consumed := getmap(&input, idx)
-		fmt.Println("got map", mymap)
 		idx += consumed
 		return input[idx:], mymap
 	} else {
