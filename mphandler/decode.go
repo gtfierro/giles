@@ -4,20 +4,6 @@ import (
 	"fmt"
 )
 
-type MsgPackSmap struct {
-	Path       string
-	UUID       string `codec:"uuid"`
-	Key        string `codec:"key"`
-	Properties map[string]interface{}
-	Metadata   map[string]interface{}
-	Readings   MsgPackReadings
-}
-
-type MsgPackReadings struct {
-	Readings [][2]interface{}
-	UUID     string `codec:"uuid"`
-}
-
 func isstring(b byte) bool {
 	return (b >= 0xa0 && b <= 0xbf)
 }

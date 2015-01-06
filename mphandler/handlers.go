@@ -51,14 +51,11 @@ func AddReadings(a *archiver.Archiver, md map[string]interface{}) {
 	log.Debug("md:%v", md)
 	sm := &archiver.SmapMessage{Path: md["Path"].(string),
 		UUID: md["uuid"].(string),
+        Readings: make([][]interface{}, 0, len(md["Readings"].([]interface{}))),
 	}
-	sr := &archiver.SmapReading{}
-	sr.UUID = md["uuid"].(string)
-	sr.Readings = make([][]interface{}, 0, len(md["Readings"].([]interface{})))
 	for idx, rdg := range md["Readings"].([]interface{}) {
 		log.Debug("idx %v rdg %v", idx, rdg)
-		sr.Readings[idx] = []interface{}{rdg.([]interface{})[0].(uint64), rdg.([]interface{})[1].(uint64)}
+		sm.Readings[idx] = []interface{}{rdg.([]interface{})[0].(uint64), rdg.([]interface{})[1].(uint64)}
 	}
-	sm.Readings = sr
 	a.AddData(ret, apikey)
 }
