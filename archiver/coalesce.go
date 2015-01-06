@@ -51,7 +51,7 @@ func (c *Coalescer) GetStreamBuf(uuid string) *StreamBuf {
 	if sm, found := c.streams[uuid]; found {
 		return sm
 	}
-	sm := &StreamBuf{readings: make([][]interface{}, 0, 100)}
+	sm := &StreamBuf{uuid: uuid, readings: make([][]interface{}, 0, 100)}
 	c.streams[uuid] = sm
 	return sm
 }
