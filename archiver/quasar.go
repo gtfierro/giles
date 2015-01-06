@@ -90,16 +90,16 @@ func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
 
 }
 
-func (q *QDB) Add(sr *SmapReading) bool {
-	if len(sr.Readings) == 0 {
+func (q *QDB) Add(sb *StreamBuf) bool {
+	if len(sb.readings) == 0 {
 		return false
 	}
-	uuid := uuidlib.Parse(sr.UUID)
+	uuid := uuidlib.Parse(sb.uuid)
 	qr := q.packetpool.Get().(QuasarReading)
 	qr.ins.SetUuid([]byte(uuid))
-	rl := NewRecordList(qr.seg, len(sr.Readings))
+	rl := NewRecordList(qr.seg, len(sb.readings))
 	rla := rl.ToArray()
-	for i, val := range sr.Readings {
+	for i, val := range sb.readings {
 		rla[i].SetTime(int64(val[0].(uint64)))
 		rla[i].SetValue(val[1].(float64))
 	}
@@ -112,7 +112,7 @@ func (q *QDB) Add(sr *SmapReading) bool {
 		return false
 	}
 	data := buf.Bytes()
-	q.cm.Add(sr.UUID, &data, q)
+	q.cm.Add(sb.uuid, &data, q)
 	q.packetpool.Put(qr)
 	return true
 }

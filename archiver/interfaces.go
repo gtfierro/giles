@@ -15,7 +15,7 @@ import (
 // given as parameters
 type TSDB interface {
 	// add the following SmapReading to the timeseries database
-	Add(*SmapReading) bool
+	Add(*StreamBuf) bool
 	// uuids, reference time, limit, unit of time
 	// retrieve data before reference time
 	Prev([]string, uint64, int32, UnitOfTime) ([]SmapResponse, error)

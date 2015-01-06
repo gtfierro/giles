@@ -33,12 +33,12 @@ type SmapResponse struct {
    We will probably want to queue up the serialization of a bunch
    and then write in bulk.
 */
-func NewMessage(sr *SmapReading, store *Store) *Message {
+func NewMessage(sb *StreamBuf, store *Store) *Message {
 	m := &Message{}
 	var timestamp uint64
 	var value float64
 	var seqno uint64
-	var streamid uint32 = store.getStreamId(sr.UUID)
+	var streamid uint32 = store.getStreamId(sb.uuid)
 	if streamid == 0 {
 		log.Error("error committing streamid")
 		return nil
@@ -48,9 +48,9 @@ func NewMessage(sr *SmapReading, store *Store) *Message {
 	// create ReadingSet
 	readingset := &rdbproto.ReadingSet{Streamid: &streamid,
 		Substream: &substream,
-		Data:      make([](*rdbproto.Reading), len(sr.Readings))}
+		Data:      make([](*rdbproto.Reading), len(sb.readings))}
 	// populate readings
-	for i, reading := range sr.Readings {
+	for i, reading := range sb.readings {
 		timestamp = reading[0].(uint64)
 		value = reading[1].(float64)
 		seqno = uint64(i)
@@ -121,15 +121,15 @@ func (rdb *RDB) AddStore(store *Store) {
 // When Add returns, the client should be guaranteed that the writes will be
 // committed to the underlying store. Returns True if there were readings to be committed,
 // and False if there were no readings found in the incoming message
-func (rdb *RDB) Add(sr *SmapReading) bool {
-	if sr.Readings == nil || len(sr.Readings) == 0 {
+func (rdb *RDB) Add(sb *StreamBuf) bool {
+	if sb.readings == nil || len(sb.readings) == 0 {
 		return false
 	}
 
-	m := NewMessage(sr, rdb.store)
+	m := NewMessage(sb, rdb.store)
 
 	data := m.ToBytes()
-	rdb.cm.Add(sr.UUID, &data, rdb)
+	rdb.cm.Add(sb.uuid, &data, rdb)
 
 	return true
 }

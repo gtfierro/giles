@@ -55,6 +55,7 @@ type Archiver struct {
 	incomingcounter      *counter
 	pendingwritescounter *counter
 	R                    *httprouter.Router
+	coalescer            *Coalescer
 }
 
 // Creates a new Archiver instance:
@@ -96,7 +97,8 @@ func NewArchiver(c *Config) *Archiver {
 		address:              address,
 		R:                    httprouter.New(),
 		incomingcounter:      newCounter(),
-		pendingwritescounter: newCounter()}
+		pendingwritescounter: newCounter(),
+		coalescer:            NewCoalescer(&tsdb)}
 
 }
 
@@ -133,7 +135,7 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 		if msg.Readings == nil {
 			continue
 		}
-		a.tsdb.Add(msg.Readings)
+		a.coalescer.Add(msg)
 	}
 	return nil
 }

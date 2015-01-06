@@ -85,7 +85,7 @@ func handleJSON(r io.Reader) (map[string]*SmapMessage, error) {
 			srs[idx] = []interface{}{ts, val}
 		}
 		sr.Readings = srs
-		message.Readings = sr
+		//message.Readings = sr
 
 		// get actuator
 		actuator := js.Get("Actuator").MustMap()

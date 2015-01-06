@@ -17,7 +17,7 @@ type SmapReading struct {
 // is designed to match the format of sMAP JSON, as that is the primary data format.
 type SmapMessage struct {
 	// Readings for this message
-	Readings *SmapReading
+	Readings [][]interface{}
 	// If this struct corresponds to a sMAP collection,
 	// then Contents contains a list of paths contained within
 	// this collection
@@ -38,7 +38,7 @@ type SmapMessage struct {
 // marshaled JSON
 func (sm *SmapMessage) ToJson() []byte {
 	towrite := map[string]*SmapReading{}
-	towrite[sm.Path] = sm.Readings
+	towrite[sm.Path].Readings = sm.Readings
 	b, err := json.Marshal(towrite)
 	if err != nil {
 		log.Error("Error marshalling to JSON", err)
