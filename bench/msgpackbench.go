@@ -10,7 +10,7 @@ import (
 
 const (
 	NUM_STREAMS  = 1
-	NUM_READINGS = 1
+	NUM_READINGS = 2
 )
 
 var mh codec.MsgpackHandle
@@ -23,24 +23,17 @@ type MsgPackSmap struct {
 	Key        string `codec:"key"`
 	Properties map[string]interface{}
 	Metadata   map[string]interface{}
-	Readings   MsgPackReadings
-}
-
-type MsgPackReadings struct {
-	Readings [][2]interface{}
-	UUID     string `codec:"uuid"`
+	Readings   [][2]interface{}
 }
 
 var writepool = sync.Pool{
 	New: func() interface{} {
 		return MsgPackSmap{
 			Path:       "/sensor/0",
-			Key:        "pihlHaUYQGcgOleO-l5-fg6-WxyPJw76s4orcrpA0JC_v8r1wxZiWu1ODhklLwcs9BAXs6B0Soaggd3mFcJYVw==",
+			Key:        "z-khZexJ4XzLqjhlmrhKbu0hio5-sd7boR1oSi1YqLSrKHWVO2pdlSrDl1CjbCE4LmrhIyGj4qLTvspX9nDEkw==",
 			Properties: map[string]interface{}{},
 			Metadata:   map[string]interface{}{},
-			Readings: MsgPackReadings{
-				Readings: make([][2]interface{}, 1, 1),
-			},
+			Readings:   make([][2]interface{}, 1, 1),
 		}
 	},
 }
@@ -48,9 +41,8 @@ var writepool = sync.Pool{
 func writeMsgPack(conn *net.Conn, uuid string, time, reading uint64, buf []byte) {
 	mps := writepool.Get().(MsgPackSmap)
 	mps.UUID = uuid
-	mps.Readings.UUID = uuid
-	mps.Readings.Readings[0][0] = time
-	mps.Readings.Readings[0][1] = reading
+	mps.Readings[0][0] = time
+	mps.Readings[0][1] = reading
 
 	encoder := codec.NewEncoderBytes(&buf, &mh)
 	encoder.Encode(mps)
