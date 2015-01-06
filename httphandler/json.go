@@ -72,7 +72,6 @@ func handleJSON(r io.Reader) (map[string]*archiver.SmapMessage, error) {
 
 		// get readings
 		readingarray := js.Get("Readings").MustArray()
-		sr := &archiver.SmapReading{UUID: uuid}
 		srs := make([][]interface{}, len(readingarray))
 		for idx, readings := range readingarray {
 			reading := readings.([]interface{})
@@ -94,8 +93,7 @@ func handleJSON(r io.Reader) (map[string]*archiver.SmapMessage, error) {
 			}
 			srs[idx] = []interface{}{ts, val}
 		}
-		sr.Readings = srs
-		message.Readings = sr
+		message.Readings = srs
 
 		// get actuator
 		actuator := js.Get("Actuator").MustMap()
