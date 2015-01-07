@@ -31,7 +31,18 @@ func getUint32(input *[]byte, offset int) (uint64, int) {
 	return uint64((*input)[offset+0])<<24 |
 		uint64((*input)[offset+1])<<16 |
 		uint64((*input)[offset+2])<<8 |
-		uint64((*input)[offset+3]), 4
+		uint64((*input)[offset+3]), 5
+}
+
+func getUint64(input *[]byte, offset int) (uint64, int) {
+	return uint64((*input)[offset+0])<<56 |
+		uint64((*input)[offset+1])<<48 |
+		uint64((*input)[offset+2])<<40 |
+		uint64((*input)[offset+3])<<36 |
+		uint64((*input)[offset+4])<<24 |
+		uint64((*input)[offset+5])<<16 |
+		uint64((*input)[offset+6])<<8 |
+		uint64((*input)[offset+7]), 8
 }
 
 func getStr16(input *[]byte, offset int) (string, int) {
@@ -60,6 +71,9 @@ func getarray(input *[]byte, offset int) ([]interface{}, int) {
 		} else if (*input)[offset] < 0x7f { // positive fixint
 			value = uint64((*input)[offset])
 			consumed = 1
+		} else if (*input)[offset] == 0xcf { //uint64
+			offset += 1
+			value, consumed = getUint64(input, offset)
 		} else { // is a number, probably
 			switch (*input)[offset] {
 			case 0xce:
@@ -98,6 +112,8 @@ func getmap(input *[]byte, offset int) (map[string]interface{}, int) {
 			value, consumed = getmap(input, offset)
 		} else if (*input)[offset] == 0xda {
 			value, consumed = getStr16(input, offset)
+		} else if (*input)[offset] == 0xcf { //uint64
+			value, consumed = getUint64(input, offset)
 		} else {
 			fmt.Println("actualy is dolan", (*input)[offset], offset)
 		}

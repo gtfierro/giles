@@ -46,16 +46,17 @@ func handleConn(a *archiver.Archiver, conn net.Conn) {
 }
 
 func AddReadings(a *archiver.Archiver, md map[string]interface{}) {
+	log.Debug("in: %v", md)
 	apikey := md["key"].(string)
 	ret := map[string]*archiver.SmapMessage{}
 	log.Debug("md:%v", md)
 	sm := &archiver.SmapMessage{Path: md["Path"].(string),
-		UUID: md["uuid"].(string),
-        Readings: make([][]interface{}, 0, len(md["Readings"].([]interface{}))),
+		UUID:     md["uuid"].(string),
+		Readings: make([][]interface{}, 0, len(md["Readings"].([]interface{}))),
 	}
-	for idx, rdg := range md["Readings"].([]interface{}) {
-		log.Debug("idx %v rdg %v", idx, rdg)
-		sm.Readings[idx] = []interface{}{rdg.([]interface{})[0].(uint64), rdg.([]interface{})[1].(uint64)}
+	log.Debug("len of readings %v", len(md["Readings"].([]interface{})))
+	for _, rdg := range md["Readings"].([]interface{}) {
+		sm.Readings = append(sm.Readings, []interface{}{rdg.([]interface{})[0].(uint64), rdg.([]interface{})[1].(uint64)})
 	}
 	a.AddData(ret, apikey)
 }
