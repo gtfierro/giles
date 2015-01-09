@@ -1,3 +1,33 @@
+// MsgPack Handler Overview
+//
+// The MsgPack format for sMAP is designed to look very similar to the JSON
+// format, while also making it possible to handle different commands (e.g. not
+// just reads) as well as permissions including an API key.
+//
+//      type MsgPackSmap struct {
+//      	Path       string
+//      	UUID       string `codec:"uuid"`
+//      	Key        string `codec:"key"`
+//      	Properties map[string]interface{}
+//      	Metadata   map[string]interface{}
+//      	Readings   [][2]interface{}
+//      }
+//
+// We need to augment this struct with some information in a simple packet
+// header that gives us the ability to describe packet length and packet
+// command.
+//
+// Header:
+//      +---------------------+----------------------+----------------------+----
+//      | len prefix (n bits) | packet len (n bytes) | packet type (1 byte) | packet contents...
+//      +---------------------+----------------------+----------------------+----
+//
+// The length prefix is a huffman coding where the length in bits tells us how
+// many bytes come next. Those bytes contain the exact length of the packet (in bytes).
+// Afterwards comes a single byte that contains the packet type (this will be a value
+// from a predetermined Enum that will be described below. Following this header comes
+// the actual packet contents
+
 package mphandler
 
 import (
@@ -33,30 +63,44 @@ func ServeTCP(a *archiver.Archiver, tcpaddr *net.TCPAddr) {
 }
 
 func handleConn(a *archiver.Archiver, conn net.Conn) {
-	buf := make([]byte, 1024)
+	buf := make([]byte, 4096)
 	for {
 		n, _ := conn.Read(buf)
 		if n == 0 {
 			continue
 		}
-		leftover, decoded := decode(buf[:n])
-		log.Debug("leftover length: %v", len(leftover))
-		AddReadings(a, decoded)
+		log.Debug("read %v", n)
+		offset := 0
+		for {
+			newoff, decoded := decode(&buf, offset)
+			if md, ok := decoded.(map[string]interface{}); ok {
+				AddReadings(a, md)
+			} else {
+				log.Debug("bad in data: %v", decoded)
+			}
+			if n == newoff { // finished buffer
+				break
+			} else { // still stuff in buffer
+				offset = newoff
+			}
+		}
 	}
 }
 
+//TODO: check for malformed
 func AddReadings(a *archiver.Archiver, md map[string]interface{}) {
-	log.Debug("in: %v", md)
-	apikey := md["key"].(string)
 	ret := map[string]*archiver.SmapMessage{}
-	log.Debug("md:%v", md)
 	sm := &archiver.SmapMessage{Path: md["Path"].(string),
 		UUID:     md["uuid"].(string),
 		Readings: make([][]interface{}, 0, len(md["Readings"].([]interface{}))),
 	}
-	log.Debug("len of readings %v", len(md["Readings"].([]interface{})))
 	for _, rdg := range md["Readings"].([]interface{}) {
-		sm.Readings = append(sm.Readings, []interface{}{rdg.([]interface{})[0].(uint64), rdg.([]interface{})[1].(uint64)})
+		if reading, ok := rdg.([]interface{})[1].(int64); ok {
+			sm.Readings = append(sm.Readings, []interface{}{rdg.([]interface{})[0].(uint64), float64(reading)})
+		} else if freading, ok := rdg.([]interface{})[1].(float64); ok {
+			sm.Readings = append(sm.Readings, []interface{}{rdg.([]interface{})[0].(uint64), freading})
+		}
 	}
-	a.AddData(ret, apikey)
+	ret[sm.Path] = sm
+	a.AddData(ret, md["key"].(string))
 }
