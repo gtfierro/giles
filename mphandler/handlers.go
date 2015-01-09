@@ -1,4 +1,9 @@
-// MsgPack Handler Overview
+// License?
+
+// Package mphandler implements a MsgPack/TCP interface to the Archiver API
+// at http://godoc.org/github.com/gtfierro/giles/archiver
+//
+// Overview
 //
 // The MsgPack format for sMAP is designed to look very similar to the JSON
 // format, while also making it possible to handle different commands (e.g. not
