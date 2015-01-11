@@ -57,13 +57,11 @@ func NewStore(address *net.TCPAddr) *Store {
 		log.Fatal("Could not create index on metadata.uuid")
 	}
 
-	index.Unique = false
 	err = streams.EnsureIndex(index)
 	if err != nil {
 		log.Fatal("Could not create index on streams.uuid")
 	}
 
-	index.Unique = true
 	index.Key = []string{"Path", "uuid"}
 	err = pathmetadata.EnsureIndex(index)
 	if err != nil {
@@ -128,6 +126,8 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 	}
 	q := s.metadata.Find(bson.M{"uuid": uuid})
 	count, _ := q.Count()
+	s.apikeylock.Lock()
+	defer s.apikeylock.Unlock()
 	if count > 0 {
 		q.One(&record)
 		if record["_api"] != apikey {
@@ -135,8 +135,6 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		}
 		s.apikcache.Set(uuid, apikey)
 	} else {
-		s.apikeylock.Lock()
-		defer s.apikeylock.Unlock()
 		// lock?
 		exists, err := s.apikeyexists(apikey)
 		if !exists || err != nil {
@@ -145,7 +143,7 @@ func (s *Store) CanWrite(apikey, uuid string) (bool, error) {
 		if uuid == "" {
 			return false, err
 		}
-		log.Debug("inserting uuid %v with api %v", uuid, apikey)
+		//log.Debug("inserting uuid %v with api %v", uuid, apikey)
 		err = s.metadata.Insert(bson.M{"uuid": uuid, "_api": apikey})
 		if err != nil {
 			return false, err

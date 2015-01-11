@@ -79,9 +79,9 @@ func (c *Coalescer) Add(sm *SmapMessage) {
 				sb.Lock()
 				c.commit(uuid)
 				sb.Unlock()
-				return
+				break
 			case <-abort:
-				return
+				break
 			}
 		}(sb.abort, sm.UUID)
 	}
