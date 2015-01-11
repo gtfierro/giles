@@ -5,16 +5,34 @@ import (
 	"math"
 )
 
-func isstring(b byte) bool {
-	return (b >= 0xa0 && b <= 0xbf)
+type MessageType uint
+
+const (
+	DATA_WRITE = iota
+	DATA_PREV
+	DATA_NEXT
+	DATA_RANGE
+	TAG_GET
+	TAG_SET
+	QUERY
+)
+
+// ^^ to be continued ...
+
+// Given a reference to a byte slice (probably your incoming buffer) and an
+// offset into that slice, decode the header and return the MessageType and the
+// total packet length
+func ParseHeader(input *[]byte, offset int) (MessageType, int) {
+	packetlength := int(getUintLE(input, offset, 2))
+	return DATA_WRITE, packetlength
 }
 
-func ismap(b byte) bool {
-	return (b >= 0x80 && b <= 0x8f)
-}
-
-func isarray(b byte) bool {
-	return (b >= 0x90 && b <= 0x9f)
+func getUintLE(input *[]byte, offset, length int) uint64 {
+	var value uint64
+	for i := 0; i < length; i++ {
+		value |= uint64((*input)[offset+i]) << uint(i*8)
+	}
+	return value
 }
 
 func getUint(input *[]byte, offset, length int) uint64 {
@@ -58,8 +76,9 @@ func parseInt(input *[]byte, offset int) (int64, int) {
 	c := (*input)[offset]
 	switch {
 	case c <= 0x7f:
-		tmp = uint64((*input)[offset])
+		value = int64(c)
 		consumed = 1
+		goto ret
 	case c == 0xd0:
 		tmp = uint64((*input)[offset+1])
 		consumed = 2
@@ -72,12 +91,16 @@ func parseInt(input *[]byte, offset int) (int64, int) {
 	case c == 0xd3:
 		tmp = getUint(input, offset+1, 8)
 		consumed = 9
+	default:
+		log.Debug("UNKNOWN int: %v", c)
 	}
 
 	value = int64(tmp >> 1)
 	if tmp&1 != 0 {
 		value = ^value
 	}
+
+ret:
 	return value, consumed
 }
 
@@ -131,9 +154,8 @@ func parseString(input *[]byte, offset int) (string, int) {
 
 func parseMap(input *[]byte, offset int) (map[string]interface{}, int) {
 	var (
-		value    map[string]interface{}
-		consumed int
-		length   int
+		value  map[string]interface{}
+		length int
 	)
 	initialoffset := offset
 	c := (*input)[offset]
@@ -155,8 +177,8 @@ func parseMap(input *[]byte, offset int) (map[string]interface{}, int) {
 		var ok bool
 		newoffset, _key := decode(input, offset)
 		if key, ok = _key.(string); !ok {
-			log.Debug("have key we don't understand: %v", _key)
-			return value, consumed
+			log.Debug("have key we don't understand: %v, byte is %v, offset is %v", _key, (*input)[offset], offset)
+			return value, 0
 		}
 		offset = newoffset
 		newoffset, _value := decode(input, offset)

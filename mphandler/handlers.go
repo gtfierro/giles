@@ -23,15 +23,13 @@
 // command.
 //
 // Header:
-//      +---------------------+----------------------+----------------------+----
-//      | len prefix (n bits) | packet len (n bytes) | packet type (1 byte) | packet contents...
-//      +---------------------+----------------------+----------------------+----
+//      +----------------------+----------------------+----
+//      | packet len (2 bytes) | packet type (1 byte) | packet contents...
+//      +----------------------+----------------------+----
 //
-// The length prefix is a huffman coding where the length in bits tells us how
-// many bytes come next. Those bytes contain the exact length of the packet (in bytes).
-// Afterwards comes a single byte that contains the packet type (this will be a value
-// from a predetermined Enum that will be described below. Following this header comes
-// the actual packet contents
+// Packet length is 2 bytes. Afterwards comes a single byte that contains the
+// packet type (this will be a value from a predetermined Enum that will be
+// described below. Following this header comes the actual packet contents
 
 package mphandler
 
@@ -67,26 +65,62 @@ func ServeTCP(a *archiver.Archiver, tcpaddr *net.TCPAddr) {
 	}()
 }
 
+// How do we efficiently handle lots of packets on a single connection?
+// 0. Initialize offset to 0
+// 1. Read bytes into the buffer (right now 4k, but may increase?). Possibility of
+//    partial packet at end. If we have bytes in our holding buffer, read the number
+//    of leftover bytes into a decoding buffer and combine it with the old buffer, decode and increase
+//    the offset
+// (if enough space for header)
+// 2. Read header of packet and retrieve packetlength. Increase offset by header size (3 bytes)
+// 3. If enough space left in buffer for packet, read whole packet, decode, and increase the
+//    offset by the packetsize.
+// 4. If NOT enough space left in buffer, read from the offset til the end of the buffer and place
+//    it into a holding buffer and keep track of how many bytes left to read. Go back to step 1
+
 func handleConn(a *archiver.Archiver, conn net.Conn) {
+	var dec []byte
+	leftover := 0
+	readalready := 0
 	buf := make([]byte, 4096)
+	old := make([]byte, 4096)
 	for {
 		n, _ := conn.Read(buf)
-		if n == 0 {
+		if n == 0 { // didn't read anything
 			continue
 		}
-		log.Debug("read %v", n)
 		offset := 0
-		for {
-			newoff, decoded := decode(&buf, offset)
-			if md, ok := decoded.(map[string]interface{}); ok {
-				AddReadings(a, md)
-			} else {
-				log.Debug("bad in data: %v", decoded)
+		if leftover > 0 { // have a partial packet we need to finish reading
+			dec = append(old[:readalready], buf[:leftover]...)
+			_, decoded := decode(&dec, 0)
+			go AddReadings(a, decoded.(map[string]interface{}))
+			offset = leftover
+			leftover = 0
+			old = old[:cap(old)]
+			if offset == n {
+				continue
 			}
-			if n == newoff { // finished buffer
+		}
+
+		for { // read/decode packets until no room
+			if offset == n {
 				break
-			} else { // still stuff in buffer
-				offset = newoff
+			}
+			if 4096-offset < 3 {
+				log.Debug("header overlap")
+			}
+			_, packetlength := ParseHeader(&buf, offset)
+			offset += 3
+			packetlength -= 3
+			if offset+packetlength <= 4096 { // still have room
+				newoffset, decoded := decode(&buf, offset)
+				go AddReadings(a, decoded.(map[string]interface{}))
+				offset = newoffset
+			} else { // not enough!
+				copy(old, buf[offset:])
+				leftover = packetlength - (4096 - offset)
+				readalready = len(buf[offset:])
+				break
 			}
 		}
 	}
