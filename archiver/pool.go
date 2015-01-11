@@ -46,10 +46,9 @@ func (cm *ConnectionMap) Add(uuid string, data *[]byte, tsdb TSDB) {
 			log.Panic("Error connecting to TSDB")
 		}
 		conn = &connection{conn: &c, In: make(chan *[]byte)}
-		if _, found := cm.streams[uuid]; !found {
-			cm.streams[uuid] = conn
-			go cm.watchdog(uuid)
-		}
+		cm.streams[uuid] = conn
+		go cm.watchdog(uuid)
+		conn.In <- data
 	}
 }
 

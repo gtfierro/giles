@@ -57,11 +57,13 @@ func NewStore(address *net.TCPAddr) *Store {
 		log.Fatal("Could not create index on metadata.uuid")
 	}
 
+	index.Unique = false
 	err = streams.EnsureIndex(index)
 	if err != nil {
 		log.Fatal("Could not create index on streams.uuid")
 	}
 
+	index.Unique = true
 	index.Key = []string{"Path", "uuid"}
 	err = pathmetadata.EnsureIndex(index)
 	if err != nil {

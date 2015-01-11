@@ -48,7 +48,7 @@ func NewMessage(sb *StreamBuf, store *Store) *Message {
 	// create ReadingSet
 	readingset := &rdbproto.ReadingSet{Streamid: &streamid,
 		Substream: &substream,
-		Data:      make([](*rdbproto.Reading), len(sb.readings))}
+		Data:      make([](*rdbproto.Reading), len(sb.readings), len(sb.readings))}
 	// populate readings
 	for i, reading := range sb.readings {
 		timestamp = reading[0].(uint64)
@@ -125,7 +125,6 @@ func (rdb *RDB) Add(sb *StreamBuf) bool {
 	if sb.readings == nil || len(sb.readings) == 0 {
 		return false
 	}
-
 	m := NewMessage(sb, rdb.store)
 
 	data := m.ToBytes()

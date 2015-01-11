@@ -25,7 +25,7 @@ it off. Might use sync.Pool for this later, but not sure. Erase the slice when t
 
 const (
 	COALESCE_TIMEOUT = 500
-	COALESCE_MAX     = 10000
+	COALESCE_MAX     = 4000
 )
 
 type StreamBuf struct {
@@ -36,9 +36,9 @@ type StreamBuf struct {
 }
 
 type Coalescer struct {
+	tsdb *TSDB
 	sync.Mutex
 	streams map[string]*StreamBuf
-	tsdb    *TSDB
 }
 
 func NewCoalescer(tsdb *TSDB) *Coalescer {
@@ -61,10 +61,16 @@ func (c *Coalescer) Add(sm *SmapMessage) {
 		return
 	} // return early
 
+	if len(sm.UUID) == 0 {
+		log.Error("Reading has no UUID!")
+		return
+	}
+
 	sb := c.GetStreamBuf(sm.UUID)
 
 	sb.Lock()
-	if len(sb.readings) == 0 { // empty! start afresh
+	sb.readings = append(sb.readings, sm.Readings...)
+	if len(sb.readings) == len(sm.Readings) { // empty! start afresh
 		sb.abort = make(chan bool, 1)
 		go func(abort chan bool, uuid string) {
 			timeout := time.After(time.Duration(COALESCE_TIMEOUT) * time.Millisecond)
@@ -73,6 +79,7 @@ func (c *Coalescer) Add(sm *SmapMessage) {
 				sb.Lock()
 				c.commit(uuid)
 				sb.Unlock()
+				return
 			case <-abort:
 				return
 			}
@@ -80,7 +87,6 @@ func (c *Coalescer) Add(sm *SmapMessage) {
 	}
 
 	// here we know we have a streambuf to use
-	sb.readings = append(sb.readings, sm.Readings...)
 	if len(sb.readings) >= COALESCE_MAX {
 		sb.abort <- true // abort the timer
 		c.commit(sm.UUID)
@@ -90,8 +96,6 @@ func (c *Coalescer) Add(sm *SmapMessage) {
 }
 
 func (c *Coalescer) commit(uuid string) {
-	// do nothing right now
-	//log.Debug("COALESCE COMMIT For UUID %v", uuid)
 	sb := c.GetStreamBuf(uuid)
 	c.Lock()
 	(*c.tsdb).Add(sb)
