@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	BUFFER_SIZE = 16384
+	BUFFER_SIZE = 65536
 )
 
 var log = logging.MustGetLogger("mphandler")
@@ -90,36 +90,22 @@ func handleConn(a *archiver.Archiver, conn net.Conn) {
 	old := make([]byte, BUFFER_SIZE)
 	buf := make([]byte, BUFFER_SIZE)
 	for {
-		if len(old) <= 3 {
-			log.Debug("TOP LOOP old is now %v", old)
-		} else {
-			log.Debug("TOP LOOP old is now %v", old[:3])
-		}
 		n, err := conn.Read(buf)
 		if n == 0 { // didn't read anything
-			log.Debug("NO READ")
 			continue
 		}
 		if err != nil {
 			log.Error("Reading socket error: %v", err)
 			break
 		}
-		log.Debug("read %v", n)
-		log.Debug("old is now now %v", old)
 		offset := 0
 		if leftover > 0 { // have a partial packet we need to finish reading
 			if needheader { // need to read header first
-				log.Debug("handling rest of header %v", old)
-				log.Debug("readalready: %v, leftover: %v", readalready, leftover)
 				dec = append(old[:readalready], buf[:leftover]...)
-				log.Debug("header : %v, old %v", dec[:3], old[:readalready])
 				_, packetlength := ParseHeader(&dec, 0)
-				log.Debug("packet len: %v", packetlength)
 				dec = buf[leftover : packetlength+leftover]
-				log.Debug("first byte of new packet %v", buf, leftover)
-				offset = leftover + packetlength
+				offset = leftover + packetlength - 3
 			} else {
-				//log.Debug("readalready: %v, leftover: %v", readalready, leftover)
 				dec = append(old[:readalready], buf[:leftover]...)
 				offset = leftover
 			}
@@ -132,12 +118,6 @@ func handleConn(a *archiver.Archiver, conn net.Conn) {
 			if offset == n {
 				continue
 			}
-		} else {
-			if len(old) <= 3 {
-				log.Debug("ELSE old is now %v", old)
-			} else {
-				log.Debug("ELSE old is now %v", old[:3])
-			}
 		}
 
 		for { // read/decode packets until no room
@@ -145,12 +125,10 @@ func handleConn(a *archiver.Archiver, conn net.Conn) {
 				break
 			}
 			if BUFFER_SIZE-offset < 3 {
-				log.Debug("header overlap %v", buf[offset:])
-				old = buf[offset:]
+				copy(old, buf[offset:])
 				readalready = len(buf[offset:])
 				leftover = 3 - readalready
 				needheader = true
-				log.Debug("old is now %v", old)
 				break
 			} else {
 				_, packetlength := ParseHeader(&buf, offset)
@@ -161,9 +139,6 @@ func handleConn(a *archiver.Archiver, conn net.Conn) {
 					AddReadings(a, decoded.(map[string]interface{}))
 					offset = newoffset
 				} else { // not enough!
-					if needheader {
-						log.Debug("old write")
-					}
 					copy(old, buf[offset:])
 					leftover = packetlength - (BUFFER_SIZE - offset)
 					readalready = len(buf[offset:])
