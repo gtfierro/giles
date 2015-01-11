@@ -6,12 +6,13 @@ import (
 	"github.com/ugorji/go/codec"
 	"log"
 	"net"
+	"runtime"
 	"sync"
 )
 
 const (
-	NUM_STREAMS  = 10
-	NUM_READINGS = 200
+	NUM_STREAMS  = 1
+	NUM_READINGS = 200000
 )
 
 var mh codec.MsgpackHandle
@@ -40,15 +41,12 @@ var writepool = sync.Pool{
 }
 
 func addMessage(msg *[]byte) {
-	payload_length := uint32(len(*msg) + 3) // 1 byte for length-length, 4 for payload_length, 1 for msg type
-	log.Println("payload length is ", payload_length)
+	payload_length := uint32(len(*msg) + 3) // 3 bytes for header
 	header := make([]byte, 3, 3)
 	header[0] = byte(payload_length & 0xff)
 	header[1] = byte(payload_length << 8)
 	header[2] = mphandler.DATA_WRITE
-	log.Println("header", header)
 	(*msg) = append(header, *msg...)
-	log.Println(mphandler.ParseHeader(msg, 0))
 }
 
 func writeMsgPack(conn *net.Conn, uuid string, time, reading uint64, buf []byte) {
@@ -60,15 +58,15 @@ func writeMsgPack(conn *net.Conn, uuid string, time, reading uint64, buf []byte)
 	encoder := codec.NewEncoderBytes(&buf, &mh)
 	encoder.Encode(mps)
 	addMessage(&buf)
-	log.Println(mps.Readings)
 	_, err := (*conn).Write(buf)
 	if err != nil {
-		log.Println("error writing", err)
+		log.Fatal("error writing", err)
 	}
 	writepool.Put(mps)
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	log.Println("NUM streams:", NUM_STREAMS)
 	wg.Add(NUM_STREAMS)
 	for i := 0; i < NUM_STREAMS; i++ {
@@ -81,7 +79,7 @@ func main() {
 			}
 			buf := []byte{}
 			for x := 1; x < NUM_READINGS+1; x++ {
-				writeMsgPack(&conn, uuid, 1351043722500+uint64(x), uint64(x), buf)
+				writeMsgPack(&conn, uuid, 1351043722500+uint64(x), 1, buf)
 			}
 			wg.Done()
 		}()
