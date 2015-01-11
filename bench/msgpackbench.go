@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	NUM_STREAMS  = 1
+	NUM_STREAMS  = 100
 	NUM_READINGS = 200000
 )
 
