@@ -2,6 +2,7 @@ package main
 
 import (
 	uuid "code.google.com/p/go-uuid/uuid"
+	"github.com/gtfierro/giles/mphandler"
 	"github.com/ugorji/go/codec"
 	"log"
 	"net"
@@ -9,8 +10,8 @@ import (
 )
 
 const (
-	NUM_STREAMS  = 1
-	NUM_READINGS = 2
+	NUM_STREAMS  = 10
+	NUM_READINGS = 200
 )
 
 var mh codec.MsgpackHandle
@@ -29,13 +30,25 @@ type MsgPackSmap struct {
 var writepool = sync.Pool{
 	New: func() interface{} {
 		return MsgPackSmap{
-			Path:       "/sensor/0",
-			Key:        "z-khZexJ4XzLqjhlmrhKbu0hio5-sd7boR1oSi1YqLSrKHWVO2pdlSrDl1CjbCE4LmrhIyGj4qLTvspX9nDEkw==",
+			Path:       "/path/0",
+			Key:        "jgkiXElqZwAIItiOruwjv87EjDbKpng2OocC1TjVbo4jeZ61QBqvE5eHQ5AvsSsNO-v9DunHlhjwJWd9npo_RA==",
 			Properties: map[string]interface{}{},
 			Metadata:   map[string]interface{}{},
 			Readings:   make([][2]interface{}, 1, 1),
 		}
 	},
+}
+
+func addMessage(msg *[]byte) {
+	payload_length := uint32(len(*msg) + 3) // 1 byte for length-length, 4 for payload_length, 1 for msg type
+	log.Println("payload length is ", payload_length)
+	header := make([]byte, 3, 3)
+	header[0] = byte(payload_length & 0xff)
+	header[1] = byte(payload_length << 8)
+	header[2] = mphandler.DATA_WRITE
+	log.Println("header", header)
+	(*msg) = append(header, *msg...)
+	log.Println(mphandler.ParseHeader(msg, 0))
 }
 
 func writeMsgPack(conn *net.Conn, uuid string, time, reading uint64, buf []byte) {
@@ -46,6 +59,7 @@ func writeMsgPack(conn *net.Conn, uuid string, time, reading uint64, buf []byte)
 
 	encoder := codec.NewEncoderBytes(&buf, &mh)
 	encoder.Encode(mps)
+	addMessage(&buf)
 	log.Println(mps.Readings)
 	_, err := (*conn).Write(buf)
 	if err != nil {
@@ -66,8 +80,8 @@ func main() {
 				log.Println("ERROR:", err)
 			}
 			buf := []byte{}
-			for x := 0; x < NUM_READINGS; x++ {
-				writeMsgPack(&conn, uuid, 90000000+uint64(x), uint64(x), buf)
+			for x := 1; x < NUM_READINGS+1; x++ {
+				writeMsgPack(&conn, uuid, 1351043722500+uint64(x), uint64(x), buf)
 			}
 			wg.Done()
 		}()
