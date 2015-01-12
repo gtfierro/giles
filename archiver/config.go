@@ -36,20 +36,20 @@ type Config struct {
 }
 
 func LoadConfig(filename string) *Config {
-	var configuration *Config
+	var configuration Config
 	err := gcfg.ReadFileInto(&configuration, filename)
 	if err != nil {
 		log.Error("No configuration file found at %v, so checking current directory for giles.conf", filename)
 	} else {
-		return configuration
+		return &configuration
 	}
 	err = gcfg.ReadFileInto(&configuration, "./giles.conf")
 	if err != nil {
 		log.Fatal("Could not find configuration files ./giles.conf. Try retreiving a sample from github.com/gtfierro/giles")
 	} else {
-		return configuration
+		return &configuration
 	}
-	return configuration
+	return &configuration
 }
 
 func PrintConfig(c *Config) {
