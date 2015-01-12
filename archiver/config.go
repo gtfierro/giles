@@ -53,5 +53,23 @@ func LoadConfig(filename string) *Config {
 }
 
 func PrintConfig(c *Config) {
-	fmt.Println("config")
+	fmt.Println("Giles Configuration")
+	fmt.Println("Archiver Port", *c.Archiver.HttpPort)
+	fmt.Println("Connecting to Mongo at", *c.Mongo.Address, ":", *c.Mongo.Port)
+	fmt.Println("Using Timeseries DB", *c.Archiver.TSDB)
+	switch *c.Archiver.TSDB {
+	case "readingdb":
+		fmt.Println("   at address", *c.ReadingDB.Address, ":", *c.ReadingDB.Port)
+	case "quasar":
+		fmt.Println("   at address", *c.Quasar.Address, ":", *c.Quasar.Port)
+	}
+	fmt.Println("   with keepalive", *c.Archiver.Keepalive)
+
+	if c.Profile.Enabled {
+		fmt.Println("Profiling enabled for", *c.Profile.BenchmarkTimer, "seconds!")
+		fmt.Println("CPU:", *c.Profile.CpuProfile)
+		fmt.Println("Mem:", *c.Profile.MemProfile)
+	} else {
+		fmt.Println("Profiling disabled")
+	}
 }
