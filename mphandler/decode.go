@@ -263,26 +263,39 @@ func decode(input *[]byte, offset int) (int, interface{}) {
 		value, consumed = parseArray(input, offset)
 
 	case 0xc0 == c: //nil
-
+		value, consumed = nil, 1
 	case 0xc2 == c: //false
+		value, consumed = false, 1
 	case 0xc3 == c: //true
+		value, consumed = true, 1
 
 	case 0xc4 == c: //bin8
+		fallthrough
 	case 0xc5 == c: //bin16
+		fallthrough
 	case 0xc6 == c: //bin32
+		fallthrough
 
 	case 0xc7 == c: //ext8
+		fallthrough
 	case 0xc8 == c: //ext16
+		fallthrough
 	case 0xc9 == c: //ext32
+		fallthrough
 
 	case 0xd4 == c: //fixext 1
+		fallthrough
 	case 0xd5 == c: //fixext 2
+		fallthrough
 	case 0xd6 == c: //fixext 4
+		fallthrough
 	case 0xd7 == c: //fixext 8
+		fallthrough
 	case 0xd8 == c: //fixext 16
+		fallthrough
 
 	default:
-		log.Debug("actualy is dolan")
+		log.Error("Unrecognized msgpack byte %v", c)
 	}
 	offset += consumed
 	return offset, value
