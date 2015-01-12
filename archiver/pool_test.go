@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-type Connection struct {}
+type Connection struct{}
 
 func newmap(b *testing.B) map[int]*Connection {
 	var x = make(map[int]*Connection)

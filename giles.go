@@ -26,9 +26,13 @@ var mongoport = flag.String("mongoport", "27017", "MongoDB Port")
 var tsdbstring = flag.String("tsdb", "readingdb", "Type of timeseries database to use: 'readingdb' or 'quasar'")
 var tsdbkeepalive = flag.Int("keepalive", 30, "Number of seconds to keep TSDB connection alive per stream for reads")
 var benchmarktimer = flag.Int("benchmark", 60, "Number of seconds to benchmark before quitting and writing profiles")
+var configfile = flag.String("c", "giles.conf", "Path to Giles configuration file")
 
 func main() {
 	flag.Parse()
+	config := archiver.LoadConfig(*configfile)
+	archiver.PrintConfig(config)
+
 	log.Println("Serving on port %v", *archiverport)
 	log.Println("ReadingDB server %v", *readingdbip)
 	log.Println("ReadingDB port %v", *readingdbport)
@@ -38,9 +42,9 @@ func main() {
 	log.Println("TSDB Keepalive %v", *tsdbkeepalive)
 
 	/** Configure CPU profiling */
-	if *cpuprofile != "" {
-		log.Println("Benchmarking for %v seconds", *benchmarktimer)
-		f, err := os.Create(*cpuprofile)
+	if config.Profile.Enabled {
+		log.Println("Benchmarking for %v seconds", *config.Profile.BenchmarkTimer)
+		f, err := os.Create(*config.Profile.CpuProfile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -56,20 +60,6 @@ func main() {
 	}
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	tsdbaddress, err := net.ResolveTCPAddr("tcp4", *readingdbip+":"+*readingdbport)
-	if err != nil {
-		log.Println("Error resolving TCP address for TSDB", *readingdbip+":"+*readingdbport)
-	}
-	mongoaddress, err := net.ResolveTCPAddr("tcp4", *mongoip+":"+*mongoport)
-	if err != nil {
-		log.Println("Error resolving TCP address for mongo", *mongoip+":"+*mongoport)
-	}
-	config := &archiver.Config{Port: *archiverport,
-		TSDB:         *tsdbstring,
-		TSDBAddress:  tsdbaddress,
-		MongoAddress: mongoaddress,
-		Keepalive:    *tsdbkeepalive}
 	a := archiver.NewArchiver(config)
 	go a.PrintStatus()
 	httphandler.Handle(a)
@@ -91,9 +81,9 @@ func main() {
 	for {
 		time.Sleep(5 * time.Second)
 		idx += 5
-		if idx == *benchmarktimer {
-			if *memprofile != "" {
-				f, err := os.Create(*memprofile)
+		if idx == *config.Profile.BenchmarkTimer {
+			if *config.Profile.MemProfile != "" {
+				f, err := os.Create(*config.Profile.MemProfile)
 				if err != nil {
 					log.Panic(err)
 				}
@@ -101,7 +91,7 @@ func main() {
 				f.Close()
 				return
 			}
-			if *cpuprofile != "" {
+			if *config.Profile.CpuProfile != "" {
 				return
 			}
 		}

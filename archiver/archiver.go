@@ -27,7 +27,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -62,34 +61,50 @@ type Archiver struct {
 func NewArchiver(c *Config) *Archiver {
 	logging.SetBackend(logBackend)
 	logging.SetFormatter(logging.MustStringFormatter(format))
-	store := NewStore(c.MongoAddress)
+
+	// Mongo connection
+	mongoaddr, err := net.ResolveTCPAddr("tcp4", *c.Mongo.Address+":"+*c.Mongo.Port)
+	if err != nil {
+		log.Fatal("Error parsing Mongo address: %v", err)
+	}
+	store := NewStore(mongoaddr)
 	if store == nil {
 		log.Fatal("Error connection to MongoDB instance")
 	}
 
 	var tsdb TSDB
-	switch c.TSDB {
+	switch *c.Archiver.TSDB {
+	/** connect to ReadingDB */
 	case "readingdb":
-		/** connect to ReadingDB */
-		tsdb = NewReadingDB(c.TSDBAddress, c.Keepalive)
+		rdbaddr, err := net.ResolveTCPAddr("tcp4", *c.ReadingDB.Address+":"+*c.ReadingDB.Port)
+		if err != nil {
+			log.Fatal("Error parsing ReadingDB address: %v", err)
+		}
+		tsdb = NewReadingDB(rdbaddr, *c.Archiver.Keepalive)
 		tsdb.AddStore(store)
 		if tsdb == nil {
 			log.Fatal("Error connecting to ReadingDB instance")
 		}
+		/** connect to Quasar */
 	case "quasar":
-		tsdb = NewQuasar(c.TSDBAddress, c.Keepalive)
+		qsraddr, err := net.ResolveTCPAddr("tcp4", *c.Quasar.Address+":"+*c.Quasar.Port)
+		if err != nil {
+			log.Fatal("Error parsing Quasar address: %v", err)
+		}
+		tsdb = NewQuasar(qsraddr, *c.Archiver.Keepalive)
 		tsdb.AddStore(store)
 		if tsdb == nil {
 			log.Fatal("Error connecting to Quasar instance")
 		}
 	default:
-		log.Fatal(c.TSDB, " is not a valid timeseries database")
+		log.Fatal(c.Archiver.TSDB, " is not a valid timeseries database")
 	}
+
 	republisher := NewRepublisher()
 	republisher.store = store
-	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+strconv.Itoa(c.Port))
+	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+*c.Archiver.HttpPort)
 	if err != nil {
-		log.Fatal("Error resolving address %v: %v", "0.0.0.0:"+strconv.Itoa(c.Port), err)
+		log.Fatal("Error resolving address %v: %v", "0.0.0.0:"+*c.Archiver.HttpPort, err)
 	}
 	return &Archiver{tsdb: tsdb,
 		store:                store,
