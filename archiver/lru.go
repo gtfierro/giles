@@ -22,7 +22,6 @@ type LRU struct {
 }
 
 func NewLRU(size uint32) *LRU {
-	log.Notice("Creating new LRU with size %v", size)
 	if size < 1 {
 		return nil
 	}

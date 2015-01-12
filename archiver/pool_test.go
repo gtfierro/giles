@@ -4,6 +4,8 @@ import (
 	"testing"
 )
 
+type Connection struct {}
+
 func newmap(b *testing.B) map[int]*Connection {
 	var x = make(map[int]*Connection)
 	for i := 0; i < b.N; i++ {
