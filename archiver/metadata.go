@@ -221,6 +221,7 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 		s.pmdcache.Set(msg.UUID, true)
 	}
 	if (changed != nil && changed.(bool)) || !found {
+		toWrite = bson.M{}
 		for _, prefix := range getPrefixes(msg.Path) {
 			s.pathmetadata.Find(bson.M{"Path": prefix, "uuid": msg.UUID}).Select(bson.M{"_id": 0, "Path": 0, "_api": 0}).One(&prefixMetadata)
 			for k, v := range prefixMetadata {
