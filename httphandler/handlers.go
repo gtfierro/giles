@@ -35,8 +35,8 @@ func Handle(a *archiver.Archiver) {
 	log.Notice("Handling HTTP/TCP")
 	a.R.POST("/add/:key", curryhandler(a, AddReadingHandler))
 	a.R.POST("/republish", curryhandler(a, RepublishHandler))
-	a.R.POST("/api/query?:key", curryhandler(a, QueryHandler))
-	//a.R.POST("/api/query", curryhandler(a, QueryHandler))
+	//a.R.POST("/api/query?:key", curryhandler(a, QueryHandler))
+	a.R.POST("/api/query", curryhandler(a, QueryHandler))
 	a.R.GET("/api/tags/uuid/:uuid", curryhandler(a, TagsHandler))
 	//a.R.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
 }
