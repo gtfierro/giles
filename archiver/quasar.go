@@ -5,7 +5,7 @@ import (
 	uuidlib "code.google.com/p/go-uuid/uuid"
 	"errors"
 	capn "github.com/glycerine/go-capnproto"
-    qsr "github.com/gtfierro/archiver/internal/quasarcapnp"
+	qsr "github.com/gtfierro/internal/quasarcapnp"
 	"net"
 	"sync"
 )

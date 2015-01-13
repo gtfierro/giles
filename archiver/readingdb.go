@@ -3,7 +3,7 @@ package archiver
 import (
 	"code.google.com/p/goprotobuf/proto"
 	"encoding/binary"
-	rdbp "github.com/gtfierro/giles/archiver/internal/readingdbproto"
+	rdbp "github.com/gtfierro/giles/internal/readingdbproto"
 	"net"
 )
 
