@@ -1,5 +1,5 @@
 ## Giles
-
+[![GoDoc](https://godoc.org/github.com/gtfierro/giles?status.svg)](https://godoc.org/github.com/gtfierro/giles)
 ### Install
 
 You will need go version >= 1.4.
@@ -11,7 +11,7 @@ pip install gilescmd
 
 You can now run the `giles` comand. You can see the usage with `giles -h`.
 
-Documentation is available at http://godoc.org/github.com/gtfierro/giles
+Documentation is available at http://godoc.org/github.com/gtfierro/giles 
 
 #### Installing from Source
 
