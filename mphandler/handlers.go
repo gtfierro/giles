@@ -1,5 +1,3 @@
-// License?
-
 // Package mphandler implements a MsgPack/TCP interface to the Archiver API
 // at http://godoc.org/github.com/gtfierro/giles/archiver
 //
@@ -30,7 +28,6 @@
 // Packet length is 2 bytes. Afterwards comes a single byte that contains the
 // packet type (this will be a value from a predetermined Enum that will be
 // described below. Following this header comes the actual packet contents
-
 package mphandler
 
 import (
