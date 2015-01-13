@@ -5,7 +5,7 @@ import (
 )
 
 func TestGet(t *testing.T) {
-	lru := NewLRU(uint32(4))
+	lru := NewCache(uint32(4))
 
 	val, ok := lru.Get("asdf")
 	if ok != false {
@@ -14,20 +14,17 @@ func TestGet(t *testing.T) {
 	lru.Set("asdf", "asdfvalue")
 	val, ok = lru.Get("asdf")
 	if val != "asdfvalue" {
-		t.Error("LRU.Get does not return correct value")
+		t.Error("LRU.Get does not return correct value", val)
 	}
 
-	if lru.cache["asdf"] != "asdfvalue" {
+	if lru.cache["asdf"].value.(string) != "asdfvalue" {
 		t.Error("LRU.cache does not contain key/value after Get")
 	}
 
-	if lru.queue.Front().Value.(string) != "asdf" {
-		t.Error("LRU.queue does not contain key: asdf")
-	}
 }
 
 func TestEviction(t *testing.T) {
-	lru := NewLRU(2)
+	lru := NewCache(2)
 	val1, ok := lru.Get("a")
 	if ok != false {
 		t.Error("ok should be false")
@@ -47,15 +44,6 @@ func TestEviction(t *testing.T) {
 	if len(lru.cache) != 2 {
 		t.Error("lru.Cache size should be 2 but is", len(lru.cache))
 	}
-	if lru.queue.Len() != 2 {
-		t.Error("lru.queue len should be 2 but is", lru.queue.Len())
-	}
-	if lru.queue.Front().Value.(string) != "c" {
-		t.Error("Most recently used item should be 'c' but is", lru.queue.Front().Value.(string))
-	}
-	if lru.queue.Back().Value.(string) != "b" {
-		t.Error("Most recently used item should be 'b' but is", lru.queue.Back().Value.(string))
-	}
 }
 
 /**
@@ -69,14 +57,21 @@ func TestEviction(t *testing.T) {
 **/
 
 func BenchmarkSetSize1NoReuse(b *testing.B) {
-	l := NewLRU(uint32(1))
+	l := NewCache(uint32(3))
+	for i := 0; i < b.N; i++ {
+		l.Set(string(i), i)
+	}
+}
+
+func BenchmarkSetSize1000Reuse(b *testing.B) {
+	l := NewCache(uint32(1000))
 	for i := 0; i < b.N; i++ {
 		l.Set(string(i), i)
 	}
 }
 
 func BenchmarkSetSize1Reuse(b *testing.B) {
-	l := NewLRU(uint32(1))
+	l := NewCache(uint32(1))
 	l.Set("1", 1)
 	for i := 0; i < b.N; i++ {
 		l.Set("1", 1)
@@ -84,7 +79,7 @@ func BenchmarkSetSize1Reuse(b *testing.B) {
 }
 
 func BenchmarkGetSize1(b *testing.B) {
-	l := NewLRU(uint32(1))
+	l := NewCache(uint32(1))
 	l.Set("1", 1)
 	for i := 0; i < b.N; i++ {
 		l.Get("1")
