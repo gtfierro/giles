@@ -5,7 +5,7 @@ import (
 	uuidlib "code.google.com/p/go-uuid/uuid"
 	"errors"
 	capn "github.com/glycerine/go-capnproto"
-	qsr "github.com/gtfierro/internal/quasarcapnp"
+	qsr "github.com/gtfierro/giles/internal/quasarcapnp"
 	"net"
 	"sync"
 )
@@ -40,9 +40,9 @@ func NewQuasar(address *net.TCPAddr, connectionkeepalive int) *QDB {
 		packetpool: sync.Pool{
 			New: func() interface{} {
 				seg := capn.NewBuffer(nil)
-				req := NewRootRequest(seg)
+				req := qsr.NewRootRequest(seg)
 				req.SetEchoTag(0)
-				ins := NewCmdInsertValues(seg)
+				ins := qsr.NewCmdInsertValues(seg)
 				ins.SetSync(false)
 				return QuasarReading{
 					seg: seg,
@@ -66,14 +66,14 @@ func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
 		log.Error("Error receiving data from Quasar %v", err)
 		return sr, err
 	}
-	resp := ReadRootResponse(seg)
+	resp := qsr.ReadRootResponse(seg)
 
 	switch resp.Which() {
-	case RESPONSE_VOID:
-		if resp.StatusCode() != STATUSCODE_OK {
+	case qsr.RESPONSE_VOID:
+		if resp.StatusCode() != qsr.STATUSCODE_OK {
 			log.Error("Received error status code when writing: %v", resp.StatusCode())
 		}
-	case RESPONSE_RECORDS:
+	case qsr.RESPONSE_RECORDS:
 		if resp.StatusCode() != 0 {
 			return sr, errors.New("Error when reading from Quasar:" + resp.StatusCode().String())
 		}
@@ -98,7 +98,7 @@ func (q *QDB) Add(sb *StreamBuf) bool {
 	uuid := uuidlib.Parse(sb.uuid)
 	qr := q.packetpool.Get().(QuasarReading)
 	qr.ins.SetUuid([]byte(uuid))
-	rl := NewRecordList(qr.seg, len(sb.readings))
+	rl := qsr.NewRecordList(qr.seg, len(sb.readings))
 	rla := rl.ToArray()
 	for i, val := range sb.readings {
 		rla[i].SetTime(int64(val[0].(uint64)))
@@ -122,8 +122,8 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 	var ret = make([]SmapResponse, len(uuids))
 	for i, uu := range uuids {
 		seg := capn.NewBuffer(nil)
-		req := NewRootRequest(seg)
-		qnv := NewCmdQueryNearestValue(seg)
+		req := qsr.NewRootRequest(seg)
+		qnv := qsr.NewCmdQueryNearestValue(seg)
 		qnv.SetBackward(backwards)
 		uuid := uuidlib.Parse(uu)
 		qnv.SetUuid([]byte(uuid))
@@ -164,8 +164,8 @@ func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) 
 	end = convertTime(end, uot, UOT_MS)
 	for i, uu := range uuids {
 		seg := capn.NewBuffer(nil)
-		req := NewRootRequest(seg)
-		qnv := NewCmdQueryStandardValues(seg)
+		req := qsr.NewRootRequest(seg)
+		qnv := qsr.NewCmdQueryStandardValues(seg)
 		uuid := uuidlib.Parse(uu)
 		qnv.SetUuid([]byte(uuid))
 		qnv.SetStartTime(int64(start))
