@@ -5,6 +5,7 @@ import (
 	uuidlib "code.google.com/p/go-uuid/uuid"
 	"errors"
 	capn "github.com/glycerine/go-capnproto"
+    qsr "github.com/gtfierro/archiver/internal/quasarcapnp"
 	"net"
 	"sync"
 )
@@ -22,8 +23,8 @@ type QDB struct {
 
 type QuasarReading struct {
 	seg *capn.Segment
-	req *Request
-	ins *CmdInsertValues
+	req *qsr.Request
+	ins *qsr.CmdInsertValues
 }
 
 // Create a new reference to a Quasar instance running at ip:port.  Connections

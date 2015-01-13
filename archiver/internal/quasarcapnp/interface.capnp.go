@@ -1,4 +1,4 @@
-package archiver
+package quasarcapnp
 
 // AUTO GENERATED - DO NOT EDIT
 
