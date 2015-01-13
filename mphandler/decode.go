@@ -66,7 +66,6 @@ func parseUint(input *[]byte, offset int) (uint64, int) {
 	return value, consumed
 }
 
-//TODO: handle negative fixint
 func parseInt(input *[]byte, offset int) (int64, int) {
 	var (
 		value    int64
@@ -77,6 +76,10 @@ func parseInt(input *[]byte, offset int) (int64, int) {
 	switch {
 	case c <= 0x7f:
 		value = int64(c)
+		consumed = 1
+		goto ret
+	case 0xe0 <= c && c <= 0xff:
+		value = -int64(c & 0x1f)
 		consumed = 1
 		goto ret
 	case c == 0xd0:
