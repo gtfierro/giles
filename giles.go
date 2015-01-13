@@ -63,7 +63,7 @@ func main() {
 	for {
 		time.Sleep(5 * time.Second)
 		idx += 5
-		if idx == *config.Profile.BenchmarkTimer {
+		if config.Profile.Enabled && idx == *config.Profile.BenchmarkTimer {
 			if *config.Profile.MemProfile != "" {
 				f, err := os.Create(*config.Profile.MemProfile)
 				if err != nil {
