@@ -166,14 +166,18 @@ func (s *Store) CheckKey(apikey string, messages map[string]*SmapMessage) (bool,
 	return true, nil
 }
 
-/**
- * We use a pointer to the map so that we can edit it in-place
-**/
+/*
+The incoming messages will be in the form of {pathname: metadata/properties/etc}.
+Only the timeseries will have UUIDs attached. When we receive a message like this, we need
+to compress all of the prefix-path kv pairs into each of the timeseries, and then save those
+timeseries to the metadata collection
+*/
 func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 	/**
 	 * We add the root metadata to everything in Contents
 	**/
 	var rootuuid string
+	log.Debug("all msgs %v", *messages)
 	if (*messages)["/"] != nil && (*messages)["/"].Metadata != nil {
 		rootuuid = (*messages)["/"].UUID
 		for _, path := range (*messages)["/"].Contents {
@@ -185,6 +189,7 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 			}
 		}
 		delete((*messages), "/")
+		log.Debug("root uuid %v", rootuuid)
 		s.pmdcache.Set(rootuuid, true)
 	}
 	/**
@@ -206,7 +211,51 @@ func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
 			s.pmdcache.Set(rootuuid, true)
 		}
 	}
+}
 
+func (s *Store) SaveMetadata2(messages map[string]*SmapMessage) {
+	for path, msg := range messages {
+		if msg.UUID == "" { // not a timeseries
+			continue
+		}
+		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
+		if msg.Metadata != nil {
+			for k, v := range msg.Metadata {
+				toWrite["Metadata."+k] = v
+			}
+		}
+		if msg.Properties != nil {
+			for k, v := range msg.Properties {
+				toWrite["Properties."+k] = v
+			}
+		}
+		if msg.Actuator != nil {
+			for k, v := range msg.Actuator {
+				toWrite["Actuator."+k] = v
+			}
+		}
+		for _, prefix := range getPrefixes(path) { // accumulate all metadata for this timeseries
+			if messages[prefix] == nil {
+				continue
+			}
+			if messages[prefix].Metadata != nil {
+				for k, v := range messages[prefix].Metadata {
+					toWrite["Metadata."+k] = v
+				}
+			}
+			if messages[prefix].Properties != nil {
+				for k, v := range messages[prefix].Properties {
+					toWrite["Properties."+k] = v
+				}
+			}
+		}
+		if len(toWrite) > 0 {
+			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
+			if err != nil {
+				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)
+			}
+		}
+	}
 }
 
 func (s *Store) SaveMetadata(msg *SmapMessage) {
@@ -220,16 +269,20 @@ func (s *Store) SaveMetadata(msg *SmapMessage) {
 	if !found {
 		s.pmdcache.Set(msg.UUID, true)
 	}
+	log.Debug("save metadata for %v", *msg)
 	if (changed != nil && changed.(bool)) || !found {
 		toWrite = bson.M{}
 		for _, prefix := range getPrefixes(msg.Path) {
+			log.Debug("searching for path metadata for %v path prefix %v and uuid %v", msg.Path, prefix, msg.UUID)
 			s.pathmetadata.Find(bson.M{"Path": prefix, "uuid": msg.UUID}).Select(bson.M{"_id": 0, "Path": 0, "_api": 0}).One(&prefixMetadata)
+			log.Debug("  and found %v", prefixMetadata)
 			for k, v := range prefixMetadata {
 				toWrite["Metadata."+k] = v
 			}
 			s.pmdcache.Set(msg.UUID, false)
 		}
 		if len(toWrite) > 0 {
+			log.Debug("write %v to uuid %v", toWrite, msg.UUID)
 			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
 			if err != nil {
 				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)

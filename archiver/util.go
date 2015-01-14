@@ -31,13 +31,11 @@ func periodicCall(pause time.Duration, f func()) {
 
 // Given a forward-slash delimited path, returns a slice of prefixes, e.g.:
 // input: /a/b/c/d
-// output: ['/a','/a/b','/a/b/c']
+// output: ['/', '/a','/a/b','/a/b/c']
 func getPrefixes(s string) []string {
-	ret := []string{}
+	ret := []string{"/"}
 	root := ""
-	if !strings.HasPrefix(s, "/") {
-		s = "/" + s
-	}
+	s = "/" + s
 	for _, prefix := range strings.Split(s, "/") {
 		if len(prefix) > 0 { //skip empty strings created by Split
 			root += "/" + prefix

@@ -142,9 +142,10 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 	if !ok {
 		return errors.New("Unauthorized api key " + apikey)
 	}
-	a.store.SavePathMetadata(&readings)
+	//a.store.SavePathMetadata(&readings)
+	a.store.SaveMetadata2(readings)
 	for _, msg := range readings {
-		go a.store.SaveMetadata(msg)
+		//go a.store.SaveMetadata(msg)
 		go a.republisher.Republish(msg)
 		a.incomingcounter.Mark()
 		if msg.Readings == nil {
