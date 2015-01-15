@@ -25,8 +25,6 @@ type Store struct {
 	maxsid       *uint32
 	streamlock   sync.Mutex
 	uuidcache    *Cache
-	pmdcache     *Cache
-	pathcache    *Cache
 	apikcache    *Cache
 }
 
@@ -74,7 +72,7 @@ func NewStore(address *net.TCPAddr) *Store {
 	if maxstreamid != nil {
 		maxsid = maxstreamid.StreamId + 1
 	}
-	return &Store{session: session, db: db, streams: streams, metadata: metadata, pathmetadata: pathmetadata, apikeys: apikeys, maxsid: &maxsid, uuidcache: NewCache(1000), pmdcache: NewCache(1000), pathcache: NewCache(1000), apikcache: NewCache(1000)}
+	return &Store{session: session, db: db, streams: streams, metadata: metadata, pathmetadata: pathmetadata, apikeys: apikeys, maxsid: &maxsid, uuidcache: NewCache(1000), apikcache: NewCache(1000)}
 }
 
 func (s *Store) getStreamId(uuid string) uint32 {
