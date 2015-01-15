@@ -1,5 +1,5 @@
 # binaries
-giles/giles
+giles
 gilescmd/gilescmd
 
 # build directories
@@ -7,3 +7,8 @@ gilescmd/build
 
 # compiled python
 *.pyc
+
+# benchmarks
+*.out
+*.db
+*.test
