@@ -172,50 +172,12 @@ Only the timeseries will have UUIDs attached. When we receive a message like thi
 to compress all of the prefix-path kv pairs into each of the timeseries, and then save those
 timeseries to the metadata collection
 */
-func (s *Store) SavePathMetadata(messages *map[string]*SmapMessage) {
-	/**
-	 * We add the root metadata to everything in Contents
-	**/
-	var rootuuid string
-	log.Debug("all msgs %v", *messages)
-	if (*messages)["/"] != nil && (*messages)["/"].Metadata != nil {
-		rootuuid = (*messages)["/"].UUID
-		for _, path := range (*messages)["/"].Contents {
-			(*messages)["/"].Metadata["uuid"] = rootuuid
-			_, err := s.pathmetadata.Upsert(bson.M{"Path": "/" + path, "uuid": rootuuid}, bson.M{"$set": (*messages)["/"].Metadata})
-			if err != nil {
-				log.Error("Error saving metadata for %v", "/"+path)
-				log.Panic(err)
-			}
-		}
-		delete((*messages), "/")
-		log.Debug("root uuid %v", rootuuid)
-		s.pmdcache.Set(rootuuid, true)
-	}
-	/**
-	 * For the rest of the keys, check if Contents is nonempty. If it is, we iterate through and update
-	 * the metadata for that path
-	**/
-	for path, msg := range *messages {
-		if msg.Metadata == nil {
-			continue
-		}
-		if len(msg.Contents) > 0 {
-			msg.Metadata["uuid"] = rootuuid
-			_, err := s.pathmetadata.Upsert(bson.M{"Path": path, "uuid": rootuuid}, bson.M{"$set": msg.Metadata})
-			if err != nil {
-				log.Error("Error saving metadata for %v", path)
-				log.Panic(err)
-			}
-			delete((*messages), path)
-			s.pmdcache.Set(rootuuid, true)
-		}
-	}
-}
-
-func (s *Store) SaveMetadata2(messages map[string]*SmapMessage) {
+func (s *Store) SaveMetadata(messages map[string]*SmapMessage) {
 	for path, msg := range messages {
 		if msg.UUID == "" { // not a timeseries
+			continue
+		}
+		if msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil {
 			continue
 		}
 		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
@@ -254,76 +216,6 @@ func (s *Store) SaveMetadata2(messages map[string]*SmapMessage) {
 			if err != nil {
 				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)
 			}
-		}
-	}
-}
-
-func (s *Store) SaveMetadata(msg *SmapMessage) {
-	/* check if we have any metadata or properties.
-	   This should get hit once per stream unless the stream's
-	   metadata changes
-	*/
-	var toWrite, prefixMetadata bson.M
-	var uuidM = bson.M{"uuid": msg.UUID}
-	changed, found := s.pmdcache.Get(msg.UUID)
-	if !found {
-		s.pmdcache.Set(msg.UUID, true)
-	}
-	log.Debug("save metadata for %v", *msg)
-	if (changed != nil && changed.(bool)) || !found {
-		toWrite = bson.M{}
-		for _, prefix := range getPrefixes(msg.Path) {
-			log.Debug("searching for path metadata for %v path prefix %v and uuid %v", msg.Path, prefix, msg.UUID)
-			s.pathmetadata.Find(bson.M{"Path": prefix, "uuid": msg.UUID}).Select(bson.M{"_id": 0, "Path": 0, "_api": 0}).One(&prefixMetadata)
-			log.Debug("  and found %v", prefixMetadata)
-			for k, v := range prefixMetadata {
-				toWrite["Metadata."+k] = v
-			}
-			s.pmdcache.Set(msg.UUID, false)
-		}
-		if len(toWrite) > 0 {
-			log.Debug("write %v to uuid %v", toWrite, msg.UUID)
-			_, err := s.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
-			if err != nil {
-				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)
-			}
-		}
-	}
-	path, found := s.pathcache.Get(msg.UUID)
-	// if not found,
-	if !found {
-		s.pathcache.Set(msg.UUID, msg.Path)
-	}
-	if (path != nil && path.(string) != msg.Path) || !found {
-		_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Path": msg.Path}})
-		if err != nil {
-			log.Critical("Error saving path for %v: %v", msg.UUID, err)
-		}
-	}
-	if msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil {
-		return
-	}
-	// check if we already have this path for this uuid
-	if msg.Metadata != nil {
-		for k, v := range msg.Metadata {
-			_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Metadata." + k: v}})
-			if err != nil {
-				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)
-			}
-		}
-	}
-	if msg.Properties != nil {
-		for k, v := range msg.Properties {
-			_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Properties." + k: v}})
-			if err != nil {
-				log.Critical("Error saving properties for %v: %v", msg.UUID, err)
-			}
-		}
-	}
-	if msg.Actuator != nil {
-		_, err := s.metadata.Upsert(uuidM, bson.M{"$set": bson.M{"Actuator": msg.Actuator}})
-		if err != nil {
-			log.Critical("Error saving actuator for %v: %v", msg.UUID, err)
 		}
 	}
 }
