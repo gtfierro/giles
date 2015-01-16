@@ -14,6 +14,37 @@ import (
 	"strings"
 )
 
+// The SSHConfigServer offers a command-line based alternative to the PowerDB2 administration interface.
+// If you are using the giles.go program as an interfaced to the Archiver API (this is by default), then this
+// is automatically configured from the following section of the giles.cfg file:
+//
+// 		[SSH]
+// 		Port=2222
+// 		PrivateKey=./id_rsa
+// 		AuthorizedKeysFile=/home/gabe/.ssh/authorized_keys
+// 		User=admin
+// 		Pass=supersecurepassword
+// 		PasswordEnabled=false
+// 		KeyAuthEnabled=true
+//
+// Currently, the shell supports the following commands, which map to direct calls to the Metadata store in metadata.go.
+// This makes it simple to not only extend the range of commands supported, but also introduce additional interfaces (e.g. a
+// command-line utility).
+//
+// Right now, the administration is focused around creating/deleting/viewing api keys, which are necessary to publish data to the
+// sMAP archiver.
+//
+//		[[General]]
+//		quit -- exits the session
+//		help -- prints this help
+//
+//		[[Key Management]]
+//		newkey <name> <email> <public?> -- creates a new API key and prints it
+//		getkey <name> <email> -- retrieve the API key for the given name and email
+//		listkeys <email> -- list all API keys and names for the given email
+//		delkey <name> <email> -- deletes the key associated with the given name and email
+//		delkey <key> -- deletes the given key
+//		owner <key> -- retrieves owner (name, email) for given key
 type SSHConfigServer struct {
 	store              *Store
 	port               string
