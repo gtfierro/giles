@@ -200,7 +200,7 @@ func (scs *SSHConfigServer) handleInput(term *terminal.Terminal, channel *ssh.Ch
 		owner := scs.owner(line)
 		scs.writeLines(term, owner)
 	default:
-		term.Write([]byte("default\r\n"))
+		scs.writeLines(term, strings.Join([]string{fmt.Sprintf("Invalid command (%v)", line), help}, "\n"))
 	}
 }
 
@@ -343,8 +343,7 @@ help -- prints this help
 newkey <name> <email> <public?> -- creates a new API key and prints it
 getkey <name> <email> -- retrieve the API key for the given name and email
 listkeys <email> -- list all API keys and names for the given email
-delkey <name> <email> -- deletes the key associated with the given name and
-						 email
+delkey <name> <email> -- deletes the key associated with the given name and email
 delkey <key> -- deletes the given key
 owner <key> -- retrieves owner (name, email) for given key
 `
