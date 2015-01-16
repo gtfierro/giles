@@ -27,6 +27,16 @@ type Config struct {
 		Address *string
 	}
 
+	SSH struct {
+		Port               *string
+		PrivateKey         *string
+		AuthorizedKeysFile *string
+		User               *string
+		Pass               *string
+		PasswordEnabled    bool
+		KeyAuthEnabled     bool
+	}
+
 	Profile struct {
 		CpuProfile     *string
 		MemProfile     *string

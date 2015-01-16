@@ -55,6 +55,7 @@ type Archiver struct {
 	pendingwritescounter *counter
 	R                    *httprouter.Router
 	coalescer            *Coalescer
+	sshscs               *SSHConfigServer
 }
 
 // Creates a new Archiver instance:
@@ -106,6 +107,12 @@ func NewArchiver(c *Config) *Archiver {
 	if err != nil {
 		log.Fatal("Error resolving address %v: %v", "0.0.0.0:"+*c.Archiver.HttpPort, err)
 	}
+
+	sshscs := NewSSHConfigServer(store, *c.SSH.Port, *c.SSH.PrivateKey,
+		*c.SSH.AuthorizedKeysFile,
+		*c.SSH.User, *c.SSH.Pass,
+		c.SSH.PasswordEnabled, c.SSH.KeyAuthEnabled)
+	go sshscs.Listen()
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		republisher:          republisher,
@@ -113,7 +120,8 @@ func NewArchiver(c *Config) *Archiver {
 		R:                    httprouter.New(),
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter(),
-		coalescer:            NewCoalescer(&tsdb)}
+		coalescer:            NewCoalescer(&tsdb),
+		sshscs:               sshscs}
 
 }
 
