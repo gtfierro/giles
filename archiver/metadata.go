@@ -1,10 +1,13 @@
 package archiver
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
 )
@@ -66,6 +69,12 @@ func NewStore(address *net.TCPAddr) *Store {
 		log.Fatal("Could not create index on pathmetadata.Path")
 	}
 
+	index.Key = []string{"name", "email"}
+	err = apikeys.EnsureIndex(index)
+	if err != nil {
+		log.Fatal("Could not create index on apikeys")
+	}
+
 	maxstreamid := &rdbStreamId{}
 	streams.Find(bson.M{}).Sort("-streamid").One(&maxstreamid)
 	var maxsid uint32 = 1
@@ -112,6 +121,69 @@ func (s *Store) apikeyexists(apikey string) (bool, error) {
 		return false, errors.New("No API key with value " + apikey)
 	}
 	return true, nil
+}
+
+func (s *Store) newkey(name, email string, public bool) (string, error) {
+	var apikey string
+	var err error
+	urandom, err := os.Open("/dev/urandom")
+	if err != nil {
+		return apikey, errors.New(fmt.Sprintf("Could not open /dev/urandom (%v)", err))
+	}
+	randbytes := make([]byte, 64)
+	n, err := urandom.Read(randbytes)
+	if err != nil {
+		return apikey, errors.New(fmt.Sprintf("Could not read /dev/urandom (%v)", err))
+	}
+	if n != 64 {
+		return apikey, errors.New(fmt.Sprintf("Could not read 64 bytes from /dev/urandom %v", n))
+	}
+	apikey = base64.URLEncoding.EncodeToString(randbytes)
+	err = s.apikeys.Insert(bson.M{"key": apikey, "name": name, "email": email, "public": public})
+	if err != nil {
+		return apikey, errors.New(fmt.Sprintf("could not save new apikey for %v %v to Mongo (%v)", name, email, err))
+	}
+	return apikey, nil
+}
+
+func (s *Store) getkey(name, email string) (string, error) {
+	var res interface{}
+	err := s.apikeys.Find(bson.M{"name": name, "email": email}).Select(bson.M{"key": 1}).One(&res)
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Could not retrieve apikey for %v %v (%v)", name, email, err))
+	}
+	return res.(bson.M)["key"].(string), nil
+}
+
+func (s *Store) listkeys(email string) ([]map[string]interface{}, error) {
+	var res []map[string]interface{}
+	err := s.apikeys.Find(bson.M{"email": email}).All(&res)
+	if err != nil {
+		return res, errors.New(fmt.Sprintf("Could not get apikeys for %v (%v)", email, err))
+	}
+	return res, nil
+}
+
+func (s *Store) delkey_byname(name, email string) (string, error) {
+	ci, err := s.apikeys.RemoveAll(bson.M{"name": name, "email": email})
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Could not delete keys for %v %v (%v)", name, email, err))
+	}
+	return fmt.Sprintf("Removed %v records", ci.Removed), nil
+}
+
+func (s *Store) delkey_byvalue(key string) (string, error) {
+	err := s.apikeys.Remove(bson.M{"key": key})
+	return fmt.Sprintf("Removed key"), err
+}
+
+func (s *Store) owner(key string) (map[string]interface{}, error) {
+	var res map[string]interface{}
+	err := s.apikeys.Find(bson.M{"key": key}).Select(bson.M{"name": 1, "email": 1}).One(&res)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Could not find owners for key %v (%v)", key, err))
+	}
+	return res, nil
 }
 
 func (s *Store) CanWrite(apikey, uuid string) (bool, error) {

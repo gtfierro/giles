@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -210,28 +211,112 @@ func (scs *SSHConfigServer) writeLines(term *terminal.Terminal, lines string) {
 }
 
 func (scs *SSHConfigServer) newkey(line string) string {
-	var response string
-	return response
+	var (
+		name   string
+		email  string
+		public bool
+		err    error
+	)
+	args := strings.Split(line, " ")
+	if len(args) < 3 || len(args) > 5 {
+		return "WRONG ARGS: newkey <name> <email> <public?>"
+	}
+	name = args[1]
+	email = args[2]
+	if len(args) == 3 {
+		public = true
+	} else {
+		public, err = strconv.ParseBool(args[3])
+		if err != nil {
+			return "BAD BOOL: newkey <name> <email> <public?>"
+		}
+	}
+	apikey, err := scs.store.newkey(name, email, public)
+	if err != nil {
+		return err.Error()
+	}
+	return apikey
 }
 
 func (scs *SSHConfigServer) getkey(line string) string {
-	var response string
-	return response
+	var (
+		name  string
+		email string
+	)
+
+	args := strings.Split(line, " ")
+	if len(args) != 3 {
+		return "WRONG ARGS: getkey <name> <email>"
+	}
+	name = args[1]
+	email = args[2]
+	apikey, err := scs.store.getkey(name, email)
+	if err != nil {
+		return err.Error()
+	}
+	return apikey
 }
 
 func (scs *SSHConfigServer) listkeys(line string) string {
-	var response string
-	return response
+	var (
+		ret   []map[string]interface{}
+		keys  []string
+		email string
+		err   error
+	)
+	args := strings.Split(line, " ")
+	if len(args) != 2 {
+		return "WRONG ARGS: listkeys <email>"
+	}
+	email = args[1]
+	ret, err = scs.store.listkeys(email)
+	if err != nil {
+		return err.Error()
+	}
+	keys = make([]string, len(ret))
+	for i, res := range ret {
+		keys[i] = strings.Join([]string{"key: " + res["key"].(string),
+			"name: " + res["name"].(string),
+			"email: " + res["email"].(string),
+			"----------"}, "\n")
+	}
+	return strings.Join(keys, "\n")
 }
 
 func (scs *SSHConfigServer) delkey(line string) string {
-	var response string
-	return response
+	var (
+		resp string
+		err  error
+	)
+	args := strings.Split(line, " ")
+	if len(args) < 2 || len(args) > 3 {
+		return "WRONG ARGS: delkey <name> <email> | delkey <key>"
+	}
+	if len(args) == 2 {
+		resp, err = scs.store.delkey_byvalue(args[1])
+	} else {
+		resp, err = scs.store.delkey_byname(args[1], args[2])
+	}
+	if err != nil {
+		return err.Error()
+	}
+	return resp
 }
 
 func (scs *SSHConfigServer) owner(line string) string {
-	var response string
-	return response
+	var (
+		resp map[string]interface{}
+		err  error
+	)
+	args := strings.Split(line, " ")
+	if len(args) != 2 {
+		return "WRONG ARGS: owner <key>"
+	}
+	resp, err = scs.store.owner(args[1])
+	if err != nil {
+		return err.Error()
+	}
+	return fmt.Sprintf("name: %s\nemail: %s", resp["name"], resp["email"])
 }
 
 var greeting = `
