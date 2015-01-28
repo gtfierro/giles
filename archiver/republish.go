@@ -83,6 +83,7 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query string) {
 	}
 }
 
+// Publish @msg to all clients subscribing to @msg.UUID
 func (r *Republisher) Republish(msg *SmapMessage) {
 	for _, client := range r.subscribers[msg.UUID] {
 		go client.subscriber.Send(msg)
