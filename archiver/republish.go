@@ -49,7 +49,7 @@ func NewRepublisher() *Republisher {
 // Republisher can keep track of necessary state. @query is the query string
 // that describes what the client is subscribing to. This query should be a
 // valid sMAP query
-func (r *Republisher) HandleSubscriber(s Subscriber, query string) {
+func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 	tokens := tokenize(query)
 	where := parseWhere(&tokens)
 	uuids, err := r.store.GetUUIDs(where.ToBson())

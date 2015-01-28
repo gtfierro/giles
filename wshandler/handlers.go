@@ -5,11 +5,21 @@
 //
 // Overview
 //
-// The WebSockets interface expects data to be in the same JSON format as the HTTP
-// interface. The routes are the same too, but are prefixed with '/ws', so '/api/query'
-// becomes '/ws/api/query'.
+// The WebSockets interface is designed as a less-hacky version of the HTTP republish
+// mechanism, offering slightly augmented semantics for the connection. This interface
+// is only for streaming data described by queries such as "select data before now where
+// UUID = 123" or "select distinct Metadata/HVACZone". In the first case, we have a data
+// query, so every time a new point is published to a stream matching the WHERE clause,
+// a JSON message is sent over the WebSocket to the concerned client. In the second case,
+// we have a metadata query, so every time the results of that query change, a JSON
+// message is sent. These JSON messages have the same schema as the usual sMAP messages.
 //
-// A DDP interface is also planned for the Giles Archiver
+// To initialize a connection, the client uses its usual WebSocket setup/upgrade to
+// the desired URL (e.g. '/ws/api/query'), and then sends the query along the WebSocket
+// to the server. Whenever the server receives a message from a client, that message
+// will be evaluated as a query and will change the nature of the republish subscription.
+// If the query is invalid, the server will send back an error message and maintain the
+// current subscription.
 package wshandler
 
 import (
@@ -20,19 +30,32 @@ import (
 	"strings"
 )
 
-// Creates routes for WebSocket endpoints. These are the same as the normal HTTP/TCP endpoints, but are
-// preceeded with '/ws/`. Not served until Archiver.Serve() is called.
+// Creates routes for WebSocket endpoints. Not served until Archiver.Serve() is called.
 func Handle(a *archiver.Archiver) {
 	log.Notice("Handling WebSockets")
-	a.R.POST("/ws/api/query", curryhandler(a, WsQueryHandler))
-	a.R.GET("/ws/tags/uuid", curryhandler(a, WsTagsHandler))
-	a.R.GET("/ws/tags/uuid/{uuid}", curryhandler(a, WsTagsHandler))
+	a.R.GET("/ws/republish", curryhandler(a, RepublishHandler))
+	//a.R.POST("/ws/api/query", curryhandler(a, WsQueryHandler))
+	//a.R.GET("/ws/tags/uuid", curryhandler(a, WsTagsHandler))
 }
 
 var upgrader = &websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:  2048,
+	WriteBufferSize: 2048,
 	CheckOrigin:     func(r *http.Request) bool { return true }}
+
+func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	ws, err := upgrader.Upgrade(rw, req, nil)
+	if err != nil {
+		log.Error("Error establishing websocket: %v", err)
+		return
+	}
+	//TODO: check message type
+	_, msg, err := ws.ReadMessage()
+	apikey := unescape(ps.ByName("key"))
+	s := NewWSSubscriber(ws, rw)
+	a.HandleSubscriber(s, string(msg), apikey)
+	//log.Debug("msgtype: %v, msg: %v, err: %v, apikey: %v", msgtype, msg, err, apikey)
+}
 
 func WsAddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	ws, err := upgrader.Upgrade(rw, req, nil)

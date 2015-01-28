@@ -97,12 +97,13 @@ func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.R
 // requester to readings from streams which match that metadata query
 func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	defer req.Body.Close()
+	apikey := unescape(ps.ByName("key"))
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Error("Error handling republish: %v", err, stringquery)
 	}
 	s := NewHTTPSubscriber(rw)
-	a.HandleSubscriber(s, string(stringquery))
+	a.HandleSubscriber(s, string(stringquery), apikey)
 }
 
 // Resolves sMAP queries and returns results
