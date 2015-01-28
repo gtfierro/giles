@@ -99,9 +99,10 @@ func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Re
 	defer req.Body.Close()
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		log.Error("Error handling republish: %v", err)
+		log.Error("Error handling republish: %v", err, stringquery)
 	}
-	a.HandleSubscriber(rw, string(stringquery))
+	s := NewHTTPSubscriber(rw)
+	a.HandleSubscriber(s, string(stringquery))
 }
 
 // Resolves sMAP queries and returns results

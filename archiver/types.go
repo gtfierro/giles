@@ -21,13 +21,13 @@ type SmapMessage struct {
 	// If this struct corresponds to a sMAP collection,
 	// then Contents contains a list of paths contained within
 	// this collection
-	Contents []string
+	Contents []string `json:",omitempty"`
 	// Map of the metadata
-	Metadata bson.M
+	Metadata bson.M `json:",omitempty"`
 	// Map containing the actuator reference
-	Actuator bson.M
+	Actuator bson.M `json:",omitempty"`
 	// Map of the properties
-	Properties bson.M
+	Properties bson.M `json:",omitempty"`
 	// Unique identifier for this stream. Should be empty for Collections
 	UUID string
 	// Path of this stream (thus far)
@@ -37,9 +37,7 @@ type SmapMessage struct {
 // Convenience method to turn a sMAP message into
 // marshaled JSON
 func (sm *SmapMessage) ToJson() []byte {
-	towrite := map[string]*SmapReading{}
-	towrite[sm.Path].Readings = sm.Readings
-	b, err := json.Marshal(towrite)
+	b, err := json.Marshal(sm)
 	if err != nil {
 		log.Error("Error marshalling to JSON", err)
 		return []byte{}

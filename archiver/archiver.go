@@ -277,8 +277,9 @@ func (a *Archiver) TagsUUID(uuid string) ([]bson.M, error) {
 // to the client associated with the provided http.ResponseWriter.
 //
 // For now, this query is evaluated only once at the time of subscription.
-func (a *Archiver) HandleSubscriber(rw http.ResponseWriter, query string) {
-	a.republisher.HandleSubscriber(rw, string(query))
+//TODO: fix that ^^
+func (a *Archiver) HandleSubscriber(s Subscriber, query string) {
+	a.republisher.HandleSubscriber(s, query)
 }
 
 // For all streams that match the provided where clause in where_tags, sets the key-value

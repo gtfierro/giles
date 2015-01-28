@@ -36,7 +36,7 @@ func (c *counter) Reset() uint64 {
 **/
 func (a *Archiver) status() {
 	log.Info("Repub clients:%d--Recv Adds:%d--Pend Write:%d--Live Conn:%d",
-		len(a.republisher.Clients),
+		len(a.republisher.clients),
 		a.incomingcounter.Reset(),
 		a.pendingwritescounter.Reset(),
 		a.tsdb.LiveConnections())
