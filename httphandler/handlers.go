@@ -109,6 +109,8 @@ func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Re
 // Resolves sMAP queries and returns results
 func QueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	defer req.Body.Close()
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
 	key := unescape(ps.ByName("key"))
 	stringquery, err := ioutil.ReadAll(req.Body)
 	if err != nil {
