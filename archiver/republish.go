@@ -16,7 +16,7 @@ type Subscriber interface {
 	// without notifying the Republisher, but this means we cannot protect against
 	// memory leaks resulting from infinitely adding new clients
 	//TODO: maybe add a client ping to test for health?
-	GetNotify() *<-chan bool
+	GetNotify() <-chan bool
 }
 
 type RepublishClient struct {
@@ -24,7 +24,7 @@ type RepublishClient struct {
 	uuids []string
 	in    chan []byte
 	// a bool is sent on this channel when the client wants to be closed
-	notify *<-chan bool
+	notify <-chan bool
 	// this is how we handle writes back to the client
 	subscriber Subscriber
 }
@@ -66,7 +66,7 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 	log.Info("Clients: %v", len(r.clients))
 
 	// wait for client to close connection, then tear down client
-	<-(*client.notify)
+	<-client.notify
 	for i, pubclient := range r.clients {
 		if pubclient == client {
 			r.clients = append(r.clients[:i], r.clients[i+1:]...)

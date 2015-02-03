@@ -31,6 +31,6 @@ func (hs HTTPSubscriber) SendError(e error) {
 	hs.rw.Write([]byte(e.Error()))
 }
 
-func (hs HTTPSubscriber) GetNotify() *<-chan bool {
-	return &hs.notify
+func (hs HTTPSubscriber) GetNotify() <-chan bool {
+	return hs.notify
 }

@@ -19,12 +19,11 @@ type WSSubscriber struct {
 	ws       *websocket.Conn
 	rw       http.ResponseWriter
 	outbound chan []byte
-	notify   <-chan bool
+	notify   chan bool
 }
 
 func NewWSSubscriber(ws *websocket.Conn, rw http.ResponseWriter) *WSSubscriber {
-	notify := rw.(http.CloseNotifier).CloseNotify()
-	wss := &WSSubscriber{ws: ws, rw: rw, notify: notify, outbound: make(chan []byte, 512)}
+	wss := &WSSubscriber{ws: ws, rw: rw, notify: make(chan bool, 1), outbound: make(chan []byte, 512)}
 	m.initialize <- wss
 	go wss.dowrites()
 	return wss
@@ -42,8 +41,8 @@ func (wss WSSubscriber) SendError(e error) {
 	//wss.ws.WriteMessage(websocket.TextMessage, []byte(e.Error()))
 }
 
-func (wss WSSubscriber) GetNotify() *<-chan bool {
-	return &wss.notify
+func (wss WSSubscriber) GetNotify() <-chan bool {
+	return wss.notify
 }
 
 func (wss WSSubscriber) write(msgtype int, payload []byte) error {
