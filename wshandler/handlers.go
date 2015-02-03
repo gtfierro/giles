@@ -56,13 +56,7 @@ func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Re
 	msgtype, msg, err := ws.ReadMessage()
 	apikey := unescape(ps.ByName("key"))
 	s := NewWSSubscriber(ws, rw)
-	go a.HandleSubscriber(s, string(msg), apikey)
-	for {
-		msgtype, _, _ := ws.ReadMessage()
-		if msgtype == websocket.CloseMessage {
-			log.Debug("Got CLOSE")
-		}
-	}
+	a.HandleSubscriber(s, string(msg), apikey)
 	log.Debug("msgtype: %v, msg: %v, err: %v, apikey: %v", msgtype, msg, err, apikey)
 }
 

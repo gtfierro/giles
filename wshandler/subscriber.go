@@ -83,11 +83,11 @@ func (wss WSSubscriber) doreads() {
 	wss.ws.SetReadLimit(maxMessageSize)
 	wss.ws.SetReadDeadline(time.Now().Add(pongPeriod))
 	wss.ws.SetPongHandler(func(string) error { wss.ws.SetReadDeadline(time.Now().Add(pongPeriod)); return nil })
-	for {
-		_, message, err := wss.ws.ReadMessage()
-		if err != nil {
-			break
-		}
-		log.Debug("message: %v", message)
-	}
+	//for {
+	//	_, message, err := wss.ws.ReadMessage()
+	//	if err != nil {
+	//		break
+	//	}
+	//	log.Debug("message: %v", message)
+	//}
 }
