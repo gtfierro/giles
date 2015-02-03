@@ -36,25 +36,34 @@ func Handle(a *archiver.Archiver) {
 	a.R.GET("/ws/republish", curryhandler(a, RepublishHandler))
 	//a.R.POST("/ws/api/query", curryhandler(a, WsQueryHandler))
 	//a.R.GET("/ws/tags/uuid", curryhandler(a, WsTagsHandler))
+	go m.start()
 }
 
 var upgrader = &websocket.Upgrader{
-	ReadBufferSize:  2048,
-	WriteBufferSize: 2048,
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true }}
 
 func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
 	ws, err := upgrader.Upgrade(rw, req, nil)
 	if err != nil {
 		log.Error("Error establishing websocket: %v", err)
 		return
 	}
 	//TODO: check message type
-	_, msg, err := ws.ReadMessage()
+	msgtype, msg, err := ws.ReadMessage()
 	apikey := unescape(ps.ByName("key"))
 	s := NewWSSubscriber(ws, rw)
-	a.HandleSubscriber(s, string(msg), apikey)
-	//log.Debug("msgtype: %v, msg: %v, err: %v, apikey: %v", msgtype, msg, err, apikey)
+	go a.HandleSubscriber(s, string(msg), apikey)
+	for {
+		msgtype, _, _ := ws.ReadMessage()
+		if msgtype == websocket.CloseMessage {
+			log.Debug("Got CLOSE")
+		}
+	}
+	log.Debug("msgtype: %v, msg: %v, err: %v, apikey: %v", msgtype, msg, err, apikey)
 }
 
 func WsAddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
