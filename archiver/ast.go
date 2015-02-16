@@ -165,7 +165,7 @@ func parsetagsTarget(tokens *[]string) (target_T, error) {
 	pos := 0
 	if (*tokens)[pos] == "distinct" {
 		tt.Distinct = true
-		pos++
+		pos += 1
 	}
 	for idx, val := range (*tokens)[pos:] {
 		if val == "where" {
@@ -173,7 +173,11 @@ func parsetagsTarget(tokens *[]string) (target_T, error) {
 			 * definition. We alter "tokens" so that it starts with the "where"
 			 * and return our target_T
 			**/
-			(*tokens) = (*tokens)[idx+1:]
+			if tt.Distinct {
+				(*tokens) = (*tokens)[idx+2:]
+			} else {
+				(*tokens) = (*tokens)[idx+1:]
+			}
 			return tt, nil
 		}
 		// adds the token to the list of contents,
