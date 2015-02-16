@@ -8,7 +8,8 @@ import (
 type nodeType_T uint
 
 const (
-	AND_NODE = iota
+	DEF_NODE = iota
+	AND_NODE
 	OR_NODE
 	NOT_NODE
 	LIKE_NODE
@@ -16,7 +17,6 @@ const (
 	EQ_NODE
 	NEQ_NODE
 	LEAF_NODE
-	DEF_NODE // default
 )
 
 func getnodeType(inp string) nodeType_T {

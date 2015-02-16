@@ -79,7 +79,7 @@ func NewSSHConfigServer(store *Store, port, privatekey, authorizedKeysFile, conf
 
 	privateBytes, err := ioutil.ReadFile(privatekey)
 	if err != nil {
-		log.Fatal("Failed to load private key %v", privatekey)
+		log.Fatalf("Failed to load private key %v", privatekey)
 	}
 
 	private, err := ssh.ParsePrivateKey(privateBytes)

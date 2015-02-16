@@ -299,8 +299,20 @@ func (s *Store) GetTags(target bson.M, is_distinct bool, distinct_key string, wh
 	if len(target) == 0 {
 		staged = s.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
 	} else {
-		target["_id"] = 0
-		target["_api"] = 0
+		// because we can't have both inclusion and exclusion, we check if the
+		// target is including anything. If we get a "1", then we don't add
+		// our exclusions here
+		doExclude := true
+		for _, include := range target {
+			if include == 1 {
+				doExclude = false
+				break
+			}
+		}
+		target["_id"] = 0 // always exclude this
+		if doExclude {
+			target["_api"] = 0
+		}
 		staged = s.metadata.Find(where).Select(target)
 	}
 	if is_distinct {
