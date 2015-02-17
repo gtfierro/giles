@@ -46,27 +46,55 @@ var log = logging.MustGetLogger("mphandler")
 var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
-func Handle(a *archiver.Archiver, port int) {
+func HandleTCP(a *archiver.Archiver, port int) {
 	tcpaddr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:"+strconv.Itoa(port))
 	if err != nil {
 		log.Error("Error resolving TCP address for msgpack %v", err)
 	}
+
 	listener, err := net.ListenTCP("tcp", tcpaddr)
 	if err != nil {
 		log.Error("Error on listening: %v", err)
 	}
 
-	log.Notice("Starting MsgPack on %v", tcpaddr.String())
+	log.Notice("Starting MsgPack on TCP %v", tcpaddr.String())
 
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Error("Error accepting connection: %v", err)
-			}
-			go handleConn(a, conn)
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Error("Error accepting connection: %v", err)
 		}
-	}()
+		go handleConn(a, conn)
+	}
+}
+
+func HandleUDP(a *archiver.Archiver, port int) {
+	udpaddr, err := net.ResolveUDPAddr("udp6", "[::]:"+strconv.Itoa(port))
+	if err != nil {
+		log.Error("Error resolving UDP address for msgpack %v", err)
+	}
+
+	conn, err := net.ListenUDP("udp6", udpaddr)
+	if err != nil {
+		log.Error("Error on listening (%v)", err)
+	}
+
+	log.Notice("Starting MsgPack on UDP %v", udpaddr.String())
+	for {
+		buf := make([]byte, 1024)
+		n, fromaddr, err := conn.ReadFrom(buf)
+		if err != nil {
+			log.Error("Problem reading connection %v (%v)", fromaddr, err)
+		}
+		if n > 0 {
+			go handleUDPConn(a, buf[:n])
+		}
+	}
+}
+
+func handleUDPConn(a *archiver.Archiver, buf []byte) {
+	_, decoded := decode(&buf, 0)
+	AddReadings(a, decoded.(map[string]interface{}))
 }
 
 // How do we efficiently handle lots of packets on a single connection?

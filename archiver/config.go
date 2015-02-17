@@ -39,8 +39,10 @@ type Config struct {
 		Port    *int
 	}
 	MsgPack struct {
-		Enabled bool
-		Port    *int
+		TcpEnabled bool
+		TcpPort    *int
+		UdpEnabled bool
+		UdpPort    *int
 	}
 
 	SSH struct {

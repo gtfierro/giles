@@ -56,9 +56,14 @@ func main() {
 		go cphandler.Handle(a, *config.CapnProto.Port)
 	}
 
-	if config.MsgPack.Enabled {
-		go mphandler.Handle(a, *config.MsgPack.Port)
+	if config.MsgPack.TcpEnabled {
+		go mphandler.HandleTCP(a, *config.MsgPack.TcpPort)
 	}
+
+	if config.MsgPack.UdpEnabled {
+		go mphandler.HandleUDP(a, *config.MsgPack.UdpPort)
+	}
+
 	idx := 0
 	for {
 		time.Sleep(5 * time.Second)
