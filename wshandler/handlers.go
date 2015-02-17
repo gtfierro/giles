@@ -26,17 +26,29 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/gtfierro/giles/archiver"
 	"github.com/julienschmidt/httprouter"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // Creates routes for WebSocket endpoints. Not served until Archiver.Serve() is called.
-func Handle(a *archiver.Archiver) {
-	log.Notice("Handling WebSockets")
-	a.R.GET("/ws/republish", curryhandler(a, RepublishHandler))
-	//a.R.POST("/ws/api/query", curryhandler(a, WsQueryHandler))
-	//a.R.GET("/ws/tags/uuid", curryhandler(a, WsTagsHandler))
+func Handle(a *archiver.Archiver, port int) {
+	r := httprouter.New()
+	r.GET("/republish", curryhandler(a, RepublishHandler))
 	go m.start()
+
+	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+strconv.Itoa(port))
+	if err != nil {
+		log.Fatal("Error resolving address %v: %v", "0.0.0.0:"+strconv.Itoa(port), err)
+	}
+	http.Handle("/ws", r)
+	log.Notice("Starting WebSockets on %v", address.String())
+
+	srv := &http.Server{
+		Addr: address.String(),
+	}
+	srv.ListenAndServe()
 }
 
 var upgrader = &websocket.Upgrader{

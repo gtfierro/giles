@@ -7,21 +7,25 @@ import (
 	"github.com/op/go-logging"
 	"net"
 	"os"
+	"strconv"
 )
 
 var log = logging.MustGetLogger("cphandler")
 var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
-func Handle(a *archiver.Archiver) {
-	log.Notice("Handling Capn Proto")
-}
+func Handle(a *archiver.Archiver, port int) {
 
-func ServeUDP(a *archiver.Archiver, udpaddr *net.UDPAddr) {
-	conn, err := net.ListenUDP("udp", udpaddr)
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:"+strconv.Itoa(port))
+	if err != nil {
+		log.Error("Error resolving UDP address for capn proto: %v", err)
+	}
+
+	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		log.Error("Error on listening: %v", err)
 	}
+	log.Notice("Starting CapnProto on %v", addr.String())
 	defer conn.Close()
 	for {
 		buf := make([]byte, 4096)

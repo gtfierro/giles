@@ -20,25 +20,35 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/op/go-logging"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
-	_ "strconv"
+	"strconv"
 	"strings"
-	_ "time"
 )
 
 var log = logging.MustGetLogger("httphandler")
 var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
-func Handle(a *archiver.Archiver) {
-	log.Notice("Handling HTTP/TCP")
-	a.R.POST("/add/:key", curryhandler(a, AddReadingHandler))
-	a.R.POST("/republish", curryhandler(a, RepublishHandler))
-	//a.R.POST("/api/query?:key", curryhandler(a, QueryHandler))
-	a.R.POST("/api/query", curryhandler(a, QueryHandler))
-	a.R.GET("/api/tags/uuid/:uuid", curryhandler(a, TagsHandler))
-	//a.R.HandleFunc("/api/{method}/uuid/{uuid}", curryhandler(a, DataHandler)).Methods("GET")
+func Handle(a *archiver.Archiver, port int) {
+	r := httprouter.New()
+	r.POST("/add/:key", curryhandler(a, AddReadingHandler))
+	r.POST("/republish", curryhandler(a, RepublishHandler))
+	r.POST("/api/query", curryhandler(a, QueryHandler))
+	r.GET("/api/tags/uuid/:uuid", curryhandler(a, TagsHandler))
+
+	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+strconv.Itoa(port))
+	if err != nil {
+		log.Fatal("Error resolving address %v: %v", "0.0.0.0:"+strconv.Itoa(port), err)
+	}
+	http.Handle("/", r)
+	log.Notice("Starting HTTP on %v", address.String())
+
+	srv := &http.Server{
+		Addr: address.String(),
+	}
+	srv.ListenAndServe()
 }
 
 func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.ResponseWriter, *http.Request, httprouter.Params)) func(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {

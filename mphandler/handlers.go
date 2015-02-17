@@ -35,6 +35,7 @@ import (
 	"github.com/op/go-logging"
 	"net"
 	"os"
+	"strconv"
 )
 
 const (
@@ -45,15 +46,17 @@ var log = logging.MustGetLogger("mphandler")
 var format = "%{color}%{level} %{time:Jan 02 15:04:05} %{shortfile}%{color:reset} ▶ %{message}"
 var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 
-func Handle(a *archiver.Archiver) {
-	log.Notice("Handling MsgPack")
-}
-
-func ServeTCP(a *archiver.Archiver, tcpaddr *net.TCPAddr) {
+func Handle(a *archiver.Archiver, port int) {
+	tcpaddr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:"+strconv.Itoa(port))
+	if err != nil {
+		log.Error("Error resolving TCP address for msgpack %v", err)
+	}
 	listener, err := net.ListenTCP("tcp", tcpaddr)
 	if err != nil {
 		log.Error("Error on listening: %v", err)
 	}
+
+	log.Notice("Starting MsgPack on %v", tcpaddr.String())
 
 	go func() {
 		for {

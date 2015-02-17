@@ -8,7 +8,6 @@ import (
 	"github.com/gtfierro/giles/mphandler"
 	"github.com/gtfierro/giles/wshandler"
 	"log"
-	"net"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -44,21 +43,22 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	a := archiver.NewArchiver(config)
 	go a.PrintStatus()
-	httphandler.Handle(a)
-	wshandler.Handle(a)
-	cphandler.Handle(a)
-	mphandler.Handle(a)
-	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:8002")
-	if err != nil {
-		log.Println("Error resolving UDP address for capn proto: %v", err)
+
+	if config.HTTP.Enabled {
+		go httphandler.Handle(a, *config.HTTP.Port)
 	}
-	go cphandler.ServeUDP(a, addr)
-	tcpaddr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:8003")
-	if err != nil {
-		log.Println("Error resolving TCP address for msgpack %v", err)
+
+	if config.WebSockets.Enabled {
+		go wshandler.Handle(a, *config.WebSockets.Port)
 	}
-	go mphandler.ServeTCP(a, tcpaddr)
-	go a.Serve()
+
+	if config.CapnProto.Enabled {
+		go cphandler.Handle(a, *config.CapnProto.Port)
+	}
+
+	if config.MsgPack.Enabled {
+		go mphandler.Handle(a, *config.MsgPack.Port)
+	}
 	idx := 0
 	for {
 		time.Sleep(5 * time.Second)

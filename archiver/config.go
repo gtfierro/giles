@@ -7,7 +7,6 @@ import (
 
 type Config struct {
 	Archiver struct {
-		HttpPort  *string
 		TSDB      *string
 		Keepalive *int
 	}
@@ -25,6 +24,23 @@ type Config struct {
 	Mongo struct {
 		Port    *string
 		Address *string
+	}
+
+	HTTP struct {
+		Enabled bool
+		Port    *int
+	}
+	WebSockets struct {
+		Enabled bool
+		Port    *int
+	}
+	CapnProto struct {
+		Enabled bool
+		Port    *int
+	}
+	MsgPack struct {
+		Enabled bool
+		Port    *int
 	}
 
 	SSH struct {
@@ -49,7 +65,7 @@ func LoadConfig(filename string) *Config {
 	var configuration Config
 	err := gcfg.ReadFileInto(&configuration, filename)
 	if err != nil {
-		log.Error("No configuration file found at %v, so checking current directory for giles.cfg", filename)
+		log.Error("No configuration file found at %v, so checking current directory for giles.cfg (%v)", filename, err)
 	} else {
 		return &configuration
 	}
@@ -64,16 +80,15 @@ func LoadConfig(filename string) *Config {
 
 func PrintConfig(c *Config) {
 	fmt.Println("Giles Configuration")
-	fmt.Println("Archiver Port", *c.Archiver.HttpPort)
 	fmt.Println("Connecting to Mongo at", *c.Mongo.Address, ":", *c.Mongo.Port)
 	fmt.Println("Using Timeseries DB", *c.Archiver.TSDB)
 	switch *c.Archiver.TSDB {
 	case "readingdb":
-		fmt.Println("   at address", *c.ReadingDB.Address, ":", *c.ReadingDB.Port)
+		fmt.Println("	at address", *c.ReadingDB.Address, ":", *c.ReadingDB.Port)
 	case "quasar":
-		fmt.Println("   at address", *c.Quasar.Address, ":", *c.Quasar.Port)
+		fmt.Println("	at address", *c.Quasar.Address, ":", *c.Quasar.Port)
 	}
-	fmt.Println("   with keepalive", *c.Archiver.Keepalive)
+	fmt.Println("	with keepalive", *c.Archiver.Keepalive)
 
 	if c.Profile.Enabled {
 		fmt.Println("Profiling enabled for", *c.Profile.BenchmarkTimer, "seconds!")

@@ -21,11 +21,9 @@ package archiver
 import (
 	"encoding/json"
 	"errors"
-	"github.com/julienschmidt/httprouter"
 	"github.com/op/go-logging"
 	"gopkg.in/mgo.v2/bson"
 	"net"
-	"net/http"
 	"os"
 	"time"
 )
@@ -47,13 +45,11 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 // taking a quick look though their documentation and how they talk to Mongo to get a feel
 // for what the incoming/outgoing data is going to look like.
 type Archiver struct {
-	address              *net.TCPAddr
 	tsdb                 TSDB
 	store                *Store
 	republisher          *Republisher
 	incomingcounter      *counter
 	pendingwritescounter *counter
-	R                    *httprouter.Router
 	coalescer            *Coalescer
 	sshscs               *SSHConfigServer
 }
@@ -103,10 +99,6 @@ func NewArchiver(c *Config) *Archiver {
 
 	republisher := NewRepublisher()
 	republisher.store = store
-	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+*c.Archiver.HttpPort)
-	if err != nil {
-		log.Fatal("Error resolving address %v: %v", "0.0.0.0:"+*c.Archiver.HttpPort, err)
-	}
 
 	sshscs := NewSSHConfigServer(store, *c.SSH.Port, *c.SSH.PrivateKey,
 		*c.SSH.AuthorizedKeysFile,
@@ -116,24 +108,11 @@ func NewArchiver(c *Config) *Archiver {
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		republisher:          republisher,
-		address:              address,
-		R:                    httprouter.New(),
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter(),
 		coalescer:            NewCoalescer(&tsdb),
 		sshscs:               sshscs}
 
-}
-
-// Serves all registered endpoints. Doesn't return, so you might want to call this with 'go archiver.Serve()'
-func (a *Archiver) Serve() {
-	http.Handle("/", a.R)
-	log.Notice("Starting on %v", a.address.String())
-
-	srv := &http.Server{
-		Addr: a.address.String(),
-	}
-	srv.ListenAndServe()
 }
 
 // Takes a map of string/SmapMessage (path, sMAP JSON object) and commits them to
