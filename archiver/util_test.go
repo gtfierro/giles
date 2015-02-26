@@ -4,6 +4,16 @@ import (
 	"testing"
 )
 
+func TestCleanTagString(t *testing.T) {
+	var x, y, z string
+	x = "/x/y/z,"
+	y = cleantagstring(x)
+	z = ".x.y.z"
+	if y != z {
+		t.Error(y, " should = ", z)
+	}
+}
+
 func TestStringSliceEqual(t *testing.T) {
 	var x, y []string
 
@@ -31,21 +41,21 @@ func TestGetPrefixes(t *testing.T) {
 	var y, z []string
 	x = "/a/b/c"
 	y = getPrefixes(x)
-	z = []string{"/a", "/a/b"}
+	z = []string{"/", "/a", "/a/b"}
 	if !isStringSliceEqual(y, z) {
 		t.Error("Got ", y, " should be ", z)
 	}
 
 	x = "/a/b/c/"
 	y = getPrefixes(x)
-	z = []string{"/a", "/a/b"}
+	z = []string{"/", "/a", "/a/b"}
 	if !isStringSliceEqual(y, z) {
 		t.Error("Got ", y, " should be ", z)
 	}
 
 	x = "a/b/c/"
 	y = getPrefixes(x)
-	z = []string{"/a", "/a/b"}
+	z = []string{"/", "/a", "/a/b"}
 	if !isStringSliceEqual(y, z) {
 		t.Error("Got ", y, " should be ", z)
 	}
