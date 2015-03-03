@@ -129,6 +129,22 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 	if !ok {
 		return errors.New("Unauthorized api key " + apikey)
 	}
+	for _, rdg := range readings {
+		// for Metadata, Properties, Contents and Actuator,
+		// if we don't have an entry, replace it with nil
+		if rdg.Metadata != nil && len(rdg.Metadata) == 0 {
+			rdg.Metadata = nil
+		}
+		if rdg.Properties != nil && len(rdg.Properties) == 0 {
+			rdg.Properties = nil
+		}
+		if rdg.Contents != nil && len(rdg.Contents) == 0 {
+			rdg.Contents = nil
+		}
+		if rdg.Actuator != nil && len(rdg.Actuator) == 0 {
+			rdg.Actuator = nil
+		}
+	}
 	go a.store.SaveMetadata(readings)
 	for _, msg := range readings {
 		go a.republisher.Republish(msg)
