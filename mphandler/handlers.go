@@ -32,6 +32,7 @@ package mphandler
 
 import (
 	"github.com/gtfierro/giles/archiver"
+	"github.com/gtfierro/msgpack"
 	"github.com/op/go-logging"
 	"net"
 	"os"
@@ -93,7 +94,7 @@ func HandleUDP(a *archiver.Archiver, port int) {
 }
 
 func handleUDPConn(a *archiver.Archiver, buf []byte) {
-	_, decoded := decode(&buf, 0)
+	_, decoded := msgpack.Decode(&buf, 0)
 	AddReadings(a, decoded.(map[string]interface{}))
 }
 
@@ -137,7 +138,7 @@ func handleConn(a *archiver.Archiver, conn net.Conn) {
 				dec = append(old[:readalready], buf[:leftover]...)
 				offset = leftover
 			}
-			_, decoded := decode(&dec, 0)
+			_, decoded := msgpack.Decode(&dec, 0)
 			AddReadings(a, decoded.(map[string]interface{}))
 			old = old[:cap(old)]
 			readalready = 0
@@ -163,7 +164,7 @@ func handleConn(a *archiver.Archiver, conn net.Conn) {
 				offset += 3
 				packetlength -= 3
 				if offset+packetlength <= BUFFER_SIZE { // still have room
-					newoffset, decoded := decode(&buf, offset)
+					newoffset, decoded := msgpack.Decode(&buf, offset)
 					AddReadings(a, decoded.(map[string]interface{}))
 					offset = newoffset
 				} else { // not enough!
