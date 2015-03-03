@@ -52,11 +52,30 @@ type Archiver struct {
 	pendingwritescounter *counter
 	coalescer            *Coalescer
 	sshscs               *SSHConfigServer
+	enforceKeys          bool
 }
 
 // Creates a new Archiver instance:
 func NewArchiver(c *Config) *Archiver {
-	logging.SetBackend(logBackend)
+
+	logBackendLeveled := logging.AddModuleLevel(logBackend)
+	// handle log level
+	switch *c.Archiver.LogLevel {
+	case "CRITICAL":
+		logBackendLeveled.SetLevel(logging.CRITICAL, "")
+	case "ERROR":
+		logBackendLeveled.SetLevel(logging.ERROR, "")
+	case "WARNING":
+		logBackendLeveled.SetLevel(logging.WARNING, "")
+	case "NOTICE":
+		logBackendLeveled.SetLevel(logging.NOTICE, "")
+	case "INFO":
+		logBackendLeveled.SetLevel(logging.INFO, "")
+	case "DEBUG":
+		logBackendLeveled.SetLevel(logging.DEBUG, "")
+	}
+
+	logging.SetBackend(logBackendLeveled)
 	logging.SetFormatter(logging.MustStringFormatter(format))
 
 	// Mongo connection
@@ -111,7 +130,8 @@ func NewArchiver(c *Config) *Archiver {
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter(),
 		coalescer:            NewCoalescer(&tsdb),
-		sshscs:               sshscs}
+		sshscs:               sshscs,
+		enforceKeys:          c.Archiver.EnforceKeys}
 
 }
 
@@ -121,13 +141,15 @@ func NewArchiver(c *Config) *Archiver {
 // out to any concerned republish clients, and commits the reading to the timeseries database.
 // Returns an error, which is nil if all went well
 func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) error {
-	ok, err := a.store.CheckKey(apikey, readings)
-	if err != nil {
-		log.Error("Error checking API key %v: %v", apikey, err)
-		return err
-	}
-	if !ok {
-		return errors.New("Unauthorized api key " + apikey)
+	if a.enforceKeys {
+		ok, err := a.store.CheckKey(apikey, readings)
+		if err != nil {
+			log.Error("Error checking API key %v: %v", apikey, err)
+			return err
+		}
+		if !ok {
+			return errors.New("Unauthorized api key " + apikey)
+		}
 	}
 	for _, rdg := range readings {
 		// for Metadata, Properties, Contents and Actuator,

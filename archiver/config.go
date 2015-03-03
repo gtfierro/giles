@@ -7,8 +7,10 @@ import (
 
 type Config struct {
 	Archiver struct {
-		TSDB      *string
-		Keepalive *int
+		TSDB        *string
+		Keepalive   *int
+		EnforceKeys bool
+		LogLevel    *string
 	}
 
 	ReadingDB struct {
