@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-var configfile = "../giles.cfg"
+var configfile = "archiver_test.cfg"
 var config = LoadConfig(configfile)
 var a = NewArchiver(config)
 
