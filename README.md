@@ -55,6 +55,9 @@ or [Quasar](https://github.com/SoftwareDefinedBuildings/quasar). Install one of 
 
 Make a note of what IP/Port Mongo and your timeseries databases are running on.
 
+In the deploy directory, there is a sample [supervisord](http://supervisord.org/) script to help
+with deployments.
+
 Giles itself is designed to be easy to install. There are several different ways to do it:
 
 #### Installation From Binary
@@ -66,6 +69,12 @@ compiled for any platform that is [supported by
 Go](https://golang.org/doc/install). Binaries have well defined behavior and
 are easy to install, but are infrequently updated and may not have the latest
 patches.
+
+#### "Installation" From Dockerfile
+
+In the deploy directory, there is a Dockerfile that should handle building and running giles.
+It's not fully finished yet, but it's not too difficult to add references to the Mongo and timeseries
+database ports necessary to get it fully running.
 
 #### Installation From Source
 
