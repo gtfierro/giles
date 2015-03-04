@@ -13,16 +13,6 @@ func TestMRUCache(t *testing.T) {
 		cache.Get(fmt.Sprintf("testkey%d", i))
 	}
 	// Cache should have values 2,3,4,5,6,7,8,9
-	fmt.Println(cache.cache)
-
-	h := cache.head
-	for {
-		fmt.Printf("at element k %v v %v\n", h.key, h.value)
-		if h == cache.tail {
-			break
-		}
-		h = h.prev
-	}
 
 	// Verify
 	for i := 2; i < 10; i++ {
