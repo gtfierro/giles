@@ -42,13 +42,9 @@ func Handle(a *archiver.Archiver, port int) {
 	if err != nil {
 		log.Fatal("Error resolving address %v: %v", "0.0.0.0:"+strconv.Itoa(port), err)
 	}
-	http.Handle("/ws", r)
-	log.Notice("Starting WebSockets on %v", address.String())
 
-	srv := &http.Server{
-		Addr: address.String(),
-	}
-	srv.ListenAndServe()
+	log.Notice("Starting WebSockets on %v", address.String())
+	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(port), r))
 }
 
 var upgrader = &websocket.Upgrader{
