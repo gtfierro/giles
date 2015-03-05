@@ -24,9 +24,10 @@ func (m *manager) start() {
 			m.subscribers[s] = true
 		case s := <-m.remove:
 			if _, found := m.subscribers[s]; found {
+				s.closed = true
 				s.notify <- true
 				delete(m.subscribers, s)
-				close(s.outbound)
+				//close(s.outbound)
 			}
 		}
 	}
