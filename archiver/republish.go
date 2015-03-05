@@ -1,5 +1,9 @@
 package archiver
 
+import (
+	"sync"
+)
+
 // Subscriber is an interface that should be implemented by each protocol
 // adapter that wants to support sMAP republish pub-sub.
 type Subscriber interface {
@@ -34,9 +38,10 @@ type RepublishClient struct {
 // able to handle pub-sub over their respective protocols by writing a small
 // shim to the core Archiver pub-sub API.
 type Republisher struct {
-	clients     [](*RepublishClient)
+	clients [](*RepublishClient)
+	store   *Store // store is added in archiver.go
+	sync.RWMutex
 	subscribers map[string][](*RepublishClient)
-	store       *Store // store is added in archiver.go
 }
 
 func NewRepublisher() *Republisher {
@@ -59,9 +64,11 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 	}
 	client := &RepublishClient{uuids: uuids, notify: s.GetNotify(), subscriber: s}
 	r.clients = append(r.clients, client)
+	r.Lock()
 	for _, uuid := range uuids {
 		r.subscribers[uuid] = append(r.subscribers[uuid], client)
 	}
+	r.Unlock()
 	log.Info("New subscriber for query: %v", query)
 	log.Info("Clients: %v", len(r.clients))
 
@@ -73,6 +80,8 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 			break
 		}
 	}
+	r.Lock()
+	defer r.Unlock()
 	for uuid, clientlist := range r.subscribers {
 		for i, pubclient := range clientlist {
 			if pubclient == client {
