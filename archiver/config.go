@@ -48,6 +48,7 @@ type Config struct {
 	}
 
 	SSH struct {
+		Enabled            bool
 		Port               *string
 		PrivateKey         *string
 		AuthorizedKeysFile *string

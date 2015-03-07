@@ -119,11 +119,14 @@ func NewArchiver(c *Config) *Archiver {
 	republisher := NewRepublisher()
 	republisher.store = store
 
-	sshscs := NewSSHConfigServer(store, *c.SSH.Port, *c.SSH.PrivateKey,
-		*c.SSH.AuthorizedKeysFile,
-		*c.SSH.User, *c.SSH.Pass,
-		c.SSH.PasswordEnabled, c.SSH.KeyAuthEnabled)
-	go sshscs.Listen()
+	var sshscs *SSHConfigServer
+	if c.SSH.Enabled {
+		sshscs = NewSSHConfigServer(store, *c.SSH.Port, *c.SSH.PrivateKey,
+			*c.SSH.AuthorizedKeysFile,
+			*c.SSH.User, *c.SSH.Pass,
+			c.SSH.PasswordEnabled, c.SSH.KeyAuthEnabled)
+		go sshscs.Listen()
+	}
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		republisher:          republisher,
