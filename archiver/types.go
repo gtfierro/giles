@@ -5,6 +5,9 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// an internal type we can use instead of bson.M
+type Dict map[string]interface{}
+
 // Struct representing data readings to and from sMAP
 type SmapReading struct {
 	// Readings will be interpreted as a list of [uint64, float64] = [time, value]
