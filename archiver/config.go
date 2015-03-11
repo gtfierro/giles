@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Archiver struct {
 		TSDB        *string
+		Metadata    *string
 		Keepalive   *int
 		EnforceKeys bool
 		LogLevel    *string
@@ -24,6 +25,11 @@ type Config struct {
 	}
 
 	Mongo struct {
+		Port    *string
+		Address *string
+	}
+
+	Venkman struct {
 		Port    *string
 		Address *string
 	}
