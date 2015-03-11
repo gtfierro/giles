@@ -66,6 +66,19 @@ func (n node) ToBson() bson.M {
 	return bson.M{}
 }
 
+// returns a list of all keys mentioned in the query
+func (n node) GetKeys() []string {
+	res := []string{}
+	switch n.Type {
+	case EQ_NODE, LIKE_NODE, NEQ_NODE, HAS_NODE:
+		res = append(res, n.Left.(string))
+	case AND_NODE, OR_NODE:
+		res = append(res, n.Left.(node).GetKeys()...)
+		res = append(res, n.Right.(node).GetKeys()...)
+	}
+	return res
+}
+
 func (n node) Length() int {
 	return 0
 }
