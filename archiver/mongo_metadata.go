@@ -26,6 +26,11 @@ type MongoStore struct {
 	apikcache    *Cache
 }
 
+type rdbStreamId struct {
+	StreamId uint32
+	UUID     string
+}
+
 func NewMongoStore(address *net.TCPAddr) *MongoStore {
 	log.Notice("Connecting to MongoDB at %v...", address.String())
 	session, err := mgo.Dial(address.String())
