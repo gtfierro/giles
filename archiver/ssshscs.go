@@ -46,13 +46,13 @@ import (
 //		delkey <key> -- deletes the given key
 //		owner <key> -- retrieves owner (name, email) for given key
 type SSHConfigServer struct {
-	store              *Store
+	manager            APIKeyManager
 	port               string
 	authorizedKeysFile string
 	config             *ssh.ServerConfig
 }
 
-func NewSSHConfigServer(store *Store, port, privatekey, authorizedKeysFile, confuser, confpass string, passenabled, keyenabled bool) *SSHConfigServer {
+func NewSSHConfigServer(manager APIKeyManager, port, privatekey, authorizedKeysFile, confuser, confpass string, passenabled, keyenabled bool) *SSHConfigServer {
 
 	keys := loadkeys(authorizedKeysFile)
 	config := &ssh.ServerConfig{
@@ -88,7 +88,7 @@ func NewSSHConfigServer(store *Store, port, privatekey, authorizedKeysFile, conf
 	}
 
 	config.AddHostKey(private)
-	sshscs := &SSHConfigServer{store: store,
+	sshscs := &SSHConfigServer{manager: manager,
 		port:               port,
 		authorizedKeysFile: authorizedKeysFile,
 		config:             config}
@@ -262,7 +262,7 @@ func (scs *SSHConfigServer) newkey(line string) string {
 			return "BAD BOOL: newkey <name> <email> <public?>"
 		}
 	}
-	apikey, err := scs.store.newkey(name, email, public)
+	apikey, err := scs.manager.NewKey(name, email, public)
 	if err != nil {
 		return err.Error()
 	}
@@ -281,7 +281,7 @@ func (scs *SSHConfigServer) getkey(line string) string {
 	}
 	name = args[1]
 	email = args[2]
-	apikey, err := scs.store.getkey(name, email)
+	apikey, err := scs.manager.GetKey(name, email)
 	if err != nil {
 		return err.Error()
 	}
@@ -300,7 +300,7 @@ func (scs *SSHConfigServer) listkeys(line string) string {
 		return "WRONG ARGS: listkeys <email>"
 	}
 	email = args[1]
-	ret, err = scs.store.listkeys(email)
+	ret, err = scs.manager.ListKeys(email)
 	if err != nil {
 		return err.Error()
 	}
@@ -324,9 +324,9 @@ func (scs *SSHConfigServer) delkey(line string) string {
 		return "WRONG ARGS: delkey <name> <email> | delkey <key>"
 	}
 	if len(args) == 2 {
-		resp, err = scs.store.delkey_byvalue(args[1])
+		resp, err = scs.manager.DeleteKeyByValue(args[1])
 	} else {
-		resp, err = scs.store.delkey_byname(args[1], args[2])
+		resp, err = scs.manager.DeleteKeyByName(args[1], args[2])
 	}
 	if err != nil {
 		return err.Error()
@@ -343,7 +343,7 @@ func (scs *SSHConfigServer) owner(line string) string {
 	if len(args) != 2 {
 		return "WRONG ARGS: owner <key>"
 	}
-	resp, err = scs.store.owner(args[1])
+	resp, err = scs.manager.Owner(args[1])
 	if err != nil {
 		return err.Error()
 	}

@@ -33,12 +33,12 @@ type SmapResponse struct {
    We will probably want to queue up the serialization of a bunch
    and then write in bulk.
 */
-func NewMessage(sb *StreamBuf, store *Store) *Message {
+func NewMessage(sb *StreamBuf, store MetadataStore) *Message {
 	m := &Message{}
 	var timestamp uint64
 	var value float64
 	var seqno uint64
-	var streamid uint32 = store.getStreamId(sb.uuid)
+	var streamid uint32 = store.GetStreamId(sb.uuid)
 	if streamid == 0 {
 		log.Error("error committing streamid")
 		return nil
@@ -86,7 +86,7 @@ type RDB struct {
 	addr  *net.TCPAddr
 	In    chan *[]byte
 	cm    *ConnectionMap
-	store *Store
+	store MetadataStore
 }
 
 // Create a new reference to a ReadingDB instance running at ip:port.
@@ -113,7 +113,7 @@ func (rdb *RDB) GetConnection() (net.Conn, error) {
 	return conn, err
 }
 
-func (rdb *RDB) AddStore(store *Store) {
+func (rdb *RDB) AddStore(store MetadataStore) {
 	rdb.store = store
 }
 
@@ -167,7 +167,7 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32, query_uot UnitOfTi
 		if err != nil {
 			return retdata, err
 		}
-		sid := rdb.store.getStreamId(uuid)
+		sid := rdb.store.GetStreamId(uuid)
 		u_limit := uint32(limit)
 		query := &rdbp.Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &u_limit}
@@ -196,7 +196,7 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit int32, query_uot UnitOfTi
 		if err != nil {
 			return retdata, err
 		}
-		sid := rdb.store.getStreamId(uuid)
+		sid := rdb.store.GetStreamId(uuid)
 		u_limit := uint32(limit)
 		query := &rdbp.Nearest{Streamid: &sid, Substream: &substream,
 			Reference: &ref, Direction: &direction, N: &u_limit}
@@ -227,7 +227,7 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64, query_uot UnitOfTime)
 		if err != nil {
 			return retdata, err
 		}
-		sid := rdb.store.getStreamId(uuid)
+		sid := rdb.store.GetStreamId(uuid)
 		query := &rdbp.Query{Streamid: &sid, Substream: &substream,
 			Starttime: &start, Endtime: &end, Action: &action}
 		data, err = proto.Marshal(query)

@@ -16,7 +16,7 @@ import (
 type QDB struct {
 	addr       *net.TCPAddr
 	cm         *ConnectionMap
-	store      *Store
+	store      MetadataStore
 	packetpool sync.Pool
 	bufferpool sync.Pool
 }
@@ -199,6 +199,6 @@ func (q *QDB) LiveConnections() int {
 	return 0
 }
 
-func (q *QDB) AddStore(s *Store) {
+func (q *QDB) AddStore(s MetadataStore) {
 	q.store = s
 }

@@ -46,7 +46,7 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 // for what the incoming/outgoing data is going to look like.
 type Archiver struct {
 	tsdb                 TSDB
-	store                *Store
+	store                MetadataStore
 	republisher          *Republisher
 	incomingcounter      *counter
 	pendingwritescounter *counter
@@ -78,14 +78,25 @@ func NewArchiver(c *Config) *Archiver {
 	logging.SetBackend(logBackendLeveled)
 	logging.SetFormatter(logging.MustStringFormatter(format))
 
-	// Mongo connection
-	mongoaddr, err := net.ResolveTCPAddr("tcp4", *c.Mongo.Address+":"+*c.Mongo.Port)
-	if err != nil {
-		log.Fatal("Error parsing Mongo address: %v", err)
-	}
-	store := NewStore(mongoaddr)
-	if store == nil {
-		log.Fatal("Error connection to MongoDB instance")
+	var store MetadataStore
+	var manager APIKeyManager
+	switch *c.Archiver.Metadata {
+	case "mongo":
+		// Mongo connection
+		mongoaddr, err := net.ResolveTCPAddr("tcp4", *c.Mongo.Address+":"+*c.Mongo.Port)
+		if err != nil {
+			log.Fatal("Error parsing Mongo address: %v", err)
+		}
+		mongostore := NewMongoStore(mongoaddr)
+		if mongostore == nil {
+			log.Fatal("Error connection to MongoDB instance")
+		}
+		store = mongostore
+		manager = mongostore
+	case "venkman":
+		log.Fatal("No support for venkman yet")
+	default:
+		log.Fatal(*c.Archiver.Metadata, " is not a recognized metadata store")
 	}
 
 	var tsdb TSDB
@@ -121,7 +132,7 @@ func NewArchiver(c *Config) *Archiver {
 
 	var sshscs *SSHConfigServer
 	if c.SSH.Enabled {
-		sshscs = NewSSHConfigServer(store, *c.SSH.Port, *c.SSH.PrivateKey,
+		sshscs = NewSSHConfigServer(manager, *c.SSH.Port, *c.SSH.PrivateKey,
 			*c.SSH.AuthorizedKeysFile,
 			*c.SSH.User, *c.SSH.Pass,
 			c.SSH.PasswordEnabled, c.SSH.KeyAuthEnabled)
@@ -213,7 +224,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		data, _ = json.Marshal(res)
 		// if we are setting tags
 	case SET_TARGET:
-		res, err := a.store.SetTags(ast.Target.(*setTarget).Updates, apikey, where)
+		res, err := a.store.UpdateTags(ast.Target.(*setTarget).Updates, apikey, where)
 		if err != nil {
 			return data, err
 		}
@@ -288,8 +299,8 @@ func (a *Archiver) GetUUIDs(where_tags bson.M) ([]string, error) {
 }
 
 // Returns all tags for the stream with the provided UUID
-func (a *Archiver) TagsUUID(uuid string) ([]bson.M, error) {
-	return a.store.TagsUUID(uuid)
+func (a *Archiver) TagsUUID(uuid string) (bson.M, error) {
+	return a.store.UUIDTags(uuid)
 }
 
 // For all streams that match the WHERE clause in the provided query string,
@@ -305,7 +316,7 @@ func (a *Archiver) HandleSubscriber(s Subscriber, query, apikey string) {
 // For all streams that match the provided where clause in where_tags, sets the key-value
 // pairs specified in update_tags.
 func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}, apikey string) (int, error) {
-	res, err := a.store.SetTags(update_tags, apikey, where_tags)
+	res, err := a.store.UpdateTags(update_tags, apikey, where_tags)
 	return res["Updated"].(int), err
 }
 
