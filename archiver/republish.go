@@ -39,7 +39,7 @@ type RepublishClient struct {
 // shim to the core Archiver pub-sub API.
 type Republisher struct {
 	clients [](*RepublishClient)
-	store   *Store // store is added in archiver.go
+	store   MetadataStore // store is added in archiver.go
 	sync.RWMutex
 	subscribers map[string][](*RepublishClient)
 }
