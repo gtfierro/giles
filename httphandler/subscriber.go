@@ -27,7 +27,6 @@ func (hs HTTPSubscriber) Send(msg *archiver.SmapMessage) {
 		hs.rw.WriteHeader(500)
 	} else {
 		hs.rw.Write(bytes)
-		log.Debug("MSG %v", towrite)
 		hs.rw.Write([]byte{'\n', '\n'})
 	}
 	if flusher, ok := hs.rw.(http.Flusher); ok {

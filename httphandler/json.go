@@ -27,7 +27,6 @@ func handleJSON(r io.Reader) (map[string]*archiver.SmapMessage, error) {
 	 * we receive a bunch of top-level keys that we don't know, so we unmarshal them into a
 	 * map, and then parse each of the internal objects individually
 	 */
-
 	decoder := json.NewDecoder(r)
 	decoder.UseNumber()
 	var e error
