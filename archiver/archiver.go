@@ -316,9 +316,6 @@ func (a *Archiver) TagsUUID(uuid string) (bson.M, error) {
 // For all streams that match the WHERE clause in the provided query string,
 // will push all subsequent incoming information (data and tags) on those streams
 // to the client associated with the provided http.ResponseWriter.
-//
-// For now, this query is evaluated only once at the time of subscription.
-//TODO: fix that ^^
 func (a *Archiver) HandleSubscriber(s Subscriber, query, apikey string) {
 	a.republisher.HandleSubscriber(s, query, apikey)
 }
