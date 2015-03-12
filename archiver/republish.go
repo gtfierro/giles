@@ -59,6 +59,9 @@ type RepublishClient struct {
 	//TODO: still used?
 	uuids []string
 
+	// query made by this client
+	query string
+
 	// a bool is sent on this channel when the client wants to be closed
 	notify <-chan bool
 
@@ -110,6 +113,7 @@ type Republisher struct {
 	// UUID -> list of clients subscribed to that UUID
 	subscribers map[string][](*RepublishClient)
 
+	// stores hash -> query object
 	queries map[QueryHash]*Query
 
 	// query -> list of clients
@@ -117,6 +121,9 @@ type Republisher struct {
 
 	// key -> list of queries
 	keyConcern map[string][]QueryHash
+
+	// uuid -> queries concerning uuid
+	uuidConcern map[string][]QueryHash
 }
 
 func NewRepublisher() *Republisher {
@@ -124,7 +131,8 @@ func NewRepublisher() *Republisher {
 		subscribers:  make(map[string][](*RepublishClient)),
 		queries:      make(map[QueryHash]*Query),
 		queryConcern: make(map[QueryHash][](*RepublishClient)),
-		keyConcern:   make(map[string][]QueryHash)}
+		keyConcern:   make(map[string][]QueryHash),
+		uuidConcern:  make(map[string][]QueryHash)}
 }
 
 // This is the Archiver API call. @s is a Subscriber, an interface that allows
@@ -147,6 +155,20 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 			return
 		}
 		r.queries[q.hash] = q
+
+		// for each matched UUID, store the query that matched it
+		for _, uuid := range q.uuids {
+			var list []QueryHash
+			var found bool
+			if list, found = r.uuidConcern[uuid]; found {
+				list = append(list, q.hash)
+			} else {
+				list = []QueryHash{q.hash}
+			}
+			r.uuidConcern[uuid] = list
+		}
+
+		// for each key in the query, store the query that mentions it
 		for _, key := range q.keys {
 			if queries, found := r.keyConcern[key]; found {
 				queries = append(queries, q.hash)
@@ -156,8 +178,9 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 			}
 		}
 	}
+
 	// create new instance of a client
-	client := &RepublishClient{uuids: q.uuids, notify: s.GetNotify(), subscriber: s}
+	client := &RepublishClient{uuids: q.uuids, notify: s.GetNotify(), subscriber: s, query: query}
 
 	r.Lock()
 	{ // begin lock
@@ -179,6 +202,8 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 	log.Info("New subscriber for query \"%v\" with keys %v", query, q.keys)
 
 	<-client.notify
+
+	//TODO: fixup removing client
 	for i, pubclient := range r.clients {
 		if pubclient == client {
 			r.clients = append(r.clients[:i], r.clients[i+1:]...)
@@ -198,12 +223,151 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 }
 
 func (r *Republisher) MetadataChange(msg *SmapMessage) {
-	log.Debug("Got metadata change on message %v", msg)
+	if msg.Metadata != nil {
+		for key, _ := range msg.Metadata {
+			key = "Metadata." + key
+			for _, query := range r.keyConcern[key] {
+				r.EvaluateQuery(query)
+			}
+		}
+	}
+	if msg.Properties != nil {
+		for key, _ := range msg.Properties {
+			key = "Properties." + key
+		}
+	}
+	if msg.Actuator != nil {
+		for key, _ := range msg.Actuator {
+			key = "Actuator." + key
+		}
+	}
+}
+
+// Given a query hash, reevaluate the associated WHERE clause to get the
+// new set of UUIDs that match the query. We now have a set of clients
+// attached to a specific query and a set of clients associated with
+// each of the UUIDs.
+// Compare the previous list of UUIDs with the current list of UUIDs.
+// For each UUID that is now in the set, add the list of concerned clients
+// to the subscribers. For each UUID that is now NOT in the set, remove
+// the list of concerned clients from that subscriber list
+func (r *Republisher) EvaluateQuery(qh QueryHash) {
+	var query *Query
+	var found bool
+	var err error
+	if query, found = r.queries[qh]; !found {
+		return
+	}
+	// store old set of UUIDs
+	olduuids := query.uuids
+	// get new set of UUIDs
+	query.uuids, err = r.store.GetUUIDs(query.where)
+	if err != nil {
+		log.Error("Received error when getting UUIDs for %v: (%v)", query.where, err)
+		return
+	}
+	// store our query by its hash
+	r.queries[query.hash] = query
+	// list of UUIDs to remove clients from
+	to_remove := []string{}
+	// list of UUIDs to add clients to
+	to_add := []string{}
+
+	// remove duplicates between olduuids and new uuids
+	newuuids := query.uuids
+	for i, newuuid := range newuuids {
+		for j, olduuid := range olduuids {
+			if newuuid == olduuid {
+				newuuids = append(newuuids[:i], newuuids[i+1:]...)
+				olduuids = append(olduuids[:j], olduuids[j+1:]...)
+				break
+			}
+		}
+	}
+
+	// add UUIDs to to_remove and to_add as necessary
+	// TODO: detect duplicates -- is there a UUID that's both in to_add and to_remove?
+	for _, newuuid := range newuuids {
+		found := false
+		for _, olduuid := range olduuids {
+			if newuuid == olduuid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			to_add = append(to_add, newuuid)
+		}
+	}
+
+	// TODO: do this more intelligently
+	for _, olduuid := range olduuids {
+		found := false
+		for _, newuuid := range newuuids {
+			if newuuid == olduuid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			to_remove = append(to_remove, olduuid)
+		}
+	}
+
+	if len(to_add) > 0 || len(to_remove) > 0 {
+		log.Debug("to add %v", to_add)
+		log.Debug("to remove %v", to_remove)
+	}
+
+	for _, uuid := range to_remove {
+		concerned := r.uuidConcern[uuid]
+		for i, chash := range concerned {
+			if chash == query.hash {
+				concerned = append(concerned[:i], concerned[i+1:]...)
+				break
+			}
+		}
+		r.uuidConcern[uuid] = concerned
+	}
+
+	for _, uuid := range to_add {
+		r.uuidConcern[uuid] = append(r.uuidConcern[uuid], query.hash)
+	}
+
+	// For the to_add list, add our clients to each UUID mentioned
+	//for _, uuid := range to_add {
+	//	  clientlist := r.subscribers[uuid]
+	//	  clientlist = append(clientlist, clients...)
+	//	r.subscribers[uuid] = clientlist
+	//}
+
+	//// For the to_remove list, remove our clients from the list for each UUID
+	//for _, uuid := range to_remove {
+	//	  clientlist := r.subscribers[uuid]
+	//	for i, pubclient := range clientlist {
+	//		  for _, client := range clients {
+	//			  if pubclient == client {
+	//				  log.Debug("removing client with query %v", client.query)
+	//				  clientlist = append(clientlist[:i], clientlist[i+1:]...)
+	//			  }
+	//		  }
+	//	}
+	//	r.subscribers[uuid] = clientlist
+	//}
+
 }
 
 // Publish @msg to all clients subscribing to @msg.UUID
 func (r *Republisher) Republish(msg *SmapMessage) {
-	for _, client := range r.subscribers[msg.UUID] {
-		go client.subscriber.Send(msg)
+	// use this implementation?
+	if queries, found := r.uuidConcern[msg.UUID]; found {
+		if _, found := msg.Metadata["override"]; found {
+			log.Debug("found queries for UUID %v: %v", msg.UUID, queries)
+		}
+		for _, hash := range queries {
+			for _, client := range r.queryConcern[hash] {
+				go client.subscriber.Send(msg)
+			}
+		}
 	}
 }

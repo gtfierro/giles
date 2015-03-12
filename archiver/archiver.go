@@ -181,9 +181,19 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 			rdg.Actuator = nil
 		}
 	}
-	go a.store.SaveMetadata(readings)
+	// save metadata
+	a.store.SaveTags(readings)
+	// if any of these are NOT nil, then we signal the republisher
+	// that some metadata may have changed
+	for _, rdg := range readings {
+		if rdg.Metadata != nil ||
+			rdg.Properties != nil ||
+			rdg.Actuator != nil {
+			a.republisher.MetadataChange(rdg)
+		}
+	}
 	for _, msg := range readings {
-		go a.republisher.Republish(msg)
+		a.republisher.Republish(msg)
 		a.incomingcounter.Mark()
 		if msg.Readings == nil {
 			continue
