@@ -1,6 +1,6 @@
 ## Giles
 
-[![GoDoc](https://godoc.org/github.com/gtfierro/giles?status.svg)](https://godoc.org/github.com/gtfierro/giles)
+[![GoDoc](https://godoc.org/github.com/gtfierro/giles?status.svg)](https://godoc.org/github.com/gtfierro/giles) [GoSrc](https://sourcegraph.com/github.com/gtfierro/giles)
 
 Documentation is available at http://godoc.org/github.com/gtfierro/giles 
 
