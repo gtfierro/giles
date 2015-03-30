@@ -203,6 +203,9 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 	r.Unlock()
 }
 
+// We call MetadataChange with an incoming sMAP message that includes
+// changes to the metadata of a stream that could affect republish
+// subscriptions
 func (r *Republisher) MetadataChange(msg *SmapMessage) {
 	if msg.Metadata != nil {
 		for key, _ := range msg.Metadata {
@@ -215,11 +218,17 @@ func (r *Republisher) MetadataChange(msg *SmapMessage) {
 	if msg.Properties != nil {
 		for key, _ := range msg.Properties {
 			key = "Properties." + key
+			for _, query := range r.keyConcern[key] {
+				r.EvaluateQuery(query)
+			}
 		}
 	}
 	if msg.Actuator != nil {
 		for key, _ := range msg.Actuator {
 			key = "Actuator." + key
+			for _, query := range r.keyConcern[key] {
+				r.EvaluateQuery(query)
+			}
 		}
 	}
 }
