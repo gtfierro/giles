@@ -101,7 +101,8 @@ func (q *QDB) Add(sb *StreamBuf) bool {
 	rl := qsr.NewRecordList(qr.seg, len(sb.readings))
 	rla := rl.ToArray()
 	for i, val := range sb.readings {
-		rla[i].SetTime(int64(val[0].(uint64)))
+		time := convertTime(val[0].(uint64), sb.unitOfTime, UOT_NS)
+		rla[i].SetTime(int64(time))
 		rla[i].SetValue(val[1].(float64))
 	}
 	qr.ins.SetValues(rl)

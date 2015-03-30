@@ -53,11 +53,11 @@ type UnitOfTime uint
 
 const (
 	// nanoseconds 1000000000
-	UOT_NS = iota
+	UOT_NS UnitOfTime = 1
 	// microseconds 1000000
-	UOT_US
+	UOT_US UnitOfTime = 2
 	// milliseconds 1000
-	UOT_MS
+	UOT_MS UnitOfTime = 3
 	// seconds 1
-	UOT_S
+	UOT_S UnitOfTime = 4
 )

@@ -30,19 +30,21 @@ const (
 
 type StreamBuf struct {
 	sync.Mutex
-	readings [][]interface{}
-	abort    chan bool
-	uuid     string
+	readings   [][]interface{}
+	abort      chan bool
+	uuid       string
+	unitOfTime UnitOfTime
 }
 
 type Coalescer struct {
-	tsdb *TSDB
+	tsdb  *TSDB
+	store *MetadataStore
 	sync.Mutex
 	streams map[string]*StreamBuf
 }
 
-func NewCoalescer(tsdb *TSDB) *Coalescer {
-	return &Coalescer{tsdb: tsdb, streams: make(map[string]*StreamBuf, 100)}
+func NewCoalescer(tsdb *TSDB, store *MetadataStore) *Coalescer {
+	return &Coalescer{tsdb: tsdb, store: store, streams: make(map[string]*StreamBuf, 100)}
 }
 
 func (c *Coalescer) GetStreamBuf(uuid string) *StreamBuf {
@@ -51,7 +53,8 @@ func (c *Coalescer) GetStreamBuf(uuid string) *StreamBuf {
 	if sm, found := c.streams[uuid]; found {
 		return sm
 	}
-	sm := &StreamBuf{uuid: uuid, readings: make([][]interface{}, 0, 100)}
+	uot := (*c.store).GetUnitOfTime(uuid)
+	sm := &StreamBuf{uuid: uuid, unitOfTime: uot, readings: make([][]interface{}, 0, 100)}
 	c.streams[uuid] = sm
 	return sm
 }

@@ -24,6 +24,7 @@ type MongoStore struct {
 	streamlock   sync.Mutex
 	uuidcache    *Cache
 	apikcache    *Cache
+	uotcache     *Cache
 }
 
 type rdbStreamId struct {
@@ -89,7 +90,8 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		apikeys:      apikeys,
 		maxsid:       &maxsid,
 		uuidcache:    NewCache(1000),
-		apikcache:    NewCache(1000)}
+		apikcache:    NewCache(1000),
+		uotcache:     NewCache(1000)}
 }
 
 /* MetadataStore interface implementation*/
@@ -279,20 +281,29 @@ func (ms *MongoStore) GetUUIDs(where bson.M) ([]string, error) {
 // Should return one of ns, us, ms, s; defaults to ms
 func (ms *MongoStore) GetUnitOfTime(uuid string) UnitOfTime {
 	var res bson.M
+	if uot, found := ms.uotcache.Get(uuid); found {
+		return uot.(UnitOfTime)
+	}
 	err := ms.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"Properties.UnitofTime": 1}).One(&res)
 	if err != nil {
+		ms.uotcache.Set(uuid, UOT_MS)
 		return UOT_MS
 	}
 	switch res["Properties"].(bson.M)["UnitofTime"].(string) {
 	case "ns":
+		ms.uotcache.Set(uuid, UOT_NS)
 		return UOT_NS
 	case "us":
+		ms.uotcache.Set(uuid, UOT_US)
 		return UOT_US
 	case "ms":
+		ms.uotcache.Set(uuid, UOT_MS)
 		return UOT_MS
 	case "s":
+		ms.uotcache.Set(uuid, UOT_S)
 		return UOT_S
 	}
+	ms.uotcache.Set(uuid, UOT_MS)
 	return UOT_MS
 }
 

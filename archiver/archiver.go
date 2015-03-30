@@ -143,7 +143,7 @@ func NewArchiver(c *Config) *Archiver {
 		republisher:          republisher,
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter(),
-		coalescer:            NewCoalescer(&tsdb),
+		coalescer:            NewCoalescer(&tsdb, &store),
 		sshscs:               sshscs,
 		enforceKeys:          c.Archiver.EnforceKeys}
 
