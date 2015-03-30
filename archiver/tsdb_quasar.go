@@ -128,7 +128,8 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 		qnv.SetBackward(backwards)
 		uuid := uuidlib.Parse(uu)
 		qnv.SetUuid([]byte(uuid))
-		qnv.SetTime(int64(start))
+		time := convertTime(start, UOT_S, UOT_NS)
+		qnv.SetTime(int64(time))
 		req.SetQueryNearestValue(qnv)
 		conn, err := q.GetConnection()
 		if err != nil {
@@ -161,8 +162,8 @@ func (q *QDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([
 
 func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapResponse, error) {
 	var ret = make([]SmapResponse, len(uuids))
-	start = convertTime(start, uot, UOT_MS)
-	end = convertTime(end, uot, UOT_MS)
+	start = convertTime(start, uot, UOT_NS)
+	end = convertTime(end, uot, UOT_NS)
 	for i, uu := range uuids {
 		seg := capn.NewBuffer(nil)
 		req := qsr.NewRootRequest(seg)

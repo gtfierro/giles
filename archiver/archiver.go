@@ -252,18 +252,18 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		var response []SmapResponse
 		switch target.Type {
 		case IN:
-			start := uint64(target.Start.Unix())
-			end := uint64(target.End.Unix())
+			start := uint64(target.Start.UnixNano())
+			end := uint64(target.End.UnixNano())
 			log.Debug("start %v end %v", start, end)
-			response, err = a.GetData(uuids, start, end, UOT_MS)
+			response, err = a.GetData(uuids, start, end, UOT_NS)
 		case AFTER:
-			ref := uint64(target.Ref.Unix())
+			ref := uint64(target.Ref.UnixNano())
 			log.Debug("after %v", ref)
-			response, err = a.NextData(uuids, ref, target.Limit, UOT_MS)
+			response, err = a.NextData(uuids, ref, target.Limit, UOT_NS)
 		case BEFORE:
-			ref := uint64(target.Ref.Unix())
+			ref := uint64(target.Ref.UnixNano())
 			log.Debug("before %v", ref)
-			response, err = a.PrevData(uuids, ref, target.Limit, UOT_MS)
+			response, err = a.PrevData(uuids, ref, target.Limit, UOT_NS)
 		}
 		data, _ = json.Marshal(response)
 	}
