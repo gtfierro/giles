@@ -289,19 +289,23 @@ func (ms *MongoStore) GetUnitOfTime(uuid string) UnitOfTime {
 		ms.uotcache.Set(uuid, UOT_MS)
 		return UOT_MS
 	}
-	switch res["Properties"].(bson.M)["UnitofTime"].(string) {
-	case "ns":
-		ms.uotcache.Set(uuid, UOT_NS)
-		return UOT_NS
-	case "us":
-		ms.uotcache.Set(uuid, UOT_US)
-		return UOT_US
-	case "ms":
-		ms.uotcache.Set(uuid, UOT_MS)
-		return UOT_MS
-	case "s":
-		ms.uotcache.Set(uuid, UOT_S)
-		return UOT_S
+	if prop, found := res["Properties"]; found {
+		if uot, found := prop.(bson.M)["UnitofTime"]; found {
+			switch uot.(string) {
+			case "ns":
+				ms.uotcache.Set(uuid, UOT_NS)
+				return UOT_NS
+			case "us":
+				ms.uotcache.Set(uuid, UOT_US)
+				return UOT_US
+			case "ms":
+				ms.uotcache.Set(uuid, UOT_MS)
+				return UOT_MS
+			case "s":
+				ms.uotcache.Set(uuid, UOT_S)
+				return UOT_S
+			}
+		}
 	}
 	ms.uotcache.Set(uuid, UOT_MS)
 	return UOT_MS
