@@ -30,6 +30,8 @@ func (hs *HTTPSubscriber) Send(msg *archiver.SmapMessage) {
 	towrite := make(map[string]interface{})
 	towrite[msg.Path] = archiver.SmapReading{Readings: msg.Readings, UUID: msg.UUID}
 	bytes, err := json.Marshal(towrite)
+
+	hs.Lock()
 	if hs.closed {
 		return
 	}
@@ -42,7 +44,6 @@ func (hs *HTTPSubscriber) Send(msg *archiver.SmapMessage) {
 		hs.rw.Write([]byte{'\n', '\n'})
 	}
 
-	hs.Lock()
 	if flusher, ok := hs.rw.(http.Flusher); ok && !hs.closed {
 		flusher.Flush()
 	}
