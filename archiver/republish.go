@@ -17,8 +17,17 @@ type Query struct {
 	// used to compare two different query objects
 	hash QueryHash
 	// UUIDs that match this query
-	uuids []string
+	m_uuids map[string]UUIDSTATE
 }
+
+type UUIDSTATE uint
+
+const (
+	OLD UUIDSTATE = iota
+	NEW
+	SAME
+	DEL
+)
 
 // Given a query string, tokenize and parse the query, also keeping
 // track of what keys are mentioned in the query.
@@ -29,6 +38,7 @@ func HandleQuery(querystring string) *Query {
 	q.where = where.ToBson()
 	q.keys = where.GetKeys()
 	q.hash = QueryHash(strings.Join(tokens, ""))
+	q.m_uuids = make(map[string]UUIDSTATE)
 	return q
 }
 
@@ -134,22 +144,27 @@ func NewRepublisher() *Republisher {
 // that describes what the client is subscribing to. This query should be a
 // valid sMAP query
 func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
-	var err error
 	q := HandleQuery(query)
 	if prev_q, found := r.queries[q.hash]; found {
 		// this query has already been done
 		q = prev_q
 	} else {
 		// add it to the cache of queries
-		q.uuids, err = r.store.GetUUIDs(q.where)
+		uuids, err := r.store.GetUUIDs(q.where)
+		//q.uuids, err = r.store.GetUUIDs(q.where)
 		if err != nil {
 			s.SendError(err)
 			return
 		}
+
+		for _, uuid := range uuids {
+			q.m_uuids[uuid] = OLD
+		}
+
 		r.queries[q.hash] = q
 
 		// for each matched UUID, store the query that matched it
-		for _, uuid := range q.uuids {
+		for uuid, _ := range q.m_uuids {
 			var list []QueryHash
 			var found bool
 			if list, found = r.uuidConcern[uuid]; found {
@@ -248,79 +263,50 @@ func (r *Republisher) EvaluateQuery(qh QueryHash) {
 	if query, found = r.queries[qh]; !found {
 		return
 	}
-	// store old set of UUIDs
-	olduuids := query.uuids
-	// get new set of UUIDs
-	query.uuids, err = r.store.GetUUIDs(query.where)
+
+	// mark UUIDs that match the new query with 'true'. Old UUIDs no longer
+	// covered will still be marked as 'false'
+	uuids, err := r.store.GetUUIDs(query.where)
+
 	if err != nil {
 		log.Error("Received error when getting UUIDs for %v: (%v)", query.where, err)
 		return
 	}
+
+	for _, uuid := range uuids {
+		if _, found := query.m_uuids[uuid]; found {
+			query.m_uuids[uuid] = SAME
+		} else {
+			query.m_uuids[uuid] = NEW
+		}
+	}
+
 	// store our query by its hash
 	r.queries[query.hash] = query
-	// list of UUIDs to remove clients from
-	to_remove := []string{}
-	// list of UUIDs to add clients to
-	to_add := []string{}
 
-	// remove duplicates between olduuids and new uuids
-	newuuids := query.uuids
-	for i, newuuid := range newuuids {
-		for j, olduuid := range olduuids {
-			if newuuid == olduuid {
-				newuuids = append(newuuids[:i], newuuids[i+1:]...)
-				olduuids = append(olduuids[:j], olduuids[j+1:]...)
-				break
+	for uuid, status := range query.m_uuids {
+		if status == OLD {
+			concerned := r.uuidConcern[uuid]
+			for i, chash := range concerned {
+				if chash == query.hash {
+					concerned = append(concerned[:i], concerned[i+1:]...)
+					break
+				}
 			}
+			r.uuidConcern[uuid] = concerned
+			query.m_uuids[uuid] = DEL
+			continue
 		}
+		if status == NEW {
+			r.uuidConcern[uuid] = append(r.uuidConcern[uuid], query.hash)
+		}
+		query.m_uuids[uuid] = OLD
 	}
 
-	// add UUIDs to to_remove and to_add as necessary
-	for _, newuuid := range newuuids {
-		found := false
-		for _, olduuid := range olduuids {
-			if newuuid == olduuid {
-				found = true
-				break
-			}
+	for uuid, status := range query.m_uuids {
+		if status == DEL {
+			delete(query.m_uuids, uuid)
 		}
-		if !found {
-			to_add = append(to_add, newuuid)
-		}
-	}
-
-	// TODO: do this more intelligently
-	for _, olduuid := range olduuids {
-		found := false
-		for _, newuuid := range newuuids {
-			if newuuid == olduuid {
-				found = true
-				break
-			}
-		}
-		if !found {
-			to_remove = append(to_remove, olduuid)
-		}
-	}
-
-	if len(to_add) > 0 || len(to_remove) > 0 {
-		log.Debug("to add %v", to_add)
-		log.Debug("to remove %v", to_remove)
-	}
-
-	for _, uuid := range to_remove {
-		concerned := r.uuidConcern[uuid]
-		for i, chash := range concerned {
-			if chash == query.hash {
-				concerned = append(concerned[:i], concerned[i+1:]...)
-				break
-			}
-		}
-		r.uuidConcern[uuid] = concerned
-	}
-
-	for _, uuid := range to_add {
-		r.uuidConcern[uuid] = append(r.uuidConcern[uuid], query.hash)
 	}
 }
 
