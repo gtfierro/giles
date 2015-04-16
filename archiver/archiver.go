@@ -276,19 +276,52 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 // it needs (most of these will query the metadata store for the unit of time for the
 // data stream it is accessing)
 func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot UnitOfTime) ([]SmapResponse, error) {
-	return a.tsdb.GetData(streamids, start, end, query_uot)
+	resp, err := a.tsdb.GetData(streamids, start, end, query_uot)
+	if err == nil { // if no error, adjust timeseries
+		for i, sr := range resp {
+			stream_uot := a.store.GetUnitOfTime(sr.UUID)
+			for j, reading := range sr.Readings {
+				reading[0] = float64(convertTime(uint64(reading[0]), stream_uot, UOT_MS))
+				sr.Readings[j] = reading
+			}
+			resp[i] = sr
+		}
+	}
+	return resp, err
 }
 
 // For each of the streamids, fetches data before the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
 func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapResponse, error) {
-	return a.tsdb.Prev(streamids, start, limit, query_uot)
+	resp, err := a.tsdb.Prev(streamids, start, limit, query_uot)
+	if err == nil { // if no error, adjust timeseries
+		for i, sr := range resp {
+			stream_uot := a.store.GetUnitOfTime(sr.UUID)
+			for j, reading := range sr.Readings {
+				reading[0] = float64(convertTime(uint64(reading[0]), stream_uot, UOT_MS))
+				sr.Readings[j] = reading
+			}
+			resp[i] = sr
+		}
+	}
+	return resp, err
 }
 
 // For each of the streamids, fetches data after the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
 func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapResponse, error) {
-	return a.tsdb.Next(streamids, start, limit, query_uot)
+	resp, err := a.tsdb.Next(streamids, start, limit, query_uot)
+	if err == nil { // if no error, adjust timeseries
+		for i, sr := range resp {
+			stream_uot := a.store.GetUnitOfTime(sr.UUID)
+			for j, reading := range sr.Readings {
+				reading[0] = float64(convertTime(uint64(reading[0]), stream_uot, UOT_MS))
+				sr.Readings[j] = reading
+			}
+			resp[i] = sr
+		}
+	}
+	return resp, err
 }
 
 // For all streams that match the provided where clause in where_tags, returns the values of the requested

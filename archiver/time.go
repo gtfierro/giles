@@ -10,6 +10,12 @@ import (
 
 var supported_formats = []string{"1/2/2006", "1-2-2006", "1/2/2006 04:15", "1-2-2006 04:15", "2006-1-2 15:04:05"}
 
+var unitmultiplier = map[UnitOfTime]uint64{
+	UOT_NS: 1000000000,
+	UOT_US: 1000000,
+	UOT_MS: 1000,
+	UOT_S:  1}
+
 // Takes a string specifying a time, and returns a canonical Time object representing that string.
 // To consider: should this instead return the kind of timestamp expected by ReadingDB? Or can that
 // be handled by another method? I think the latter is the way to go on this, that way I can use
@@ -106,10 +112,8 @@ func parseIntoDuration(str string) (time.Duration, error) {
 // Takes a timestamp with accompanying unit of time 'stream_uot' and
 // converts it to the unit of time 'target_uot'
 func convertTime(time uint64, stream_uot, target_uot UnitOfTime) uint64 {
-	unitmultiplier := map[UnitOfTime]uint64{
-		UOT_NS: 1000000000,
-		UOT_US: 1000000,
-		UOT_MS: 1000,
-		UOT_S:  1}
+	if stream_uot == target_uot {
+		return time
+	}
 	return time / unitmultiplier[stream_uot] * unitmultiplier[target_uot]
 }

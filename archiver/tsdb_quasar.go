@@ -83,7 +83,7 @@ func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
 			if limit > -1 && int32(i) >= limit {
 				break
 			}
-			sr.Readings = append(sr.Readings, []float64{float64(rec.Time() * 1000), rec.Value()})
+			sr.Readings = append(sr.Readings, []float64{float64(rec.Time()), rec.Value()})
 		}
 		return sr, nil
 	}
@@ -122,14 +122,14 @@ func (q *QDB) Add(sb *StreamBuf) bool {
 func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapResponse, error) {
 	var ret = make([]SmapResponse, len(uuids))
 	for i, uu := range uuids {
+		stream_uot := q.store.GetUnitOfTime(uu)
 		seg := capn.NewBuffer(nil)
 		req := qsr.NewRootRequest(seg)
 		qnv := qsr.NewCmdQueryNearestValue(seg)
 		qnv.SetBackward(backwards)
 		uuid := uuidlib.Parse(uu)
 		qnv.SetUuid([]byte(uuid))
-		time := convertTime(start, UOT_S, UOT_NS)
-		qnv.SetTime(int64(time))
+		qnv.SetTime(int64(start))
 		req.SetQueryNearestValue(qnv)
 		conn, err := q.GetConnection()
 		if err != nil {
@@ -142,6 +142,10 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 		}
 		sr, err := q.receive(&conn, limit)
 		sr.UUID = uu
+		for j, reading := range sr.Readings {
+			reading[0] = float64(convertTime(uint64(reading[0]), UOT_NS, stream_uot))
+			sr.Readings[j] = reading
+		}
 		ret[i] = sr
 	}
 	return ret, nil
@@ -151,12 +155,12 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 // queries such as "the last 10 values before now". Currently, Prev and Next will
 // just return the single closest value
 func (q *QDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
-	start = convertTime(start, uot, UOT_MS)
+	start = convertTime(start, uot, UOT_NS)
 	return q.queryNearestValue(uuids, start, limit, true)
 }
 
 func (q *QDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
-	start = convertTime(start, uot, UOT_MS)
+	start = convertTime(start, uot, UOT_NS)
 	return q.queryNearestValue(uuids, start, limit, false)
 }
 
@@ -165,6 +169,7 @@ func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) 
 	start = convertTime(start, uot, UOT_NS)
 	end = convertTime(end, uot, UOT_NS)
 	for i, uu := range uuids {
+		stream_uot := q.store.GetUnitOfTime(uu)
 		seg := capn.NewBuffer(nil)
 		req := qsr.NewRootRequest(seg)
 		qnv := qsr.NewCmdQueryStandardValues(seg)
@@ -184,6 +189,10 @@ func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) 
 		}
 		sr, err := q.receive(&conn, -1)
 		sr.UUID = uu
+		for j, reading := range sr.Readings {
+			reading[0] = float64(convertTime(uint64(reading[0]), UOT_NS, stream_uot))
+			sr.Readings[j] = reading
+		}
 		ret[i] = sr
 	}
 	return ret, nil
