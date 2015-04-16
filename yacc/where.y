@@ -119,10 +119,10 @@ func NewSQLex(s string) *SQLex {
             {Token: SEMICOLON, Pattern: ";"},
             {Token: NEWLINE, Pattern: "\n"},
             {Token: LIKE, Pattern: "(like)|~"},
-            {Token: LVALUE, Pattern: "[a-z]+"},
-            {Token: QSTRING, Pattern: "(\"?[a-zA-Z0-9]+\"?)"},
+            {Token: LVALUE, Pattern: "[a-zA-Z\\~\\$\\_][a-zA-Z0-9\\/\\%_\\-]*"},
+            {Token: QSTRING, Pattern: "(\"[^\"\\\\]*?(\\.[^\"\\\\]*?)*?\")|('[^'\\\\]*?(\\.[^'\\\\]*?)*?')"},
             {Token: QREGEX, Pattern: "%?[a-zA-Z0-9]+%?"},
-            {Token: NUMBER, Pattern: "[0-9]+"},
+            {Token: NUMBER, Pattern: "([+-]?([0-9]*\\.)?[0-9]+)"},
         })
     scanner.SetInput(s)
     return &SQLex{query: s, scanner: scanner}
