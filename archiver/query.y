@@ -475,6 +475,7 @@ func readline(fi *bufio.Reader) (string, bool) {
 
 func Parse(querystring string) *SQLex {
 	l := NewSQLex(querystring)
+    fmt.Printf("Query: %v\n", querystring)
 	SQParse(l)
 	l.query.Print()
     l.keys = make([]string, len(l._keys))

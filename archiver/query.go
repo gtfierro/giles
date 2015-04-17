@@ -98,7 +98,6 @@ const SQErrCode = 2
 const SQMaxDepth = 200
 
 //line query.y:292
-
 const eof = 0
 
 var supported_formats = []string{"1/2/2006",
@@ -288,6 +287,7 @@ func readline(fi *bufio.Reader) (string, bool) {
 
 func Parse(querystring string) *SQLex {
 	l := NewSQLex(querystring)
+	fmt.Printf("Query: %v\n", querystring)
 	SQParse(l)
 	l.query.Print()
 	l.keys = make([]string, len(l._keys))
