@@ -217,57 +217,64 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 //
 //TODO: expand the query language to allow the specification of units of time
 func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
+	var data []byte
 	if apikey != "" {
 		log.Info("query with key: %v", apikey)
 	}
 	log.Info(querystring)
-	var data []byte
-	ast := parse(querystring)
-	where := ast.Where.ToBson()
-	switch ast.TargetType {
-	// if we are fetching tags
-	case TAGS_TARGET:
-		bson_target := ast.Target.(*tagsTarget).ToBson()
-		distinct_key := ast.Target.(*tagsTarget).Contents[0]
-		is_distinct := ast.Target.(*tagsTarget).Distinct
-		res, err := a.store.GetTags(bson_target, is_distinct, distinct_key, where)
+	lex := Parse(querystring)
+	if lex.syntaxError {
+		return data, fmt.Errorf("Syntax error in query \"%v\" (error at %v)\n", querystring, lex.lasttoken)
+	}
+	log.Debug("query %v", lex.query)
+	switch lex.query.qtype {
+	case SELECT_TYPE:
+		target := lex.query.ContentsBson()
+		is_distinct := lex.query.distinct
+		//TODO: fixup how we do "distinct" queries
+		res, err := a.store.GetTags(target, is_distinct, "", lex.query.WhereBson())
 		if err != nil {
 			return data, err
 		}
 		data, _ = json.Marshal(res)
-		// if we are setting tags
-	case SET_TARGET:
-		res, err := a.store.UpdateTags(ast.Target.(*setTarget).Updates, apikey, where)
+	case DELETE_TYPE: //TODO: when implementing DELETE, remember to signal republisher.MetadataChange
+	case SET_TYPE:
+		res, err := a.store.UpdateTags(lex.query.SetBson(), apikey, lex.query.WhereBson())
 		if err != nil {
 			return data, err
 		}
+		a.republisher.MetadataChangeKeys(lex.keys)
 		data, _ = json.Marshal(res)
-	// if we are fetching data
-	case DATA_TARGET:
-		target := ast.Target.(*dataTarget)
-		uuids, err := a.GetUUIDs(ast.Where.ToBson())
+	case DATA_TYPE:
+		// grab reference to the data query
+		dq := lex.query.data
+
+		// fetch all possible UUIDs that match the query
+		uuids, err := a.GetUUIDs(lex.query.WhereBson())
 		if err != nil {
 			return data, err
 		}
-		if target.Streamlimit > -1 {
-			uuids = uuids[:target.Streamlimit] // limit number of streams
+
+		// limit number of streams
+		if dq.limit.streamlimit > 0 && len(uuids) > 0 {
+			uuids = uuids[:dq.limit.streamlimit]
 		}
+
 		var response []SmapResponse
-		switch target.Type {
-		case IN:
-			start := uint64(target.Start.UnixNano())
-			end := uint64(target.End.UnixNano())
-			log.Debug("start %v end %v", start, end)
+		start := uint64(dq.start.UnixNano())
+		end := uint64(dq.end.UnixNano())
+		switch dq.dtype {
+		case IN_TYPE:
+			log.Debug("Data in start %v end %v", start, end)
 			response, err = a.GetData(uuids, start, end, UOT_NS)
-		case AFTER:
-			ref := uint64(target.Ref.UnixNano())
-			log.Debug("after %v", ref)
-			response, err = a.NextData(uuids, ref, target.Limit, UOT_NS)
-		case BEFORE:
-			ref := uint64(target.Ref.UnixNano())
-			log.Debug("before %v", ref)
-			response, err = a.PrevData(uuids, ref, target.Limit, UOT_NS)
+		case BEFORE_TYPE:
+			log.Debug("Data before time %v", start)
+			response, err = a.PrevData(uuids, start, int32(dq.limit.limit), UOT_NS)
+		case AFTER_TYPE:
+			log.Debug("Data after time %v", start)
+			response, err = a.NextData(uuids, start, int32(dq.limit.limit), UOT_NS)
 		}
+		log.Debug("response %v uuids %v", response, uuids)
 		data, _ = json.Marshal(response)
 	}
 	return data, nil

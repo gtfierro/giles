@@ -2,13 +2,12 @@ package archiver
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
-
-var supported_formats = []string{"1/2/2006", "1-2-2006", "1/2/2006 04:15", "1-2-2006 04:15", "2006-1-2 15:04:05"}
 
 var unitmultiplier = map[UnitOfTime]uint64{
 	UOT_NS: 1000000000,
@@ -37,6 +36,7 @@ var unitmultiplier = map[UnitOfTime]uint64{
 // * 01/02/2006 04:15
 // * 01-02-2006 04:15
 // * 2006-01-02 15:04:05
+//TODO: deprecate + remove tests
 func handleTime(portions []string) (time.Time, error) {
 	ret := time.Now()
 	idx := len(portions) - 1
@@ -68,6 +68,44 @@ func handleTime(portions []string) (time.Time, error) {
 		}
 	}
 	return ret, nil
+}
+
+func parseReltime(num, units string) (time.Duration, error) {
+	var d time.Duration
+	i, err := strconv.ParseInt(num, 10, 64)
+	if err != nil {
+		return d, err
+	}
+	d = time.Duration(i)
+	switch units {
+	case "h", "hr", "hour", "hours":
+		d *= time.Hour
+	case "m", "min", "minute", "minutes":
+		d *= time.Minute
+	case "s", "sec", "second", "seconds":
+		d *= time.Second
+	case "us", "usec", "microsecond", "microseconds":
+		d *= time.Microsecond
+	case "ms", "msec", "millisecond", "milliseconds":
+		d *= time.Millisecond
+	case "ns", "nsec", "nanosecond", "nanoseconds":
+		d *= time.Nanosecond
+	case "d", "day", "days":
+		d *= 24 * time.Hour
+	default:
+		err = fmt.Errorf("Invalid unit %v. Must be h,m,s,us,ms,ns,d", units)
+	}
+	return d, err
+}
+
+/**
+Takes 2 durations and returns the result of them added together
+*/
+func addDurations(d1, d2 time.Duration) time.Duration {
+	d1nano := d1.Nanoseconds()
+	d2nano := d2.Nanoseconds()
+	res := d1nano + d2nano
+	return time.Duration(res) * time.Nanosecond
 }
 
 // Takes a duration string like -1d, +5minutes, etc and returns a time.Duration object

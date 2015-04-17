@@ -33,11 +33,10 @@ const (
 // track of what keys are mentioned in the query.
 func HandleQuery(querystring string) *Query {
 	q := &Query{}
-	tokens := tokenize(querystring)
-	where := parseWhere(&tokens)
-	q.where = where.ToBson()
-	q.keys = where.GetKeys()
-	q.hash = QueryHash(strings.Join(tokens, ""))
+	lex := Parse("select * where " + querystring)
+	q.where = lex.query.WhereBson()
+	q.keys = lex.keys
+	q.hash = QueryHash(strings.Join(lex.tokens, ""))
 	q.m_uuids = make(map[string]UUIDSTATE)
 	return q
 }
@@ -218,9 +217,23 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 	r.Unlock()
 }
 
+// Same as MetadataChange, but operates on a known list of keys
+// rather than a sMAP message
+//TODO: store up queries and do r.EvaluateQuery once each at end. With this current scheme,
+//      we can have  multiple queries be re-evaluated twice
+func (r *Republisher) MetadataChangeKeys(keys []string) {
+	for _, key := range keys {
+		for _, query := range r.keyConcern[key] {
+			r.EvaluateQuery(query)
+		}
+	}
+}
+
 // We call MetadataChange with an incoming sMAP message that includes
 // changes to the metadata of a stream that could affect republish
 // subscriptions
+//TODO: store up queries and do r.EvaluateQuery once each at end. With this current scheme,
+//      we can have  multiple queries be re-evaluated twice
 func (r *Republisher) MetadataChange(msg *SmapMessage) {
 	if msg.Metadata != nil {
 		for key, _ := range msg.Metadata {
