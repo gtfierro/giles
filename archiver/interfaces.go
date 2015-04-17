@@ -34,6 +34,10 @@ type TSDB interface {
 
 // The metadata store should support the following operations
 type MetadataStore interface {
+	// if called with True (this is default), checks all API keys. For testing or
+	// "sandbox" deployments, it can be helpful to call this with False, which will
+	// allow ALL operations on ANY streams.
+	EnforceKeys(enforce bool)
 	// Returns true if the key @apikey is allowed to write to each of the
 	// streams listed in @messages. Should check each SmapMessage.UUID value.
 	CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error)

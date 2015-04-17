@@ -25,6 +25,7 @@ type MongoStore struct {
 	uuidcache    *Cache
 	apikcache    *Cache
 	uotcache     *Cache
+	enforceKeys  bool
 }
 
 type rdbStreamId struct {
@@ -91,10 +92,15 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		maxsid:       &maxsid,
 		uuidcache:    NewCache(1000),
 		apikcache:    NewCache(1000),
-		uotcache:     NewCache(1000)}
+		uotcache:     NewCache(1000),
+		enforceKeys:  true}
 }
 
 /* MetadataStore interface implementation*/
+
+func (ms *MongoStore) EnforceKeys(enforce bool) {
+	ms.enforceKeys = enforce
+}
 
 func (ms *MongoStore) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
 	for _, msg := range messages {
@@ -111,6 +117,9 @@ func (ms *MongoStore) CheckKey(apikey string, messages map[string]*SmapMessage) 
 
 func (ms *MongoStore) CanWrite(apikey, uuid string) (bool, error) {
 	var record bson.M
+	if !ms.enforceKeys {
+		return true, nil
+	}
 	foundkey, found := ms.apikcache.Get(uuid)
 	if found && foundkey == apikey {
 		return true, nil

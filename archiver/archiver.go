@@ -21,6 +21,7 @@ package archiver
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/op/go-logging"
 	"gopkg.in/mgo.v2/bson"
 	"net"
@@ -98,6 +99,8 @@ func NewArchiver(c *Config) *Archiver {
 	default:
 		log.Fatal(*c.Archiver.Metadata, " is not a recognized metadata store")
 	}
+
+	store.EnforceKeys(c.Archiver.EnforceKeys)
 
 	var tsdb TSDB
 	switch *c.Archiver.TSDB {
