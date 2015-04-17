@@ -12,3 +12,6 @@ gilescmd/build
 *.out
 *.db
 *.test
+
+# yacc output
+archiver/y.output
