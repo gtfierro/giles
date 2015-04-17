@@ -142,6 +142,10 @@ should take care of it. Now you should be able to compile giles by running
 $ cd path/to/giles/repo/root
 $ cd giles
 $ go get ...
+$ cd archiver ; go generate ; cd .. # OR go generate github.com/gtfierro/giles/archiver
 $ go build
 $ ./giles -h
 ```
+
+The `go generate` command is for the YACC-based parser in `archiver/query.y`. You should only need
+to run the generation if you changed that file.

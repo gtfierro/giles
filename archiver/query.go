@@ -98,6 +98,7 @@ const SQErrCode = 2
 const SQMaxDepth = 200
 
 //line query.y:292
+
 const eof = 0
 
 var supported_formats = []string{"1/2/2006",

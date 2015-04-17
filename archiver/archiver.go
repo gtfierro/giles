@@ -1,3 +1,4 @@
+//go:generate go tool yacc -o query.go -p SQ query.y
 // License stuff
 
 // Package giles implements an archiver that follows the sMAP protocol
