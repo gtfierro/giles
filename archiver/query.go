@@ -103,10 +103,10 @@ const eof = 0
 
 var supported_formats = []string{"1/2/2006",
 	"1-2-2006",
-	"1/2/2006 03:04 PM MST",
-	"1-2-2006 03:04 PM MST",
-	"1/2/2006 15:04 MST",
-	"1-2-2006 15:04 MST",
+	"1/2/2006 03:04:05 PM MST",
+	"1-2-2006 03:04:05 PM MST",
+	"1/2/2006 15:04:05 MST",
+	"1-2-2006 15:04:05 MST",
 	"2006-1-2 15:04:05 MST"}
 
 type Dict map[string]interface{}

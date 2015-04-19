@@ -275,7 +275,11 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		switch dq.dtype {
 		case IN_TYPE:
 			log.Debug("Data in start %v end %v", start, end)
-			response, err = a.GetData(uuids, start, end, UOT_NS)
+			if start < end {
+				response, err = a.GetData(uuids, start, end, UOT_NS)
+			} else {
+				response, err = a.GetData(uuids, end, start, UOT_NS)
+			}
 		case BEFORE_TYPE:
 			log.Debug("Data before time %v", start)
 			response, err = a.PrevData(uuids, start, int32(dq.limit.limit), UOT_NS)
