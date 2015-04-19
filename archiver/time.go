@@ -98,6 +98,24 @@ func parseReltime(num, units string) (time.Duration, error) {
 	return d, err
 }
 
+func parseAbsTime(num, units string) (time.Time, error) {
+	var d time.Time
+	var err error
+	i, err := strconv.ParseUint(num, 10, 64)
+	if err != nil {
+		return d, err
+	}
+	uot, err := parseUOT(units)
+	if err != nil {
+		return d, err
+	}
+	unixseconds := convertTime(i, uot, UOT_S)
+	leftover := i - convertTime(unixseconds, UOT_S, uot)
+	unixns := convertTime(leftover, uot, UOT_NS)
+	d = time.Unix(int64(unixseconds), int64(unixns))
+	return d, err
+}
+
 /**
 Takes 2 durations and returns the result of them added together
 */
@@ -131,20 +149,45 @@ func parseIntoDuration(str string) (time.Duration, error) {
 	d = time.Duration(i)
 
 	// handle units
-	switch res[0][2] {
-	case "h", "hr", "hour":
-		d *= time.Hour
-	case "m", "min", "minute":
-		d *= time.Minute
-	case "s", "sec", "second":
-		d *= time.Second
-	case "d", "days", "day":
-		d *= 24 * time.Hour
-	default:
-		return d, errors.New("Timespec needs valid units:" + str)
+	dur, err := parseTimeUnit(res[0][2])
+	if err != nil {
+		return d, err
 	}
+	return d * dur, nil
+}
 
-	return d, nil
+func parseTimeUnit(units string) (time.Duration, error) {
+	switch units {
+	case "h", "hr", "hour", "hours":
+		return time.Hour, nil
+	case "m", "min", "minute", "minutes":
+		return time.Minute, nil
+	case "s", "sec", "second", "seconds":
+		return time.Second, nil
+	case "us", "usec", "microsecond", "microseconds":
+		return time.Microsecond, nil
+	case "ms", "msec", "millisecond", "milliseconds":
+		return time.Millisecond, nil
+	case "ns", "nsec", "nanosecond", "nanoseconds":
+		return time.Nanosecond, nil
+	default:
+		return time.Second, fmt.Errorf("Invalid unit %v. Must be h,m,s,us,ms,ns", units)
+	}
+}
+
+func parseUOT(units string) (UnitOfTime, error) {
+	switch units {
+	case "s", "sec", "second", "seconds":
+		return UOT_S, nil
+	case "us", "usec", "microsecond", "microseconds":
+		return UOT_US, nil
+	case "ms", "msec", "millisecond", "milliseconds":
+		return UOT_MS, nil
+	case "ns", "nsec", "nanosecond", "nanoseconds":
+		return UOT_NS, nil
+	default:
+		return UOT_S, fmt.Errorf("Invalid unit %v. Must be s,us,ms,ns", units)
+	}
 }
 
 // Takes a timestamp with accompanying unit of time 'stream_uot' and

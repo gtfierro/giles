@@ -40,6 +40,7 @@ Notes here
 %token NUMBER
 %token SEMICOLON
 %token NEWLINE
+%token TIMEUNIT
 
 %type <dict> whereList whereTerm whereClause setList
 %type <list> selector tagList
@@ -47,7 +48,7 @@ Notes here
 %type <time> timeref abstime
 %type <timediff> reltime
 %type <limit> limit
-%type <str> NUMBER qstring lvalue
+%type <str> NUMBER qstring lvalue TIMEUNIT
 %type <str> SEMICOLON NEWLINE
 
 %right EQ
@@ -168,9 +169,20 @@ timeref		: abstime
 			}
 			;
 
-abstime		: NUMBER
+abstime		: NUMBER TIMEUNIT
             {
-                num, _ := strconv.ParseInt($1, 10, 64)
+                foundtime, err := parseAbsTime($1, $2)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse time \"%v %v\" (%v)", $1, $2, err.Error()))
+                }
+                $$ = foundtime
+            }
+            | NUMBER
+            {
+                num, err := strconv.ParseInt($1, 10, 64)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", $1, err.Error()))
+                }
                 $$ = _time.Unix(num, 0)
             }
 			| qstring
@@ -463,6 +475,7 @@ func NewSQLex(s string) *SQLex {
 			{Token: RPAREN, Pattern: "\\)"},
 			{Token: SEMICOLON, Pattern: ";"},
 			{Token: NEWLINE, Pattern: "\n"},
+            {Token: TIMEUNIT, Pattern: "(ns|us|ms|s)"},
 			{Token: LIKE, Pattern: "(like)|~"},
 			{Token: NUMBER, Pattern: "([+-]?([0-9]*\\.)?[0-9]+)"},
 			{Token: LVALUE, Pattern: "[a-zA-Z\\~\\$\\_][a-zA-Z0-9\\/\\%_\\-]*"},
