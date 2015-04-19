@@ -56,13 +56,13 @@ Notes here
 
 query		: SELECT selector whereClause SEMICOLON
 			{
-				SQlex.(*SQLex).query.contents = $2
+				SQlex.(*SQLex).query.Contents = $2
 				SQlex.(*SQLex).query.where = $3
 				SQlex.(*SQLex).query.qtype = SELECT_TYPE
 			}
 			| SELECT selector SEMICOLON
 			{
-				SQlex.(*SQLex).query.contents = $2
+				SQlex.(*SQLex).query.Contents = $2
 				SQlex.(*SQLex).query.qtype = SELECT_TYPE
 			}
 			| SELECT dataClause whereClause SEMICOLON
@@ -84,7 +84,7 @@ query		: SELECT selector whereClause SEMICOLON
             }
 			| DELETE tagList whereClause SEMICOLON
 			{
-				SQlex.(*SQLex).query.contents = $2
+				SQlex.(*SQLex).query.Contents = $2
 				SQlex.(*SQLex).query.where = $3
 				SQlex.(*SQLex).query.qtype = DELETE_TYPE
 			}
@@ -334,7 +334,7 @@ type query struct {
 	// are we querying distinct values?
 	distinct  bool
 	// list of tags to target for deletion, selection
-	contents  []string
+	Contents  []string
 }
 
 func (q *query) Print() {
@@ -346,14 +346,14 @@ func (q *query) Print() {
 		fmt.Printf("Limit: %v\n", q.data.limit.limit)
 		fmt.Printf("Streamlimit: %v\n", q.data.limit.streamlimit)
 	}
-	fmt.Printf("Contents: %v\n", q.contents)
+	fmt.Printf("Contents: %v\n", q.Contents)
 	fmt.Printf("Distinct? %v\n", q.distinct)
 	fmt.Printf("where: %v\n", q.where)
 }
 
 func (q *query) ContentsBson() bson.M {
     ret := bson.M{}
-    for _, tag := range q.contents {
+    for _, tag := range q.Contents {
         ret[tag] = 1
     }
     return ret
@@ -445,7 +445,7 @@ func NewSQLex(s string) *SQLex {
 			{Token: QREGEX, Pattern: "%?[a-zA-Z0-9]+%?"},
 		})
 	scanner.SetInput(s)
-	q := &query{contents: []string{}, distinct: false, data: &dataquery{}}
+	q := &query{Contents: []string{}, distinct: false, data: &dataquery{}}
 	return &SQLex{query: q, querystring: s, scanner: scanner, syntaxError: false, lasttoken: "", _keys: map[string]struct{}{}, tokens: []string{}}
 }
 

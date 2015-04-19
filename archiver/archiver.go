@@ -219,6 +219,8 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 //TODO: expand the query language to allow the specification of units of time
 func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	var data []byte
+	var res []interface{}
+	var err error
 	if apikey != "" {
 		log.Info("query with key: %v", apikey)
 	}
@@ -231,9 +233,15 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	switch lex.query.qtype {
 	case SELECT_TYPE:
 		target := lex.query.ContentsBson()
-		is_distinct := lex.query.distinct
-		//TODO: fixup how we do "distinct" queries
-		res, err := a.store.GetTags(target, is_distinct, "", lex.query.WhereBson())
+		if lex.query.distinct {
+			if len(target) != 1 {
+				return data, fmt.Errorf("Distinct query can only use one tag\n")
+			}
+			res, err = a.store.GetTags(target, true, lex.query.Contents[0], lex.query.WhereBson())
+		} else {
+			res, err = a.store.GetTags(target, false, "", lex.query.WhereBson())
+		}
+
 		if err != nil {
 			return data, err
 		}
