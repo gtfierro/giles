@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"gopkg.in/mgo.v2/bson"
     _time "time"
+    "strings"
 )
 
 
@@ -474,6 +475,9 @@ func readline(fi *bufio.Reader) (string, bool) {
 }
 
 func Parse(querystring string) *SQLex {
+    if !strings.HasSuffix(querystring, ";") {
+        querystring = querystring + ";"
+    }
 	l := NewSQLex(querystring)
     fmt.Printf("Query: %v\n", querystring)
 	SQParse(l)
