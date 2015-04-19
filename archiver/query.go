@@ -98,14 +98,16 @@ const SQEofCode = 1
 const SQErrCode = 2
 const SQMaxDepth = 200
 
-//line query.y:293
+//line query.y:316
 const eof = 0
 
 var supported_formats = []string{"1/2/2006",
 	"1-2-2006",
-	"1/2/2006 04:15",
-	"1-2-2006 04:15",
-	"2006-1-2 15:04:05"}
+	"1/2/2006 03:04 PM MST",
+	"1-2-2006 03:04 PM MST",
+	"1/2/2006 15:04 MST",
+	"1-2-2006 15:04 MST",
+	"2006-1-2 15:04:05 MST"}
 
 type Dict map[string]interface{}
 type List []string
@@ -215,9 +217,9 @@ type SQLex struct {
 	querystring string
 	query       *query
 	scanner     *toki.Scanner
-	syntaxError bool
 	lasttoken   string
 	tokens      []string
+	error       error
 	// all keys that we encounter. Used for republish concerns
 	_keys map[string]struct{}
 	keys  []string
@@ -258,7 +260,7 @@ func NewSQLex(s string) *SQLex {
 		})
 	scanner.SetInput(s)
 	q := &query{Contents: []string{}, distinct: false, data: &dataquery{}}
-	return &SQLex{query: q, querystring: s, scanner: scanner, syntaxError: false, lasttoken: "", _keys: map[string]struct{}{}, tokens: []string{}}
+	return &SQLex{query: q, querystring: s, scanner: scanner, error: nil, lasttoken: "", _keys: map[string]struct{}{}, tokens: []string{}}
 }
 
 func (sq *SQLex) Lex(lval *SQSymType) int {
@@ -273,8 +275,7 @@ func (sq *SQLex) Lex(lval *SQSymType) int {
 }
 
 func (sq *SQLex) Error(s string) {
-	sq.syntaxError = true
-	fmt.Printf("syntax error: %s\n", s)
+	sq.error = fmt.Errorf(s)
 }
 
 func readline(fi *bufio.Reader) (string, bool) {
@@ -767,126 +768,149 @@ SQdefault:
 	case 23:
 		//line query.y:172
 		{
-			//TODO: handle error?
 			num, _ := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
 			SQVAL.time = _time.Unix(num, 0)
 		}
 	case 24:
-		//line query.y:178
+		//line query.y:177
 		{
+			found := false
 			for _, format := range supported_formats {
 				t, err := _time.Parse(format, SQS[SQpt-0].str)
 				if err != nil {
 					continue
 				}
 				SQVAL.time = t
+				found = true
 				break
+			}
+			if !found {
+				SQlex.(*SQLex).Error(fmt.Sprintf("No time format matching \"%v\" found", SQS[SQpt-0].str))
 			}
 		}
 	case 25:
-		//line query.y:189
+		//line query.y:193
 		{
 			SQVAL.time = _time.Now()
 		}
 	case 26:
-		//line query.y:195
-		{
-			SQVAL.timediff, _ = parseReltime(SQS[SQpt-1].str, SQS[SQpt-0].str)
-		}
-	case 27:
 		//line query.y:199
 		{
-			newDuration, _ := parseReltime(SQS[SQpt-2].str, SQS[SQpt-1].str)
+			var err error
+			SQVAL.timediff, err = parseReltime(SQS[SQpt-1].str, SQS[SQpt-0].str)
+			if err != nil {
+				SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", SQS[SQpt-1].str, SQS[SQpt-0].str, err.Error()))
+			}
+		}
+	case 27:
+		//line query.y:207
+		{
+			newDuration, err := parseReltime(SQS[SQpt-2].str, SQS[SQpt-1].str)
+			if err != nil {
+				SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", SQS[SQpt-2].str, SQS[SQpt-1].str, err.Error()))
+			}
 			SQVAL.timediff = addDurations(newDuration, SQS[SQpt-0].timediff)
 		}
 	case 28:
-		//line query.y:206
+		//line query.y:217
 		{
 			SQVAL.limit = datalimit{limit: -1, streamlimit: -1}
 		}
 	case 29:
-		//line query.y:210
+		//line query.y:221
 		{
-			num, _ := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
+			num, err := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
+			if err != nil {
+				SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", SQS[SQpt-0].str, err.Error()))
+			}
 			SQVAL.limit = datalimit{limit: num, streamlimit: -1}
 		}
 	case 30:
-		//line query.y:215
+		//line query.y:229
 		{
-			num, _ := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
+			num, err := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
+			if err != nil {
+				SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", SQS[SQpt-0].str, err.Error()))
+			}
 			SQVAL.limit = datalimit{limit: -1, streamlimit: num}
 		}
 	case 31:
-		//line query.y:220
+		//line query.y:237
 		{
-			limit_num, _ := strconv.ParseInt(SQS[SQpt-2].str, 10, 64)
-			slimit_num, _ := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
+			limit_num, err := strconv.ParseInt(SQS[SQpt-2].str, 10, 64)
+			if err != nil {
+				SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", SQS[SQpt-2].str, err.Error()))
+			}
+			slimit_num, err := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
+			if err != nil {
+				SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", SQS[SQpt-2].str, err.Error()))
+			}
 			SQVAL.limit = datalimit{limit: limit_num, streamlimit: slimit_num}
 		}
 	case 32:
-		//line query.y:229
+		//line query.y:252
 		{
 			SQVAL.dict = SQS[SQpt-0].dict
 		}
 	case 33:
-		//line query.y:236
+		//line query.y:259
 		{
 			SQVAL.dict = Dict{SQS[SQpt-2].str: Dict{"$like": SQS[SQpt-0].str}}
 		}
 	case 34:
-		//line query.y:240
+		//line query.y:263
 		{
 			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
 		}
 	case 35:
-		//line query.y:244
+		//line query.y:267
 		{
 			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
 		}
 	case 36:
-		//line query.y:248
+		//line query.y:271
 		{
 			SQVAL.dict = Dict{SQS[SQpt-2].str: Dict{"$neq": SQS[SQpt-0].str}}
 		}
 	case 37:
-		//line query.y:252
+		//line query.y:275
 		{
 			SQVAL.dict = Dict{SQS[SQpt-0].str: Dict{"$exists": true}}
 		}
 	case 38:
-		//line query.y:258
+		//line query.y:281
 		{
 			SQVAL.str = SQS[SQpt-0].str[1 : len(SQS[SQpt-0].str)-1]
 		}
 	case 39:
-		//line query.y:264
+		//line query.y:287
 		{
 
 			SQlex.(*SQLex)._keys[SQS[SQpt-0].str] = struct{}{}
 			SQVAL.str = cleantagstring(SQS[SQpt-0].str)
 		}
 	case 40:
-		//line query.y:272
+		//line query.y:295
 		{
 			SQVAL.dict = Dict{"$and": []Dict{SQS[SQpt-2].dict, SQS[SQpt-0].dict}}
 		}
 	case 41:
-		//line query.y:276
+		//line query.y:299
 		{
 			SQVAL.dict = Dict{"$or": []Dict{SQS[SQpt-2].dict, SQS[SQpt-0].dict}}
 		}
 	case 42:
-		//line query.y:280
+		//line query.y:303
 		{
 			SQVAL.dict = Dict{"$not": SQS[SQpt-0].dict} // fix this to negate all items in $2
 		}
 	case 43:
-		//line query.y:284
+		//line query.y:307
 		{
 			SQVAL.dict = SQS[SQpt-1].dict
 		}
 	case 44:
-		//line query.y:288
+		//line query.y:311
 		{
 			SQVAL.dict = SQS[SQpt-0].dict
 		}

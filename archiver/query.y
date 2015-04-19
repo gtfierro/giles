@@ -170,19 +170,23 @@ timeref		: abstime
 
 abstime		: NUMBER
             {
-                //TODO: handle error?
                 num, _ := strconv.ParseInt($1, 10, 64)
                 $$ = _time.Unix(num, 0)
             }
 			| qstring
             {
+                found := false
                 for _, format := range supported_formats {
                     t, err := _time.Parse(format, $1)
                     if err != nil {
                         continue
                     }
                     $$ = t
+                    found = true
                     break
+                }
+                if !found {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("No time format matching \"%v\" found", $1))
                 }
             }
 			| NOW
@@ -193,11 +197,18 @@ abstime		: NUMBER
 
 reltime		: NUMBER lvalue
             {
-                $$, _ = parseReltime($1, $2)
+                var err error
+                $$, err = parseReltime($1, $2)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", $1, $2, err.Error()))
+                }
             }
 			| NUMBER lvalue reltime
             {
-                newDuration, _ := parseReltime($1, $2)
+                newDuration, err := parseReltime($1, $2)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", $1, $2, err.Error()))
+                }
                 $$ = addDurations(newDuration, $3)
             }
 			;
@@ -208,18 +219,30 @@ limit		: /* empty */
 			}
 			| LIMIT NUMBER
 			{
-				num, _ := strconv.ParseInt($2, 10, 64)
+				num, err := strconv.ParseInt($2, 10, 64)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", $2, err.Error()))
+                }
 				$$ = datalimit{limit: num, streamlimit: -1}
 			}
 			| STREAMLIMIT NUMBER
 			{
-				num, _ := strconv.ParseInt($2, 10, 64)
+				num, err := strconv.ParseInt($2, 10, 64)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", $2, err.Error()))
+                }
 				$$ = datalimit{limit: -1, streamlimit: num}
 			}
 			| LIMIT NUMBER STREAMLIMIT NUMBER
 			{
-				limit_num, _ := strconv.ParseInt($2, 10, 64)
-				slimit_num, _ := strconv.ParseInt($4, 10, 64)
+				limit_num, err := strconv.ParseInt($2, 10, 64)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", $2, err.Error()))
+                }
+				slimit_num, err := strconv.ParseInt($4, 10, 64)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse integer \"%v\" (%v)", $2, err.Error()))
+                }
 				$$ = datalimit{limit: limit_num, streamlimit: slimit_num}
 			}
 			;
@@ -295,9 +318,11 @@ whereList : whereList AND whereList
 const eof = 0
 var supported_formats = []string{"1/2/2006",
                                  "1-2-2006",
-                                 "1/2/2006 04:15",
-                                 "1-2-2006 04:15",
-                                 "2006-1-2 15:04:05"}
+                                 "1/2/2006 03:04 PM MST",
+                                 "1-2-2006 03:04 PM MST",
+                                 "1/2/2006 15:04 MST",
+                                 "1-2-2006 15:04 MST",
+                                 "2006-1-2 15:04:05 MST"}
 type Dict map[string]interface{}
 type List []string
 type queryType uint
@@ -403,9 +428,9 @@ type SQLex struct {
 	querystring string
 	query	*query
 	scanner *toki.Scanner
-    syntaxError   bool
     lasttoken string
     tokens  []string
+    error   error
     // all keys that we encounter. Used for republish concerns
     _keys    map[string]struct{}
     keys    []string
@@ -446,7 +471,7 @@ func NewSQLex(s string) *SQLex {
 		})
 	scanner.SetInput(s)
 	q := &query{Contents: []string{}, distinct: false, data: &dataquery{}}
-	return &SQLex{query: q, querystring: s, scanner: scanner, syntaxError: false, lasttoken: "", _keys: map[string]struct{}{}, tokens: []string{}}
+	return &SQLex{query: q, querystring: s, scanner: scanner, error: nil, lasttoken: "", _keys: map[string]struct{}{}, tokens: []string{}}
 }
 
 func (sq *SQLex) Lex(lval *SQSymType) int {
@@ -461,8 +486,7 @@ func (sq *SQLex) Lex(lval *SQSymType) int {
 }
 
 func (sq *SQLex) Error(s string) {
-    sq.syntaxError = true
-	fmt.Printf("syntax error: %s\n", s)
+    sq.error = fmt.Errorf(s)
 }
 
 func readline(fi *bufio.Reader) (string, bool) {

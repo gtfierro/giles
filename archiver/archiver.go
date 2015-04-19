@@ -226,8 +226,8 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	}
 	log.Info(querystring)
 	lex := Parse(querystring)
-	if lex.syntaxError {
-		return data, fmt.Errorf("Syntax error in query \"%v\" (error at %v)\n", querystring, lex.lasttoken)
+	if lex.error != nil {
+		return data, fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
 	}
 	log.Debug("query %v", lex.query)
 	switch lex.query.qtype {
