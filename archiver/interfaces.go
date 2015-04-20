@@ -32,6 +32,23 @@ type TSDB interface {
 	AddStore(MetadataStore)
 }
 
+// The object store is a database for binary blobs rather than explicit
+// timeseries data.
+type ObjectStore interface {
+	// archive the blob with the given UUID at given timestamp
+	AddObject([]byte, string, uint64) bool
+	// retrieve blob closest before the reference time for the given UUIDs
+	PrevObject([]string, uint64, int32, UnitOfTime)
+	// retrieve blob closest after the reference time for the given UUIDs
+	NextObject([]string, uint64, int32, UnitOfTime)
+	// retrieves all blobs between the start/end times for the given UUIDs
+	GetObjects([]string, uint64, uint64, UnitOfTime)
+	// get a new connection to the database
+	GetConnection() (net.Conn, error)
+	// Adds a pointer to metadata store for streamid/uuid conversion and the like
+	AddStore(MetadataStore)
+}
+
 // The metadata store should support the following operations
 type MetadataStore interface {
 	// if called with True (this is default), checks all API keys. For testing or

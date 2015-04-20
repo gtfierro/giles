@@ -247,6 +247,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		}
 		data, _ = json.Marshal(res)
 	case DELETE_TYPE: //TODO: when implementing DELETE, remember to signal republisher.MetadataChange
+		return data, fmt.Errorf("DELETE not yet implemented")
 	case SET_TYPE:
 		res, err := a.store.UpdateTags(lex.query.SetBson(), apikey, lex.query.WhereBson())
 		if err != nil {
