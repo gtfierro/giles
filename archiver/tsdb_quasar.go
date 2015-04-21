@@ -59,8 +59,8 @@ func NewQuasar(address *net.TCPAddr, connectionkeepalive int) *QDB {
 	}
 }
 
-func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
-	var sr = SmapResponse{}
+func (q *QDB) receive(conn *net.Conn, limit int32) (SmapReading, error) {
+	var sr = SmapReading{}
 	seg, err := capn.ReadFromStream(*conn, nil)
 	if err != nil {
 		log.Error("Error receiving data from Quasar %v", err)
@@ -77,13 +77,13 @@ func (q *QDB) receive(conn *net.Conn, limit int32) (SmapResponse, error) {
 		if resp.StatusCode() != 0 {
 			return sr, errors.New("Error when reading from Quasar:" + resp.StatusCode().String())
 		}
-		sr.Readings = [][]float64{}
+		sr.Readings = [][]interface{}{}
 		log.Debug("limit %v, num values %v", limit, len(resp.Records().Values().ToArray()))
 		for i, rec := range resp.Records().Values().ToArray() {
 			if limit > -1 && int32(i) >= limit {
 				break
 			}
-			sr.Readings = append(sr.Readings, []float64{float64(rec.Time()), rec.Value()})
+			sr.Readings = append(sr.Readings, []interface{}{float64(rec.Time()), rec.Value()})
 		}
 		return sr, nil
 	}
@@ -119,8 +119,8 @@ func (q *QDB) Add(sb *StreamBuf) bool {
 	return true
 }
 
-func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapResponse, error) {
-	var ret = make([]SmapResponse, len(uuids))
+func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapReading, error) {
+	var ret = make([]SmapReading, len(uuids))
 	for i, uu := range uuids {
 		stream_uot := q.store.GetUnitOfTime(uu)
 		seg := capn.NewBuffer(nil)
@@ -143,7 +143,7 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 		sr, err := q.receive(&conn, limit)
 		sr.UUID = uu
 		for j, reading := range sr.Readings {
-			reading[0] = float64(convertTime(uint64(reading[0]), UOT_NS, stream_uot))
+			reading[0] = float64(convertTime(uint64(reading[0].(float64)), UOT_NS, stream_uot))
 			sr.Readings[j] = reading
 		}
 		ret[i] = sr
@@ -154,18 +154,18 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 // Currently, I haven't figured out the beset way to get Quasar to get me responses to
 // queries such as "the last 10 values before now". Currently, Prev and Next will
 // just return the single closest value
-func (q *QDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
+func (q *QDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapReading, error) {
 	start = convertTime(start, uot, UOT_NS)
 	return q.queryNearestValue(uuids, start, limit, true)
 }
 
-func (q *QDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapResponse, error) {
+func (q *QDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapReading, error) {
 	start = convertTime(start, uot, UOT_NS)
 	return q.queryNearestValue(uuids, start, limit, false)
 }
 
-func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapResponse, error) {
-	var ret = make([]SmapResponse, len(uuids))
+func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapReading, error) {
+	var ret = make([]SmapReading, len(uuids))
 	start = convertTime(start, uot, UOT_NS)
 	end = convertTime(end, uot, UOT_NS)
 	for i, uu := range uuids {
@@ -190,7 +190,7 @@ func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) 
 		sr, err := q.receive(&conn, -1)
 		sr.UUID = uu
 		for j, reading := range sr.Readings {
-			reading[0] = float64(convertTime(uint64(reading[0]), UOT_NS, stream_uot))
+			reading[0] = float64(convertTime(uint64(reading[0].(float64)), UOT_NS, stream_uot))
 			sr.Readings[j] = reading
 		}
 		ret[i] = sr

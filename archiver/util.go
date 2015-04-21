@@ -65,3 +65,17 @@ func isStringSliceEqual(x, y []string) bool {
 func unescape(s string) string {
 	return strings.Replace(s, "%3D", "=", -1)
 }
+
+// returns True if the sMAP message contains a []byte reading rather
+// than a numerical one
+func isObjReading(msg *SmapMessage) bool {
+	if msg.Readings == nil || len(msg.Readings) == 0 {
+		return false
+	} // return early
+	_, is_uint := msg.Readings[0][1].(uint64)
+	_, is_float := msg.Readings[0][1].(float64)
+	if is_uint || is_float {
+		return false
+	}
+	return true
+}

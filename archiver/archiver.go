@@ -49,6 +49,7 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 type Archiver struct {
 	tsdb                 TSDB
 	store                MetadataStore
+	objstore             ObjectStore
 	republisher          *Republisher
 	incomingcounter      *counter
 	pendingwritescounter *counter
@@ -80,8 +81,10 @@ func NewArchiver(c *Config) *Archiver {
 	logging.SetBackend(logBackendLeveled)
 	logging.SetFormatter(logging.MustStringFormatter(format))
 
+	// Configure Metadata store (+ object store)
 	var store MetadataStore
 	var manager APIKeyManager
+
 	switch *c.Archiver.Metadata {
 	case "mongo":
 		// Mongo connection
@@ -101,8 +104,10 @@ func NewArchiver(c *Config) *Archiver {
 		log.Fatal(*c.Archiver.Metadata, " is not a recognized metadata store")
 	}
 
+	// Configure API key enforcement
 	store.EnforceKeys(c.Archiver.EnforceKeys)
 
+	// Configure Timeseries database
 	var tsdb TSDB
 	switch *c.Archiver.TSDB {
 	/** connect to ReadingDB */
@@ -131,9 +136,30 @@ func NewArchiver(c *Config) *Archiver {
 		log.Fatal(c.Archiver.TSDB, " is not a valid timeseries database")
 	}
 
+	// Configure republisher
 	republisher := NewRepublisher()
 	republisher.store = store
 
+	// Configure Object store
+	var objstore ObjectStore
+	switch *c.Archiver.Objects {
+	case "mongo":
+		// Mongo connection
+		mongoaddr, err := net.ResolveTCPAddr("tcp4", *c.Mongo.Address+":"+*c.Mongo.Port)
+		if err != nil {
+			log.Fatal("Error parsing Mongo address: %v", err)
+		}
+		mongostore := NewMongoObjectStore(mongoaddr)
+		if mongostore == nil {
+			log.Fatal("Error connection to MongoDB instance")
+		}
+		objstore = mongostore
+		objstore.AddStore(store)
+	default:
+		log.Fatal(*c.Archiver.Objects, " is not a recognized object store")
+	}
+
+	// Configure SSH server
 	var sshscs *SSHConfigServer
 	if c.SSH.Enabled {
 		sshscs = NewSSHConfigServer(manager, *c.SSH.Port, *c.SSH.PrivateKey,
@@ -144,6 +170,7 @@ func NewArchiver(c *Config) *Archiver {
 	}
 	return &Archiver{tsdb: tsdb,
 		store:                store,
+		objstore:             objstore,
 		republisher:          republisher,
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter(),
@@ -202,7 +229,15 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 		if msg.Readings == nil {
 			continue
 		}
-		a.coalescer.Add(msg)
+		if a.store.GetStreamType(msg.UUID) == OBJECT_STREAM {
+			log.Debug("Got obj reading %v", msg)
+			_, err := a.objstore.AddObject(msg)
+			if err != nil {
+				return err
+			}
+		} else {
+			a.coalescer.Add(msg)
+		}
 	}
 	return nil
 }
@@ -270,7 +305,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 			uuids = uuids[:dq.limit.streamlimit]
 		}
 
-		var response []SmapResponse
+		var response []SmapReading
 		start := uint64(dq.start.UnixNano())
 		end := uint64(dq.end.UnixNano())
 		switch dq.dtype {
@@ -299,13 +334,20 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 // so that each time series database can convert the incoming timestamps to whatever
 // it needs (most of these will query the metadata store for the unit of time for the
 // data stream it is accessing)
-func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot UnitOfTime) ([]SmapResponse, error) {
+func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot UnitOfTime) ([]SmapReading, error) {
 	resp, err := a.tsdb.GetData(streamids, start, end, query_uot)
 	if err == nil { // if no error, adjust timeseries
 		for i, sr := range resp {
 			stream_uot := a.store.GetUnitOfTime(sr.UUID)
+			if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
+				newrdg, err := a.objstore.GetObjects(sr.UUID, start, end, query_uot)
+				if err != nil {
+					return resp, err
+				}
+				sr = newrdg
+			}
 			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0]), stream_uot, UOT_MS))
+				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, UOT_MS))
 				sr.Readings[j] = reading
 			}
 			resp[i] = sr
@@ -316,13 +358,21 @@ func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot Unit
 
 // For each of the streamids, fetches data before the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
-func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapResponse, error) {
+func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapReading, error) {
 	resp, err := a.tsdb.Prev(streamids, start, limit, query_uot)
 	if err == nil { // if no error, adjust timeseries
 		for i, sr := range resp {
 			stream_uot := a.store.GetUnitOfTime(sr.UUID)
+			// if no readings from timeseries database, it might be an object stream
+			if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
+				newrdg, err := a.objstore.PrevObject(sr.UUID, start, query_uot)
+				if err != nil {
+					return resp, err
+				}
+				sr = newrdg
+			}
 			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0]), stream_uot, UOT_MS))
+				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, UOT_MS))
 				sr.Readings[j] = reading
 			}
 			resp[i] = sr
@@ -333,13 +383,21 @@ func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query
 
 // For each of the streamids, fetches data after the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
-func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapResponse, error) {
+func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapReading, error) {
 	resp, err := a.tsdb.Next(streamids, start, limit, query_uot)
 	if err == nil { // if no error, adjust timeseries
 		for i, sr := range resp {
 			stream_uot := a.store.GetUnitOfTime(sr.UUID)
+			// if no readings from timeseries database, it might be an object stream
+			if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
+				newrdg, err := a.objstore.NextObject(sr.UUID, start, query_uot)
+				if err != nil {
+					return resp, err
+				}
+				sr = newrdg
+			}
 			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0]), stream_uot, UOT_MS))
+				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, UOT_MS))
 				sr.Readings[j] = reading
 			}
 			resp[i] = sr

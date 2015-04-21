@@ -10,7 +10,7 @@ import (
 
 // TSDB (or TimeSeries DataBase) is a subset of functionality expected by Giles
 // for (timestamp, value) oriented database. The relevant read/write types are
-// SmapReading and SmapResponse and can be found in json.go and readingdb.go
+// SmapReading and can be found in json.go and readingdb.go
 // respectively (although their locations are likely to change).
 // The UnitOfTime parameters indicate how to interpret the timesteps that are
 // given as parameters
@@ -19,11 +19,11 @@ type TSDB interface {
 	Add(*StreamBuf) bool
 	// uuids, reference time, limit, unit of time
 	// retrieve data before reference time
-	Prev([]string, uint64, int32, UnitOfTime) ([]SmapResponse, error)
+	Prev([]string, uint64, int32, UnitOfTime) ([]SmapReading, error)
 	// retrieve data after reference time
-	Next([]string, uint64, int32, UnitOfTime) ([]SmapResponse, error)
+	Next([]string, uint64, int32, UnitOfTime) ([]SmapReading, error)
 	// uuids, start time, end time, unit of time
-	GetData([]string, uint64, uint64, UnitOfTime) ([]SmapResponse, error)
+	GetData([]string, uint64, uint64, UnitOfTime) ([]SmapReading, error)
 	// get a new connection to the timeseries database
 	GetConnection() (net.Conn, error)
 	// return the number of live connections
@@ -35,16 +35,14 @@ type TSDB interface {
 // The object store is a database for binary blobs rather than explicit
 // timeseries data.
 type ObjectStore interface {
-	// archive the blob with the given UUID at given timestamp
-	AddObject([]byte, string, uint64) bool
-	// retrieve blob closest before the reference time for the given UUIDs
-	PrevObject([]string, uint64, int32, UnitOfTime)
+	// archive the given SmapMessage that contains non-numerical Readings
+	AddObject(*SmapMessage) (bool, error)
+	// retrieve blob closest before the reference time for the given UUID
+	PrevObject(string, uint64, UnitOfTime) (SmapReading, error)
 	// retrieve blob closest after the reference time for the given UUIDs
-	NextObject([]string, uint64, int32, UnitOfTime)
+	NextObject(string, uint64, UnitOfTime) (SmapReading, error)
 	// retrieves all blobs between the start/end times for the given UUIDs
-	GetObjects([]string, uint64, uint64, UnitOfTime)
-	// get a new connection to the database
-	GetConnection() (net.Conn, error)
+	GetObjects(string, uint64, uint64, UnitOfTime) (SmapReading, error)
 	// Adds a pointer to metadata store for streamid/uuid conversion and the like
 	AddStore(MetadataStore)
 }
@@ -76,6 +74,8 @@ type MetadataStore interface {
 	GetUUIDs(where bson.M) ([]string, error)
 	// Returns the unit of time for the stream identified by the given UUID.
 	GetUnitOfTime(uuid string) UnitOfTime
+	// Returns the stream type for the stream identified by the given UUID
+	GetStreamType(uuid string) StreamType
 	// For the given UUID, returns the uint32 stream id.
 	//TODO: this is only needed for ReadingDB. Figure out a better way of using this method
 	GetStreamId(uuid string) uint32

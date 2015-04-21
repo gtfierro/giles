@@ -23,11 +23,6 @@ type Message struct {
 	data   []byte
 }
 
-type SmapResponse struct {
-	Readings [][]float64
-	UUID     string `json:"uuid"`
-}
-
 /*
    for now, assume all Smap Readings have same uuid. In the future
    We will probably want to queue up the serialization of a bunch
@@ -134,8 +129,8 @@ func (rdb *RDB) Add(sb *StreamBuf) bool {
 }
 
 // Sends a packet, constructs header, and then listens on that connection and returns the response
-func (rdb *RDB) sendAndReceive(payload []byte, msgtype rdbp.MessageType, conn *net.Conn) (SmapResponse, error) {
-	var sr SmapResponse
+func (rdb *RDB) sendAndReceive(payload []byte, msgtype rdbp.MessageType, conn *net.Conn) (SmapReading, error) {
+	var sr SmapReading
 	var err error
 	m := &Message{}
 	h := &header{Type: msgtype, Length: uint32(len(payload))}
@@ -153,13 +148,13 @@ func (rdb *RDB) sendAndReceive(payload []byte, msgtype rdbp.MessageType, conn *n
 // Retrieves the last [limit] readings before (and including)
 // [ref] for all streams that match query [w]
 // [limit] defaults to 1
-func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32, query_uot UnitOfTime) ([]SmapResponse, error) {
+func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32, query_uot UnitOfTime) ([]SmapReading, error) {
 	var err error
-	var retdata = []SmapResponse{}
+	var retdata = []SmapReading{}
 	var data []byte
 	var substream uint32 = 0
 	var direction = rdbp.Nearest_PREV
-	var sr SmapResponse
+	var sr SmapReading
 	ref = convertTime(ref, query_uot, UOT_MS)
 
 	for _, uuid := range uuids {
@@ -182,13 +177,13 @@ func (rdb *RDB) Prev(uuids []string, ref uint64, limit int32, query_uot UnitOfTi
 // Retrieves the last [limit] readings after (and including)
 // [ref] for all streams that match query [w]
 // [limit] defaults to 1
-func (rdb *RDB) Next(uuids []string, ref uint64, limit int32, query_uot UnitOfTime) ([]SmapResponse, error) {
+func (rdb *RDB) Next(uuids []string, ref uint64, limit int32, query_uot UnitOfTime) ([]SmapReading, error) {
 	var err error
-	var retdata = []SmapResponse{}
+	var retdata = []SmapReading{}
 	var data []byte
 	var substream uint32 = 0
 	var direction = rdbp.Nearest_NEXT
-	var sr SmapResponse
+	var sr SmapReading
 	ref = convertTime(ref, query_uot, UOT_MS)
 
 	for _, uuid := range uuids {
@@ -210,18 +205,18 @@ func (rdb *RDB) Next(uuids []string, ref uint64, limit int32, query_uot UnitOfTi
 
 // Retrieves all data between (and including) [start] and [end]
 // for all streams matching query [w]
-func (rdb *RDB) GetData(uuids []string, start, end uint64, query_uot UnitOfTime) ([]SmapResponse, error) {
+func (rdb *RDB) GetData(uuids []string, start, end uint64, query_uot UnitOfTime) ([]SmapReading, error) {
 	if start > end {
 		start, end = end, start
 	}
 	start = convertTime(start, query_uot, UOT_MS)
 	end = convertTime(end, query_uot, UOT_MS)
 	var err error
-	var retdata = []SmapResponse{}
+	var retdata = []SmapReading{}
 	var data []byte
 	var substream uint32 = 0
 	var action uint32 = 1
-	var sr SmapResponse
+	var sr SmapReading
 	for _, uuid := range uuids {
 		conn, err := rdb.GetConnection()
 		if err != nil {
@@ -241,9 +236,9 @@ func (rdb *RDB) GetData(uuids []string, start, end uint64, query_uot UnitOfTime)
 /*
  * Listens for data coming from ReadingDB
 **/
-func (rdb *RDB) receiveData(conn *net.Conn) (SmapResponse, error) {
+func (rdb *RDB) receiveData(conn *net.Conn) (SmapReading, error) {
 	// buffer for received bytes
-	var sr = SmapResponse{}
+	var sr = SmapReading{}
 	var err error
 	recv := make([]byte, 2048)
 	n, _ := (*conn).Read(recv)
@@ -280,10 +275,10 @@ func (rdb *RDB) receiveData(conn *net.Conn) (SmapResponse, error) {
 		return sr, err
 	}
 	//sr.UUID = uuid
-	sr.Readings = [][]float64{}
+	sr.Readings = [][]interface{}{}
 	for _, rdg := range data.GetData() {
 		//TODO: this *1000 should probably generalized for the unitoftime
-		sr.Readings = append(sr.Readings, []float64{float64(*rdg.Timestamp), *rdg.Value})
+		sr.Readings = append(sr.Readings, []interface{}{float64(*rdg.Timestamp), *rdg.Value})
 	}
 	return sr, err
 }

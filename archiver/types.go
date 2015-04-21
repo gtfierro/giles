@@ -8,6 +8,7 @@ import (
 // Struct representing data readings to and from sMAP
 type SmapReading struct {
 	// Readings will be interpreted as a list of [uint64, float64] = [time, value]
+	// OR as a lsit of [uint64, []byte] = [time, value]
 	Readings [][]interface{}
 	// Unique identifier for this stream
 	UUID string `json:"uuid"`
@@ -57,4 +58,11 @@ const (
 	UOT_MS UnitOfTime = 3
 	// seconds 1
 	UOT_S UnitOfTime = 4
+)
+
+type StreamType uint
+
+const (
+	OBJECT_STREAM StreamType = iota
+	NUMERIC_STREAM
 )

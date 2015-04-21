@@ -13,20 +13,19 @@ import (
 )
 
 type MongoStore struct {
-	session      *mgo.Session
-	db           *mgo.Database
-	streams      *mgo.Collection
-	metadata     *mgo.Collection
-	pathmetadata *mgo.Collection
-	apikeys      *mgo.Collection
-	objects      *mgo.Collection
-	apikeylock   sync.Mutex
-	maxsid       *uint32
-	streamlock   sync.Mutex
-	uuidcache    *Cache
-	apikcache    *Cache
-	uotcache     *Cache
-	enforceKeys  bool
+	session     *mgo.Session
+	db          *mgo.Database
+	streams     *mgo.Collection
+	metadata    *mgo.Collection
+	apikeys     *mgo.Collection
+	apikeylock  sync.Mutex
+	maxsid      *uint32
+	streamlock  sync.Mutex
+	uuidcache   *Cache
+	apikcache   *Cache
+	uotcache    *Cache
+	streamtype  *Cache
+	enforceKeys bool
 }
 
 type rdbStreamId struct {
@@ -46,9 +45,7 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 	db := session.DB("archiver")
 	streams := db.C("streams")
 	metadata := db.C("metadata")
-	pathmetadata := db.C("pathmetadata")
 	apikeys := db.C("apikeys")
-	objects := db.C("objects")
 	// create indexes
 	index := mgo.Index{
 		Key:        []string{"uuid"},
@@ -67,22 +64,10 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		log.Fatal("Could not create index on streams.uuid")
 	}
 
-	index.Key = []string{"Path", "uuid"}
-	err = pathmetadata.EnsureIndex(index)
-	if err != nil {
-		log.Fatal("Could not create index on pathmetadata.Path")
-	}
-
 	index.Key = []string{"name", "email"}
 	err = apikeys.EnsureIndex(index)
 	if err != nil {
 		log.Fatal("Could not create index on apikeys")
-	}
-
-	index.Key = []string{"uuid", "timestamp"}
-	err = objects.EnsureIndex(index)
-	if err != nil {
-		log.Fatal("Could not create index on objects")
 	}
 
 	maxstreamid := &rdbStreamId{}
@@ -92,17 +77,16 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		maxsid = maxstreamid.StreamId + 1
 	}
 	return &MongoStore{session: session,
-		db:           db,
-		streams:      streams,
-		metadata:     metadata,
-		pathmetadata: pathmetadata,
-		apikeys:      apikeys,
-		objects:      objects,
-		maxsid:       &maxsid,
-		uuidcache:    NewCache(1000),
-		apikcache:    NewCache(1000),
-		uotcache:     NewCache(1000),
-		enforceKeys:  true}
+		db:          db,
+		streams:     streams,
+		metadata:    metadata,
+		apikeys:     apikeys,
+		maxsid:      &maxsid,
+		uuidcache:   NewCache(1000),
+		apikcache:   NewCache(1000),
+		uotcache:    NewCache(1000),
+		streamtype:  NewCache(1000),
+		enforceKeys: true}
 }
 
 /* MetadataStore interface implementation*/
@@ -329,6 +313,30 @@ func (ms *MongoStore) GetUnitOfTime(uuid string) UnitOfTime {
 	return UOT_MS
 }
 
+func (ms *MongoStore) GetStreamType(uuid string) StreamType {
+	if st, found := ms.streamtype.Get(uuid); found {
+		return st.(StreamType)
+	}
+	var res bson.M
+	err := ms.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"Properties.StreamType": 1}).One(&res)
+	if err != nil {
+		ms.streamtype.Set(uuid, NUMERIC_STREAM)
+	}
+	if prop, found := res["Properties"]; found {
+		if st, found := prop.(bson.M)["StreamType"]; found {
+			if st.(string) == "object" {
+				ms.streamtype.Set(uuid, OBJECT_STREAM)
+				return OBJECT_STREAM
+			} else {
+				ms.streamtype.Set(uuid, NUMERIC_STREAM)
+				return NUMERIC_STREAM
+			}
+		}
+	}
+	ms.streamtype.Set(uuid, NUMERIC_STREAM)
+	return NUMERIC_STREAM
+}
+
 /** Implementing the APIKeyManager interface **/
 
 func (ms *MongoStore) GetStreamId(uuid string) uint32 {
@@ -431,25 +439,4 @@ func (ms *MongoStore) Owner(key string) (map[string]interface{}, error) {
 		return nil, errors.New(fmt.Sprintf("Could not find owners for key %v (%v)", key, err))
 	}
 	return res, nil
-}
-
-/** Object Store Interface **/
-
-// The object store interface into Mongo uses a collection named 'objects'. Each document in this
-// collection contains 3 keys:
-//      uuid: the stream identifier
-//      object: a binary blob (byte array) of data (MsgPack encoded)
-//      timestamp: the timestamp associated with this record IN NANOSECONDS
-// This is obviously a very primitive interface to
-func (ms *MongoStore) AddObject(obj []byte, uuid string, time uint64) bool {
-	return false
-}
-
-func (ms *MongoStore) PrevObject(uuids []string, time uint64, limit int32, uot UnitOfTime) {
-}
-
-func (ms *MongoStore) NextObject(uuids []string, time uint64, limit int32, uot UnitOfTime) {
-}
-
-func (ms *MongoStore) GetObjects(uuids []string, start uint64, end uint64, uot UnitOfTime) {
 }

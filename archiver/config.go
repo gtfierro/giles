@@ -9,6 +9,7 @@ type Config struct {
 	Archiver struct {
 		TSDB        *string
 		Metadata    *string
+		Objects     *string
 		Keepalive   *int
 		EnforceKeys bool
 		LogLevel    *string
