@@ -21,7 +21,9 @@ title: Home
   </div>
   {% endfor %}
   {% for page in site.pages %}
-  <p>hi {{page}} </p>
+    {% if page.layout == 'default' %}
+        {{page}}
+    {% endif %}
   {% endfor %}
 </div>
 
