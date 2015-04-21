@@ -82,15 +82,16 @@ func handleJSON(r io.Reader) (map[string]*archiver.SmapMessage, error) {
 			if e != nil {
 				return decodedjson, e
 			}
-			val_num, ok := reading[1].(json.Number)
-			if !ok {
-				return decodedjson, errors.New("Value is not a number")
+			// if reading[1] is a number, parse it, else keep it as its default type
+			if val_num, ok := reading[1].(json.Number); ok {
+				val, e := strconv.ParseFloat(string(val_num), 64)
+				if e != nil {
+					return decodedjson, e
+				}
+				srs[idx] = []interface{}{ts, val}
+			} else {
+				srs[idx] = []interface{}{ts, reading[1]}
 			}
-			val, e := strconv.ParseFloat(string(val_num), 64)
-			if e != nil {
-				return decodedjson, e
-			}
-			srs[idx] = []interface{}{ts, val}
 		}
 		message.Readings = srs
 
