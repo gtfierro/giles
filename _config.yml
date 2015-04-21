@@ -21,4 +21,4 @@ github:
   repo:           https://github.com/gtfierro/giles
 
 redcarpet:
-  extensions:     ["with_toc_data", "html_toc"]
+  extensions:     ["with_toc_data", "html_toc", "tables"]
