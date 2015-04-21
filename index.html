@@ -21,9 +21,7 @@ title: Home
   </div>
   {% endfor %}
   {% for page in include.pages %}
-    {% if page.layout == 'default' %}
-        {{page}}
-    {% endif %}
+        {{ page }}
   {% endfor %}
 </div>
 
