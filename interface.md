@@ -61,11 +61,13 @@ words will be defined elsewhere.
 
 ### Select Query
 
-Syntax: **select** selector **where** where-clause
+<p class="message"><b>select</b> selector <b>where</b> where-clause</p>
 
 The basic `select` query retrieves a JSON list of documents that match the provided `where-clause`. Each JSON document
 will correspond to a single timeseries stream, and will contain the tags contained in the `selector`. Omitting `where where-clause`
 from this query will evaluate the `selector` against all timeseries streams in the database.
+
+#### Selector
 
 A `selector` can be
 
@@ -172,6 +174,8 @@ A `selector` can be
     ]
     ```
 
+#### Where
+
 The `where-clause` describes how to filter the result set. There are several operators you can use:
 Tag values should be quoted strings, and tag names should not be quoted. Statements can be grouped using parenthesis.
 The `where-clause` construction is used in nearly all sMAP queries, not just `select`-based ones.
@@ -187,3 +191,90 @@ The `where-clause` construction is used in nearly all sMAP queries, not just `se
 
 
 ### Data Query
+
+<p class="message">
+<b>select data in</b> (start-reference, end-reference) limit <b>where</b> where-clause
+<br />
+<b>select data before</b> reference limit <b>where</b> where-clause
+<br />
+<b>select data after</b> reference limit <b>where</b> where-clause
+</p>
+
+You can access stored data from multiple streams by using a data query. Data matching the indicated ranges will be returned for each of the
+streams that match the provided `where-clause`.
+
+#### Limit
+
+The `limit` is optional, and has two components: **limit** and **streamlimit**. **limit** controls the number of points returned per stream,
+and **streamlimit** controls the number of streams returned. For the **before** and **after** queries, **limit** will always be 1, so it only
+makes sense to use **streamlimit** in those cases. The exact syntax looks like
+
+<p class="message">
+<b>limit</b> number <b>streamlimit</b> number
+</p>
+
+where `number` is some positive integer. Both the **limit** and **streamlimit** components are optional and can be specified independently, together
+or not at all.
+
+#### Time Reference
+
+Data can be retrieved for some time region using a range query (`in`) or relative to some point in time (`before`, `after`). These reference times
+must be a UNIX-style timestamp, the **now** keyword, or a quoted time string.
+
+Time references use the following abbreviations:
+
+| Unit | Abbreviation | Unix support | Conversion to Seconds |
+|:----:|:------------:|:-------------:|--------------------- |
+| nanoseconds  | ns | yes |1 second = 1e9 nanoseconds |
+| microseconds | us | yes |1 second = 1e6 microseconds |
+| milliseconds | ms | yes |1 second = 1000 milliseconds |
+| seconds | s | yes |1 second = 1 second |
+| minutes | m | no  | 1 minute = 60 seconds |
+| hours   | h | no  | 1 hour = 60 minutes |
+| days    | d | no  | 1 day = 24 hours |
+
+Time reference options:
+
+* Unix-style timestamp: Unix/POSIX/Epoch time is defined as the number of seconds since 00:00:00 1 January 1970, UTC (Coordinated Universal Time), not
+counting leap seconds. In Python, the current Unix time (in seconds) can be found with
+
+    ```python
+    import time
+    # Python actually returns the milliseconds as a decimal, 
+    # so we use int to coerce to seconds only
+    print int(time.time()) 
+    ```
+
+    Giles includes support for Unix-style timestamps in units other than seconds. By suffixing timestamps with one of the unit abbreviations
+    specified above (that have Unix support), we can introduce a finer resolution to our data queries. The following timestamps are all equivalent.
+
+    * `1429655468s`
+    * `1429655468000ms`
+    * `1429655468000000us`
+    * `1429655468000000000ns`
+
+    Specifying a timestamp without units will default to seconds.
+
+* The **now** keyword: uses the current local time as perceived by the server. The **now** time can be adjusted using *relative time references*,
+  described below.
+
+* Quoted time strings: Giles supports timestrings enclosed in double quotes that adhere to one of the following formats:
+
+  * `1/2/2006`
+  * `1/2/2006 03:04:05 PM MST`
+  * `1/2/2006 15:04:05 MST`
+  * `1-2-2006` rather than `1/2/2006` is also supported
+
+    These time strings follow the [canonical Go reference time](http://golang.org/pkg/time/#Parse), which is defined to be 
+
+    ```
+    Mon Jan 2 15:04:05 -0700 MST 2006
+    ```
+* Relative time references: the above time references are *absolute*, meaning that they define a specific point in time. Using relative time references,
+  these absolute times can be altered. The most common form of this is specifying offsets of **now**.
+
+    Relative time references in Giles take the form of `number``unit` where `number` is a positive or negative integer and `unit` is one of the
+    abbreviations defined in the table above (not limited to those marked with Unix support). Relative time references can be chained.
+
+    For example, to specify 10 minutes before now, we could use `now -10m`. To specify 15 minutes and 30 seconds after midnight March 13th 2010,
+    we could use `"3/13/2010" +15m +30s`
