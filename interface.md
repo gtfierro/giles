@@ -278,3 +278,23 @@ counting leap seconds. In Python, the current Unix time (in seconds) can be foun
 
     For example, to specify 10 minutes before now, we could use `now -10m`. To specify 15 minutes and 30 seconds after midnight March 13th 2010,
     we could use `"3/13/2010" +15m +30s`
+
+#### Examples
+
+Retrieve the last 15 minutes of data for streams `26955ca2-e87b-11e4-af77-0cc47a0f7eea` and `344783b6-e87b-11e4-af77-0cc47a0f7eea`
+
+```bash
+smap> select data in (now -5m, now) where uuid = "344783b6-e87b-11e4-af77-0cc47a0f7eea" or uuid = "26955ca2-e87b-11e4-af77-0cc47a0f7eea";
+```
+
+Retrieve a week of data for all streams from Soda Hall
+
+```bash
+smap> select data in ("1/1/2015", "1/7/2015") where Metadata/Location/Building = "Soda Hall";
+```
+
+Retrieve the most recent data point for all temperature sensors
+
+```bash
+smap> select data before now where Metadata/Type = "Sensor" and Metadata/Sensor = "Temperature";
+```
