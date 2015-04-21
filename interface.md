@@ -19,3 +19,9 @@ interfaces (mentioned below)
 ## <a name="API"></a>API
 
 
+### Alternative Interfaces
+
+* MsgPack / UDP
+* MsgPack / TCP
+* JSON / WebSockets
+* 

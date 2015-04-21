@@ -21,6 +21,6 @@ This is useful for developers or those interested in how Giles is put together.
 
 ### Archiver Interface
 
-How to setup Giles for a new deployment: [Setup](/setup)
+How to setup Giles for a new deployment: [Setup]({{ site.baseurl }}/setup)
 
-The Giles archiver from a user persepctive: [Archiver Interface](/interface)
+The Giles archiver from a user persepctive: [Archiver Interface]({{ site.baseurl }}/interface)
