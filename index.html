@@ -8,11 +8,3 @@ title: Home
   {% capture home %}{% include home.md %}{% endcapture %}
   {{ home | markdownify }}
 </div>
-
-<div class="posts">
-  <div class="post">
-  {% capture test %}{% include test.md %}{% endcapture %}
-  <h1 class="post-title">  title {{ test.title }} </h1>
-  {{ test | markdownify }}
-  </div>
-</div>
