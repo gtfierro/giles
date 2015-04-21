@@ -10,7 +10,7 @@ relative_permalinks: true
 title:            Giles
 tagline:          A sMAP Archiver
 url:              http://gtfierro.github.com/giles
-baseurl:          /
+baseurl:          /giles
 
 paginate:         5
 
