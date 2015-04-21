@@ -3,27 +3,16 @@ layout: default
 title: Home
 ---
 
+<h1 class="post-title">Giles</h1>
+<div class="post">
+  {% capture home %}{% include home.md %}{% endcapture %}
+  {{ home | markdownify }}
+</div>
+
 <div class="posts">
   <div class="post">
   {% capture test %}{% include test.md %}{% endcapture %}
   <h1 class="post-title">  title {{ test.title }} </h1>
   {{ test | markdownify }}
   </div>
-</div>
-
-<div class="pagination">
-  {% if paginator.next_page %}
-    <a class="pagination-item older" href="{{ site.baseurl }}page{{paginator.next_page}}">Older</a>
-  {% else %}
-    <span class="pagination-item older">Older</span>
-  {% endif %}
-  {% if paginator.previous_page %}
-    {% if paginator.page == 2 %}
-      <a class="pagination-item newer" href="{{ site.baseurl }}">Newer</a>
-    {% else %}
-      <a class="pagination-item newer" href="{{ site.baseurl }}page{{paginator.previous_page}}">Newer</a>
-    {% endif %}
-  {% else %}
-    <span class="pagination-item newer">Newer</span>
-  {% endif %}
 </div>
