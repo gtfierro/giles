@@ -20,6 +20,9 @@ title: Home
     {{ test | markdownify }}
   </div>
   {% endfor %}
+  {% for page in site.pages %}
+  <p>hi {{page}} </p>
+  {% endfor %}
 </div>
 
 <div class="pagination">
