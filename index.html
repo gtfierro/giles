@@ -20,7 +20,7 @@ title: Home
     {{ test | markdownify }}
   </div>
   {% endfor %}
-  {% for page in site.pages %}
+  {% for page in include.pages %}
     {% if page.layout == 'default' %}
         {{page}}
     {% endif %}
