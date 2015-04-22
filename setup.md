@@ -91,6 +91,11 @@ INFO Feb 25 16:23:34 stats.go:42 ▶ Repub clients:0--Recv Adds:0--Pend Write:0-
 INFO Feb 25 16:23:35 stats.go:42 ▶ Repub clients:0--Recv Adds:0--Pend Write:0--Live Conn:0
 ```
 
+TODO:
+* administration (api keys)
+* trouble shooting
+* supervisord how-to
+
 ## <a name="Development"></a>Development
 
 For development, I either work in `$GOPATH/src/github.com/gtfierro/giles/...`, which is the default

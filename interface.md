@@ -286,7 +286,7 @@ counting leap seconds. In Python, the current Unix time (in seconds) can be foun
 Retrieve the last 15 minutes of data for streams `26955ca2-e87b-11e4-af77-0cc47a0f7eea` and `344783b6-e87b-11e4-af77-0cc47a0f7eea`
 
 ```bash
-smap> select data in (now -5m, now) where uuid = "344783b6-e87b-11e4-af77-0cc47a0f7eea" or uuid = "26955ca2-e87b-11e4-af77-0cc47a0f7eea";
+smap> select data in (now -15m, now) where uuid = "344783b6-e87b-11e4-af77-0cc47a0f7eea" or uuid = "26955ca2-e87b-11e4-af77-0cc47a0f7eea";
 ```
 
 Retrieve a week of data for all streams from Soda Hall
@@ -382,4 +382,169 @@ except KeyboardInterrupt:
     ws.close()
 ```
 
+Obviously, these are just Python-based examples. Being web-based technologies,
+it is possible to use any language/library you want (that correctly implements
+HTTP or WebSockets) to interface with `republish` (or any other feature
+of the archiver).
+
 ## <a name="datapub"></a>Data Publication
+
+The majority of data is published to the sMAP archiver through the instantiation and execution of a sMAP driver, but this is not the only
+way to send data to the archiver. Indeed, for some of the newer features supported by Giles but not yet by the Python sMAP client library distribution,
+alternative methods of data publication are the only way to use some functionality.
+
+Illustrated here are the JSON-versions of sMAP objects, though translations of these exist for other non-JSON/HTTP interfaces.
+
+```javascript
+{
+    "/sensor0": {                           // At the top level of a sMAP object is the Path
+        "Metadata": {                       // Metadata describes attributes of the data source, and is specified
+            "Location": {                   //  as nested dictionaries. Here, "Berkeley" is under the key 
+                "City": "Berkeley"          //  Metadata/Location/City
+            },
+            "SourceName": "Test Source"     // Metadata/SourceName is how the plotter identifies a stream of data
+        },
+        "Properties": {                         // Properties describe attributes of the stream. These MUST be
+            "Timezone": "America/Los_Angeles",  //  kept consistent, because they affect how the stream is stored.
+            "ReadingType": "double",        // If a "numeric" stream, designates the class of number permitted
+            "UnitofMeasure": "Watt",        // Units of measure for the stream 
+            "UnitofTime": "ms",             // Units of time used in the timestamp
+            "StreamType": "numeric",        // Describes type of data in Readings: "numeric" or "object"
+        },
+        "Readings": [                       // This is an array of (timestamp, value) tuples. Timestamps should be
+            [                               //  consistent with Properties/UnitofTime
+                1351043674000,              // A timestamp
+                0                           // A numeric value
+            ],
+            [                               // Readings can contain more than one tuple
+                1351043675000,
+                1
+            ]
+        ],
+        "uuid": "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61" // The globally unique identifier for this stream
+    }
+}
+```
+
+Each sMAP object sent to the archiver MUST contain at least the top-level `Path`, which contains a dictionary with the `Readings` and `uuid`
+keys, e.g.
+
+```json
+{
+    "/sensor0": {
+        "Readings": [
+            [
+                1351043674000,
+                0
+            ]
+        ],
+        "uuid": "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"
+    }
+}
+```
+
+Typically, the first object sent to the archiver for a new stream "initializes" the stream by sending all of the Metadata and Properties at once,
+and then just sending the minimal object above for updates to the Readings. Metadata/Properties can be changed by including the updates for
+those keys/values in the sent object, much like the "initial" object. For example, if we wanted to update the Metadata for the above stream
+to change the city from Berkeley to Mendocino, we would send the following object
+
+```json
+{
+    "/sensor0": {
+        "Metadata": {
+            "Location": {
+                "City": "Mendocino"
+            }
+        },
+        "Readings": [
+            [
+                1351043674000,
+                0
+            ]
+        ],
+        "uuid": "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"
+    }
+}
+```
+
+For the HTTP interface, each of these JSON objects would be sent as the body of a HTTP POST request sent to the `/add/<key>` resource of a running
+archiver. 
+
+In Python, using the [`requests`](http://docs.python-requests.org/en/latest/) library, this would look like
+
+```python
+import requests
+import json
+archiverurl = "http://localhost:8079/add/apikey"
+smapMsg = {
+    "/sensor0": {
+        "Readings": [
+            [
+                1351043674000,
+                0
+            ]
+        ],
+        "uuid": "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"
+    }
+}
+requests.post(archiverurl, data=json.dumps(smapMsg))
+```
+
+It is good practice to include the `Content-Type: application/json` HTTP header, though many libraries will add this automatically.
+
+### Publishing Objects
+
+Recently introduced to Giles is the ability to archive and subscribe to
+non-numeric data. This should be considered an **extremely alpha** feature (in
+fact, the implementation has not been merged into `master` yet).
+
+Usage is very similar to the normal numeric interface, with two exceptions.
+
+Firstly, all object-based streams (rather than numeric streams) must have `Properties/StreamType = "object"` set. A stream cannot publish
+both objects and numeric data (unless that numeric data is transmitted as an object) because the archiver needs to track which data store
+to query data from. Streams should be made numeric-only wherever possible, because this enables a much richer set of operations and queries
+upon the data.
+
+Secondly, the `Readings` portion of a sMAP message, instead of only having numbers as the second element of each 2-tuple reading, can now
+contain any JSON-serializable data. This means:
+
+* numbers
+* strings
+* arrays (of any of these data types)
+* dictionaries (of any of these data types)
+
+For object storage, Giles encodes each object as a [MsgPack](http://msgpack.org/)-encoded binary string. Giles places no restrictions
+on the consistency of objects, so an individual stream is not limited to pushing only arrays or only strings, but can vary the data-type.
+
+Here is an example of a stream that pushes arrays
+
+```javascript
+{
+    "/sensor0": {
+        "Metadata": {
+            "Location": {
+                "City": "Berkeley"
+            },
+            "SourceName": "Test Source"
+        },
+        "Properties": {
+            "Timezone": "America/Los_Angeles",
+            "ReadingType": "double",
+            "UnitofMeasure": "Watt",
+            "UnitofTime": "ms",
+            "StreamType": "object",         // This denotes this timeseries as an object-stream
+        },
+        "Readings": [
+            [
+                1351043674000,              // A timestamp
+                [1,2,3]                     // A vector value (JSON serializable)
+            ],
+            [                               // Readings can still contain more than one object
+                1351043675000,
+                ["a","b","c"]               // Object types do not have to be consistent
+            ]
+        ],
+        "uuid": "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61" // The globally unique identifier for this stream
+    }
+}
+```
