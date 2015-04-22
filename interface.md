@@ -13,8 +13,8 @@ interfaces (mentioned below)
 
 * [API](#API)
 * [Query Language](#querylang)
-* Republish (Pub/Sub)
-* Data Publication
+* [Republish (Pub/Sub)](#republish)
+* [Data Publication](#datapub)
 
 ## <a name="API"></a>API
 
@@ -25,6 +25,8 @@ The Giles HTTP API offers the following endpoints:
 * `/api/query`: sMAP queries POSTed to this URL are evaluated and then returned in the body of the response as a JSON object. Queries should be
   syntactically valid as per the query language specification below
 * `/republish`: a sMAP where clause posted to this URL will subscribe that client to the set of streams that match the query clause
+
+The default port for this interface is 8079, though this is configurable.
 
 Giles offers non-HTTP interfaces to make it easier to use the archiver from embedded devices, web services and other sources. These interfaces
 currently include
@@ -174,7 +176,7 @@ A `selector` can be
     ]
     ```
 
-#### Where
+#### <a name="where"></a>Where
 
 The `where-clause` describes how to filter the result set. There are several operators you can use:
 Tag values should be quoted strings, and tag names should not be quoted. Statements can be grouped using parenthesis.
@@ -298,3 +300,86 @@ Retrieve the most recent data point for all temperature sensors
 ```bash
 smap> select data before now where Metadata/Type = "Sensor" and Metadata/Sensor = "Temperature";
 ```
+
+### Set Query
+
+<p class="message">
+<b>set</b> set-list <b>where</b> where-clause
+</p>
+
+The `set` command applies tags to a set of streams identified by a where-clause. `set-list` is a comma-separated list
+of tag names and values, e.g.
+
+```bash
+smap> set Metadata/NewTag = "New Value" where not has Metadata/NewTag
+```
+
+Unless Giles is configured to ignore API keys, a `set` command will only apply tags to streams that match the where clause
+AND have the same API key as the query invoker.
+
+## <a name="republish"></a>Republish
+
+Giles provides the ability to get near real-time access to data incoming to Giles. This is called *republish* in sMAP parlance, and is a variation
+of *content-based pub-sub*. A client registers a subscription with the archiver using a [where clause](#where). Following subscription, the archiver
+will forward all data to the client on streams that match the provided where clause. If the metadata for a stream changes, the set of matching
+streams is updated for each related query.
+
+HTTP-based republish is initiated by a client sending a POST request containing a where clause to the `/republish` resource on the archiver. This
+connection is kept open by the archiver, and real-time data from the subscription is forwarded to the client for as long as the connection is
+kept open.
+
+Here is an example of republish using cURL, subscribing to all temperature sensors (for a local archiver)
+
+```bash
+$ curl -XPOST -d "Metadata/Type = 'Sensor' and Metadata/Sensor = 'Temperature'" http://localhost:8079/republish
+```
+
+The [Python sMAP library](https://github.com/SoftwareDefinedBuildings/smap/tree/unitoftime/) provides a nice helper class for doing republish from Python.
+It uses the Python Twisted library for asynchronous networking support:
+
+```python
+from twisted.internet import reactor
+from smap.archiver.client import RepublishClient
+
+archiverurl = 'http://localhost:8079'
+
+# called every time we receive a new data point
+def callback(uuids, data):
+    print 'uuids',uuids
+    print 'data',data
+
+query = "Metadata/Type = 'Sensor' and Metadata/Sensor = 'Temperature'"
+r = RepublishClient(archiverurl, callback, restrict=query)
+r.connect()
+
+reactor.run()
+```
+
+Republish is also available over WebSockets. If the WebSocket interface is enabled on Giles, then a client can open up a WebSocket-based subscription
+by opening a WebSocket to `ws://localhost:8078/republish` (for a local archiver), and then sending the where clause as a message. Here is an example
+in Python
+
+
+```python
+from ws4py.client.threadedclient import WebSocketClient
+
+class DummyClient(WebSocketClient):
+    def opened(self):
+
+        self.send("Metadata/Type = 'Sensor' and Metadata/Sensor = 'Temperature'")
+
+    def closed(self, code, reason=None):
+        print "Closed down", code, reason
+
+    def received_message(self, m):
+        print m
+
+try:
+    ws = DummyClient('ws://localhost:8078/republish')
+    ws.connect()
+    ws.run_forever()
+except KeyboardInterrupt:
+    ws.close()
+```
+
+## <a name="datapub"></a>Data Publication
