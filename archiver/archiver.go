@@ -230,7 +230,6 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 			continue
 		}
 		if a.store.GetStreamType(msg.UUID) == OBJECT_STREAM {
-			log.Debug("Got obj reading %v", msg)
 			_, err := a.objstore.AddObject(msg)
 			if err != nil {
 				return err
