@@ -495,8 +495,7 @@ It is good practice to include the `Content-Type: application/json` HTTP header,
 ### Publishing Objects
 
 Recently introduced to Giles is the ability to archive and subscribe to
-non-numeric data. This should be considered an **extremely alpha** feature (in
-fact, the implementation has not been merged into `master` yet).
+non-numeric data. This should be considered an **extremely alpha** feature, and potentially buggy.
 
 Usage is very similar to the normal numeric interface, with two exceptions.
 
