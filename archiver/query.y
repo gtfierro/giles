@@ -522,7 +522,7 @@ func Parse(querystring string) *SQLex {
     l.keys = make([]string, len(l._keys))
     i := 0
     for key, _ := range l._keys {
-        l.keys[i] = key
+        l.keys[i] = cleantagstring(key)
         i += 1
     }
     return l
