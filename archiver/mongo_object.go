@@ -41,12 +41,12 @@ func NewMongoObjectStore(address *net.TCPAddr) *MongoObjectStore {
 		Key:        []string{"uuid", "timestamp"},
 		Unique:     true,
 		DropDups:   false,
-		Background: true,
+		Background: false,
 		Sparse:     true,
 	}
 	err = objects.EnsureIndex(index)
 	if err != nil {
-		log.Fatal("Could not create index on objects")
+		log.Fatalf("Could not create index on objects (%v)", err)
 	}
 	bufpool := sync.Pool{
 		New: func() interface{} {

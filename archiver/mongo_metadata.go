@@ -51,23 +51,23 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		Key:        []string{"uuid"},
 		Unique:     true,
 		DropDups:   false,
-		Background: true,
+		Background: false,
 		Sparse:     true,
 	}
 	err = metadata.EnsureIndex(index)
 	if err != nil {
-		log.Fatal("Could not create index on metadata.uuid")
+		log.Fatalf("Could not create index on metadata.uuid (%v)", err)
 	}
 
 	err = streams.EnsureIndex(index)
 	if err != nil {
-		log.Fatal("Could not create index on streams.uuid")
+		log.Fatalf("Could not create index on streams.uuid (%v)", err)
 	}
 
 	index.Key = []string{"name", "email"}
 	err = apikeys.EnsureIndex(index)
 	if err != nil {
-		log.Fatal("Could not create index on apikeys")
+		log.Fatalf("Could not create index on apikeys (%v)", err)
 	}
 
 	maxstreamid := &rdbStreamId{}
