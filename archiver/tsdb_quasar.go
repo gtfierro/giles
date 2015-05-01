@@ -19,6 +19,12 @@ type QuasarDB struct {
 	connpool   *ConnectionPool
 }
 
+type QuasarReading struct {
+	seg *capn.Segment
+	req *qsr.Request
+	ins *qsr.CmdInsertValues
+}
+
 func NewQuasarDB(address *net.TCPAddr, maxConnections int) *QuasarDB {
 	log.Notice("Connecting to Quasar at %v...", address.String())
 	quasar := &QuasarDB{addr: address,
