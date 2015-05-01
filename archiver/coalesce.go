@@ -19,12 +19,14 @@ type StreamBuf struct {
 	uuid       string
 	unitOfTime UnitOfTime
 	txc        *TransactionCoalescer
+	idx        int
 }
 
 func NewStreamBuf(uuid string, uot UnitOfTime) *StreamBuf {
 	sb := &StreamBuf{uuid: uuid, unitOfTime: uot,
-		incoming: make(chan *SmapMessage),
-		readings: make([][]interface{}, 0, 100)}
+		incoming: make(chan *SmapMessage, COALESCE_MAX),
+		readings: make([][]interface{}, COALESCE_MAX),
+		idx:      0}
 	go sb.listen()
 	return sb
 }
@@ -35,18 +37,21 @@ func (sb *StreamBuf) listen() {
 	for {
 		select {
 		case sm := <-sb.incoming:
-			sb.readings = append(sb.readings, sm.Readings...)
-			if len(sb.readings) >= COALESCE_MAX {
+			for idx, rdg := range sm.Readings {
+				sb.readings[sb.idx+idx] = rdg
+			}
+			sb.idx += len(sm.Readings)
+			//sb.readings = append(sb.readings, sm.Readings...)
+			if sb.idx >= COALESCE_MAX {
 				abort <- true
 				sb.txc.Commit(sb)
-				break
+				return
 			}
 		case <-timeout:
-			sb.readings = make([][]interface{}, 0, 100)
 			sb.txc.Commit(sb)
-			break
+			return
 		case <-abort:
-			break
+			return
 		}
 	}
 }
@@ -55,12 +60,18 @@ type TransactionCoalescer struct {
 	tsdb    *TSDB
 	store   *MetadataStore
 	streams atomic.Value
+	bufpool sync.Pool
 	sync.Mutex
 }
 
 func NewTransactionCoalescer(tsdb *TSDB, store *MetadataStore) *TransactionCoalescer {
 	txc := &TransactionCoalescer{tsdb: tsdb, store: store}
 	txc.streams.Store(make(StreamMap))
+	txc.bufpool = sync.Pool{
+		New: func() interface{} {
+			return make([][]interface{}, COALESCE_MAX)
+		},
+	}
 	return txc
 }
 
@@ -72,7 +83,7 @@ func (txc *TransactionCoalescer) AddSmapMessage(sm *SmapMessage) {
 		return
 	}
 	uot := (*txc.store).GetUnitOfTime(sm.UUID)
-	sb = NewStreamBuf(sm.UUID, uot)
+	sb = NewStreamBuf(sm.UUID, uot) //, txc.bufpool.Get().([][]interface{}))
 	sb.txc = txc
 	txc.Lock()
 	oldStreams := txc.streams.Load().(StreamMap)
@@ -83,7 +94,7 @@ func (txc *TransactionCoalescer) AddSmapMessage(sm *SmapMessage) {
 	newStreams[sm.UUID] = sb
 	txc.streams.Store(newStreams)
 	txc.Unlock()
-	txc.AddSmapMessage(sm)
+	go txc.AddSmapMessage(sm)
 }
 
 func (txc *TransactionCoalescer) Commit(sb *StreamBuf) {
@@ -95,6 +106,7 @@ func (txc *TransactionCoalescer) Commit(sb *StreamBuf) {
 	for k, v := range oldStreams {
 		newStreams[k] = v
 	}
+	//txc.bufpool.Put(sb.readings)
 	delete(newStreams, sb.uuid)
 	txc.streams.Store(newStreams)
 }

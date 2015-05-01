@@ -84,9 +84,9 @@ func (quasar *QuasarDB) Add(sb *StreamBuf) bool {
 	uuid := uuidlib.Parse(sb.uuid)
 	qr := quasar.packetpool.Get().(QuasarReading)
 	qr.ins.SetUuid([]byte(uuid))
-	rl := qsr.NewRecordList(qr.seg, len(sb.readings))
+	rl := qsr.NewRecordList(qr.seg, sb.idx)
 	rla := rl.ToArray()
-	for i, val := range sb.readings {
+	for i, val := range sb.readings[:sb.idx] {
 		time := convertTime(val[0].(uint64), sb.unitOfTime, UOT_NS)
 		rla[i].SetTime(int64(time))
 		rla[i].SetValue(val[1].(float64))
