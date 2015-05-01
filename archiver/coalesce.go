@@ -2,106 +2,99 @@ package archiver
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
-/**
-How is transaction coalescing going to work?
-PARAMS:
-	coalesce timeout: 500 ms?
-	early timeout: 100 messages?
-
-We receive a *SmapMessage. Check rdb.sendbufs to see if we have a record for the UUID
-IF WE DON'T: create a new slice [](*SmapMessage) for that UUID in rdb.sendbufs and create
-			 a new mutex. Start a goroutine that starts a timer.After with the coalescing
-			 timeout. If it is hit, then we COMMIT the slice of messages we have
-IF WE DO: add the msg onto the found slice. If the slice now contains more than the limit,
-		  then we COMMIT early
-
-COMMIT: create a new RDB message (use a variant of NewMessage that takes in a slice) and send
-it off. Might use sync.Pool for this later, but not sure. Erase the slice when that's done
-
-**/
-
 const (
-	COALESCE_TIMEOUT = 500
-	COALESCE_MAX     = 4000
+	COALESCE_TIMEOUT = 500  // milliseconds
+	COALESCE_MAX     = 4000 // num readings
 )
 
+type StreamMap map[string](*StreamBuf)
+
 type StreamBuf struct {
-	sync.Mutex
+	incoming   chan *SmapMessage
 	readings   [][]interface{}
-	abort      chan bool
 	uuid       string
 	unitOfTime UnitOfTime
+	txc        *TransactionCoalescer
 }
 
-type Coalescer struct {
-	tsdb  *TSDB
-	store *MetadataStore
-	sync.Mutex
-	streams map[string]*StreamBuf
+func NewStreamBuf(uuid string, uot UnitOfTime) *StreamBuf {
+	sb := &StreamBuf{uuid: uuid, unitOfTime: uot,
+		incoming: make(chan *SmapMessage),
+		readings: make([][]interface{}, 0, 100)}
+	go sb.listen()
+	return sb
 }
 
-func NewCoalescer(tsdb *TSDB, store *MetadataStore) *Coalescer {
-	return &Coalescer{tsdb: tsdb, store: store, streams: make(map[string]*StreamBuf, 100)}
-}
-
-func (c *Coalescer) GetStreamBuf(uuid string) *StreamBuf {
-	c.Lock()
-	defer c.Unlock()
-	if sm, found := c.streams[uuid]; found {
-		return sm
-	}
-	uot := (*c.store).GetUnitOfTime(uuid)
-	sm := &StreamBuf{uuid: uuid, unitOfTime: uot, readings: make([][]interface{}, 0, 100)}
-	c.streams[uuid] = sm
-	return sm
-}
-
-func (c *Coalescer) Add(sm *SmapMessage) {
-	if sm.Readings == nil || len(sm.Readings) == 0 {
-		return
-	} // return early
-
-	if len(sm.UUID) == 0 {
-		log.Error("Reading has no UUID!")
-		return
-	}
-
-	sb := c.GetStreamBuf(sm.UUID)
-
-	sb.Lock()
-	sb.readings = append(sb.readings, sm.Readings...)
-	if len(sb.readings) == len(sm.Readings) { // empty! start afresh
-		sb.abort = make(chan bool, 1)
-		go func(abort chan bool, uuid string) {
-			timeout := time.After(time.Duration(COALESCE_TIMEOUT) * time.Millisecond)
-			select {
-			case <-timeout:
-				sb.Lock()
-				c.commit(uuid)
-				sb.Unlock()
-				break
-			case <-abort:
+func (sb *StreamBuf) listen() {
+	timeout := time.After(time.Duration(COALESCE_TIMEOUT) * time.Millisecond)
+	abort := make(chan bool, 1)
+	for {
+		select {
+		case sm := <-sb.incoming:
+			sb.readings = append(sb.readings, sm.Readings...)
+			if len(sb.readings) >= COALESCE_MAX {
+				abort <- true
+				sb.txc.Commit(sb)
 				break
 			}
-		}(sb.abort, sm.UUID)
+		case <-timeout:
+			sb.readings = make([][]interface{}, 0, 100)
+			sb.txc.Commit(sb)
+			break
+		case <-abort:
+			break
+		}
 	}
-
-	// here we know we have a streambuf to use
-	if len(sb.readings) >= COALESCE_MAX {
-		sb.abort <- true // abort the timer
-		c.commit(sm.UUID)
-	}
-	sb.Unlock()
-
 }
 
-func (c *Coalescer) commit(uuid string) {
-	sb := c.GetStreamBuf(uuid)
-	c.Lock()
-	(*c.tsdb).Add(sb)
-	delete(c.streams, uuid)
-	c.Unlock()
+type TransactionCoalescer struct {
+	tsdb    *TSDB
+	store   *MetadataStore
+	streams atomic.Value
+	sync.Mutex
+}
+
+func NewTransactionCoalescer(tsdb *TSDB, store *MetadataStore) *TransactionCoalescer {
+	txc := &TransactionCoalescer{tsdb: tsdb, store: store}
+	txc.streams.Store(make(StreamMap))
+	return txc
+}
+
+func (txc *TransactionCoalescer) AddSmapMessage(sm *SmapMessage) {
+	var sb *StreamBuf
+	streams := txc.streams.Load().(StreamMap)
+	if sb, found := streams[sm.UUID]; found {
+		sb.incoming <- sm
+		return
+	}
+	uot := (*txc.store).GetUnitOfTime(sm.UUID)
+	sb = NewStreamBuf(sm.UUID, uot)
+	sb.txc = txc
+	txc.Lock()
+	oldStreams := txc.streams.Load().(StreamMap)
+	newStreams := make(StreamMap)
+	for k, v := range oldStreams {
+		newStreams[k] = v
+	}
+	newStreams[sm.UUID] = sb
+	txc.streams.Store(newStreams)
+	txc.Unlock()
+	txc.AddSmapMessage(sm)
+}
+
+func (txc *TransactionCoalescer) Commit(sb *StreamBuf) {
+	(*txc.tsdb).Add(sb)
+	txc.Lock()
+	defer txc.Unlock()
+	oldStreams := txc.streams.Load().(StreamMap)
+	newStreams := make(StreamMap)
+	for k, v := range oldStreams {
+		newStreams[k] = v
+	}
+	delete(newStreams, sb.uuid)
+	txc.streams.Store(newStreams)
 }

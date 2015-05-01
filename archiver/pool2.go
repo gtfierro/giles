@@ -2,6 +2,7 @@ package archiver
 
 import (
 	"net"
+	"sync/atomic"
 )
 
 // For handling connections to the TSDB, we want to have a pool of long-lived
@@ -33,10 +34,12 @@ type ConnectionPool struct {
 	pool chan *TSDBConn
 	// ConnectionPool will call this function when it needs a new connection
 	newConn func() *TSDBConn
+	count   int64
 }
 
 func NewConnectionPool(newConn func() *TSDBConn, maxConnections int) *ConnectionPool {
-	return &ConnectionPool{newConn: newConn, pool: make(chan *TSDBConn, maxConnections)}
+	pool := &ConnectionPool{newConn: newConn, pool: make(chan *TSDBConn, maxConnections), count: 0}
+	return pool
 }
 
 func (pool *ConnectionPool) Get() *TSDBConn {
@@ -45,7 +48,8 @@ func (pool *ConnectionPool) Get() *TSDBConn {
 	case c = <-pool.pool:
 	default:
 		c = pool.newConn()
-		log.Info("Creating new connection in pool %v", &c.conn)
+		atomic.AddInt64(&pool.count, 1)
+		log.Info("Creating new connection in pool %v, %v", &c.conn, pool.count)
 	}
 	return c
 }
@@ -54,6 +58,7 @@ func (pool *ConnectionPool) Put(c *TSDBConn) {
 	select {
 	case pool.pool <- c:
 	default:
-		log.Info("Releasing connection in pool")
+		atomic.AddInt64(&pool.count, -1)
+		log.Info("Releasing connection in pool, now %v", pool.count)
 	}
 }
