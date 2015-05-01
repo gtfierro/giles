@@ -53,7 +53,7 @@ type Archiver struct {
 	republisher          *Republisher
 	incomingcounter      *counter
 	pendingwritescounter *counter
-	coalescer            *Coalescer
+	coalescer            *TransactionCoalescer
 	sshscs               *SSHConfigServer
 	enforceKeys          bool
 }
@@ -127,7 +127,7 @@ func NewArchiver(c *Config) *Archiver {
 		if err != nil {
 			log.Fatal("Error parsing Quasar address: %v", err)
 		}
-		tsdb = NewQuasarDB(qsraddr, 20)
+		tsdb = NewQuasarDB(qsraddr, 200)
 		tsdb.AddStore(store)
 		if tsdb == nil {
 			log.Fatal("Error connecting to Quasar instance")
@@ -174,7 +174,7 @@ func NewArchiver(c *Config) *Archiver {
 		republisher:          republisher,
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter(),
-		coalescer:            NewCoalescer(&tsdb, &store),
+		coalescer:            NewTransactionCoalescer(&tsdb, &store),
 		sshscs:               sshscs,
 		enforceKeys:          c.Archiver.EnforceKeys}
 
@@ -235,7 +235,7 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 				return err
 			}
 		} else {
-			a.coalescer.Add(msg)
+			a.coalescer.AddSmapMessage(msg)
 		}
 	}
 	return nil

@@ -79,6 +79,8 @@ func (quasar *QuasarDB) Add(sb *StreamBuf) bool {
 	if len(sb.readings) == 0 {
 		return false
 	}
+	conn := quasar.connpool.Get()
+	defer quasar.connpool.Put(conn)
 	uuid := uuidlib.Parse(sb.uuid)
 	qr := quasar.packetpool.Get().(QuasarReading)
 	qr.ins.SetUuid([]byte(uuid))
@@ -91,14 +93,12 @@ func (quasar *QuasarDB) Add(sb *StreamBuf) bool {
 	}
 	qr.ins.SetValues(rl)
 	qr.req.SetInsertValues(*qr.ins)
-	conn := quasar.connpool.Get()
 	qr.seg.WriteTo(conn)
 	_, err := quasar.receive(conn, -1)
 	if err != nil {
 		log.Error("Error writing to quasar %v", err)
 		return false
 	}
-	quasar.connpool.Put(conn)
 	quasar.packetpool.Put(qr)
 	return true
 }
@@ -139,6 +139,8 @@ func (quasar *QuasarDB) receive(conn *TSDBConn, limit int32) (SmapReading, error
 
 func (quasar *QuasarDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapReading, error) {
 	var ret = make([]SmapReading, len(uuids))
+	conn := quasar.connpool.Get()
+	defer quasar.connpool.Put(conn)
 	for i, uu := range uuids {
 		stream_uot := quasar.store.GetUnitOfTime(uu)
 		seg := capn.NewBuffer(nil)
@@ -149,7 +151,6 @@ func (quasar *QuasarDB) queryNearestValue(uuids []string, start uint64, limit in
 		qnv.SetUuid([]byte(uuid))
 		qnv.SetTime(int64(start))
 		req.SetQueryNearestValue(qnv)
-		conn := quasar.connpool.Get()
 		_, err := seg.WriteTo(conn) // here, ignoring # bytes written
 		if err != nil {
 			return ret, err
@@ -158,7 +159,6 @@ func (quasar *QuasarDB) queryNearestValue(uuids []string, start uint64, limit in
 		if err != nil {
 			return ret, err
 		}
-		//quasar.connpool.Put(conn)
 		sr.UUID = uu
 		for j, reading := range sr.Readings {
 			reading[0] = float64(convertTime(uint64(reading[0].(float64)), UOT_NS, stream_uot))
@@ -183,6 +183,8 @@ func (quasar *QuasarDB) GetData(uuids []string, start uint64, end uint64, uot Un
 	var ret = make([]SmapReading, len(uuids))
 	start = convertTime(start, uot, UOT_NS)
 	end = convertTime(end, uot, UOT_NS)
+	conn := quasar.connpool.Get()
+	quasar.connpool.Put(conn)
 	for i, uu := range uuids {
 		stream_uot := quasar.store.GetUnitOfTime(uu)
 		seg := capn.NewBuffer(nil)
@@ -193,7 +195,6 @@ func (quasar *QuasarDB) GetData(uuids []string, start uint64, end uint64, uot Un
 		qnv.SetStartTime(int64(start))
 		qnv.SetEndTime(int64(end))
 		req.SetQueryStandardValues(qnv)
-		conn := quasar.connpool.Get()
 		_, err := seg.WriteTo(conn) // here, ignoring # bytes written
 		if err != nil {
 			return ret, err
@@ -202,7 +203,6 @@ func (quasar *QuasarDB) GetData(uuids []string, start uint64, end uint64, uot Un
 		if err != nil {
 			return ret, err
 		}
-		quasar.connpool.Put(conn)
 		sr.UUID = uu
 		for j, reading := range sr.Readings {
 			reading[0] = float64(convertTime(uint64(reading[0].(float64)), UOT_NS, stream_uot))
