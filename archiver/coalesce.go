@@ -22,10 +22,10 @@ type StreamBuf struct {
 	idx        int
 }
 
-func NewStreamBuf(uuid string, uot UnitOfTime) *StreamBuf {
+func NewStreamBuf(uuid string, uot UnitOfTime, readings [][]interface{}) *StreamBuf {
 	sb := &StreamBuf{uuid: uuid, unitOfTime: uot,
 		incoming: make(chan *SmapMessage, COALESCE_MAX),
-		readings: make([][]interface{}, COALESCE_MAX),
+		readings: readings,
 		idx:      0}
 	go sb.listen()
 	return sb
@@ -41,7 +41,6 @@ func (sb *StreamBuf) listen() {
 				sb.readings[sb.idx+idx] = rdg
 			}
 			sb.idx += len(sm.Readings)
-			//sb.readings = append(sb.readings, sm.Readings...)
 			if sb.idx >= COALESCE_MAX {
 				abort <- true
 				sb.txc.Commit(sb)
@@ -83,7 +82,7 @@ func (txc *TransactionCoalescer) AddSmapMessage(sm *SmapMessage) {
 		return
 	}
 	uot := (*txc.store).GetUnitOfTime(sm.UUID)
-	sb = NewStreamBuf(sm.UUID, uot) //, txc.bufpool.Get().([][]interface{}))
+	sb = NewStreamBuf(sm.UUID, uot, txc.bufpool.Get().([][]interface{}))
 	sb.txc = txc
 	txc.Lock()
 	oldStreams := txc.streams.Load().(StreamMap)
@@ -106,7 +105,7 @@ func (txc *TransactionCoalescer) Commit(sb *StreamBuf) {
 	for k, v := range oldStreams {
 		newStreams[k] = v
 	}
-	//txc.bufpool.Put(sb.readings)
+	txc.bufpool.Put(sb.readings)
 	delete(newStreams, sb.uuid)
 	txc.streams.Store(newStreams)
 }

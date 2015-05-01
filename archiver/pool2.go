@@ -58,6 +58,7 @@ func (pool *ConnectionPool) Put(c *TSDBConn) {
 	select {
 	case pool.pool <- c:
 	default:
+		c.Close()
 		atomic.AddInt64(&pool.count, -1)
 		log.Info("Releasing connection in pool, now %v", pool.count)
 	}
