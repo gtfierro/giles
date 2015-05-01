@@ -4,39 +4,24 @@ import (
 	"bytes"
 	uuidlib "code.google.com/p/go-uuid/uuid"
 	"errors"
+	"fmt"
 	capn "github.com/glycerine/go-capnproto"
 	qsr "github.com/gtfierro/giles/internal/quasarcapnp"
 	"net"
 	"sync"
 )
 
-// This is a translator interface for Quasar
-// (https://github.com/SoftwareDefinedBuildings/quasar) that implements the
-// TSDB interface (look at interfaces.go).
-type QDB struct {
+type QuasarDB struct {
 	addr       *net.TCPAddr
-	cm         *ConnectionMap
 	store      MetadataStore
 	packetpool sync.Pool
 	bufferpool sync.Pool
+	connpool   *ConnectionPool
 }
 
-type QuasarReading struct {
-	seg *capn.Segment
-	req *qsr.Request
-	ins *qsr.CmdInsertValues
-}
-
-// Create a new reference to a Quasar instance running at ip:port.  Connections
-// for a unique stream identifier will be kept alive for `connectionkeepalive`
-// seconds. All communicaton with Quasar is done over a TCP connection that
-// speaks Capn Proto (http://kentonv.github.io/capnproto/). Quasar can also
-// provide a direct HTTP interface, but we choose to implement only the Capn
-// Proto interface for more efficient transport.
-func NewQuasar(address *net.TCPAddr, connectionkeepalive int) *QDB {
-	log.Notice("Conneting to Quasar at %v...", address.String())
-	return &QDB{addr: address,
-		cm: NewConnectionMap(connectionkeepalive),
+func NewQuasarDB(address *net.TCPAddr, maxConnections int) *QuasarDB {
+	log.Notice("Connecting to Quasar at %v...", address.String())
+	quasar := &QuasarDB{addr: address,
 		packetpool: sync.Pool{
 			New: func() interface{} {
 				seg := capn.NewBuffer(nil)
@@ -57,11 +42,64 @@ func NewQuasar(address *net.TCPAddr, connectionkeepalive int) *QDB {
 			},
 		},
 	}
+
+	quasar.connpool = NewConnectionPool(quasar.getConnection, maxConnections)
+	return quasar
 }
 
-func (q *QDB) receive(conn *net.Conn, limit int32) (SmapReading, error) {
+func (quasar *QuasarDB) getConnection() *TSDBConn {
+	conn, err := net.DialTCP("tcp", nil, quasar.addr)
+	if err != nil {
+		log.Error("Error getting connection to Quasar (%v)", err)
+		return nil
+	}
+	conn.SetKeepAlive(true)
+	return &TSDBConn{conn}
+}
+
+func (quasar *QuasarDB) GetConnection() (net.Conn, error) {
+	return nil, nil
+}
+
+func (quasar *QuasarDB) AddStore(s MetadataStore) {
+	quasar.store = s
+}
+
+func (quasar *QuasarDB) LiveConnections() int {
+	return 0
+}
+
+func (quasar *QuasarDB) Add(sb *StreamBuf) bool {
+	if len(sb.readings) == 0 {
+		return false
+	}
+	uuid := uuidlib.Parse(sb.uuid)
+	qr := quasar.packetpool.Get().(QuasarReading)
+	qr.ins.SetUuid([]byte(uuid))
+	rl := qsr.NewRecordList(qr.seg, len(sb.readings))
+	rla := rl.ToArray()
+	for i, val := range sb.readings {
+		time := convertTime(val[0].(uint64), sb.unitOfTime, UOT_NS)
+		rla[i].SetTime(int64(time))
+		rla[i].SetValue(val[1].(float64))
+	}
+	qr.ins.SetValues(rl)
+	qr.req.SetInsertValues(*qr.ins)
+	conn := quasar.connpool.Get()
+	qr.seg.WriteTo(conn)
+	_, err := quasar.receive(conn, -1)
+	if err != nil {
+		log.Error("Error writing to quasar %v", err)
+		return false
+	}
+	quasar.connpool.Put(conn)
+	quasar.packetpool.Put(qr)
+	return true
+}
+
+func (quasar *QuasarDB) receive(conn *TSDBConn, limit int32) (SmapReading, error) {
 	var sr = SmapReading{}
-	seg, err := capn.ReadFromStream(*conn, nil)
+	seg, err := capn.ReadFromStream(conn, nil)
 	if err != nil {
 		log.Error("Error receiving data from Quasar %v", err)
 		return sr, err
@@ -86,43 +124,17 @@ func (q *QDB) receive(conn *net.Conn, limit int32) (SmapReading, error) {
 			sr.Readings = append(sr.Readings, []interface{}{float64(rec.Time()), rec.Value()})
 		}
 		return sr, nil
+	default:
+		return sr, fmt.Errorf("Got unexpected Quasar Error code (%v)", resp.StatusCode().String())
 	}
 	return sr, nil
 
 }
 
-func (q *QDB) Add(sb *StreamBuf) bool {
-	if len(sb.readings) == 0 {
-		return false
-	}
-	uuid := uuidlib.Parse(sb.uuid)
-	qr := q.packetpool.Get().(QuasarReading)
-	qr.ins.SetUuid([]byte(uuid))
-	rl := qsr.NewRecordList(qr.seg, len(sb.readings))
-	rla := rl.ToArray()
-	for i, val := range sb.readings {
-		time := convertTime(val[0].(uint64), sb.unitOfTime, UOT_NS)
-		rla[i].SetTime(int64(time))
-		rla[i].SetValue(val[1].(float64))
-	}
-	qr.ins.SetValues(rl)
-	qr.req.SetInsertValues(*qr.ins)
-	buf := q.bufferpool.Get().(*bytes.Buffer)
-	_, err := qr.seg.WriteTo(buf)
-	if err != nil {
-		log.Error("Error writing %v", err)
-		return false
-	}
-	data := buf.Bytes()
-	q.cm.Add(sb.uuid, &data, q)
-	q.packetpool.Put(qr)
-	return true
-}
-
-func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapReading, error) {
+func (quasar *QuasarDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapReading, error) {
 	var ret = make([]SmapReading, len(uuids))
 	for i, uu := range uuids {
-		stream_uot := q.store.GetUnitOfTime(uu)
+		stream_uot := quasar.store.GetUnitOfTime(uu)
 		seg := capn.NewBuffer(nil)
 		req := qsr.NewRootRequest(seg)
 		qnv := qsr.NewCmdQueryNearestValue(seg)
@@ -131,16 +143,16 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 		qnv.SetUuid([]byte(uuid))
 		qnv.SetTime(int64(start))
 		req.SetQueryNearestValue(qnv)
-		conn, err := q.GetConnection()
-		if err != nil {
-			log.Error("Error getting connection %v", err)
-			return ret, err
-		}
-		_, err = seg.WriteTo(conn) // here, ignoring # bytes written
+		conn := quasar.connpool.Get()
+		_, err := seg.WriteTo(conn) // here, ignoring # bytes written
 		if err != nil {
 			return ret, err
 		}
-		sr, err := q.receive(&conn, limit)
+		sr, err := quasar.receive(conn, limit)
+		if err != nil {
+			return ret, err
+		}
+		//quasar.connpool.Put(conn)
 		sr.UUID = uu
 		for j, reading := range sr.Readings {
 			reading[0] = float64(convertTime(uint64(reading[0].(float64)), UOT_NS, stream_uot))
@@ -151,25 +163,22 @@ func (q *QDB) queryNearestValue(uuids []string, start uint64, limit int32, backw
 	return ret, nil
 }
 
-// Currently, I haven't figured out the beset way to get Quasar to get me responses to
-// queries such as "the last 10 values before now". Currently, Prev and Next will
-// just return the single closest value
-func (q *QDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapReading, error) {
+func (quasar *QuasarDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapReading, error) {
 	start = convertTime(start, uot, UOT_NS)
-	return q.queryNearestValue(uuids, start, limit, true)
+	return quasar.queryNearestValue(uuids, start, limit, true)
 }
 
-func (q *QDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapReading, error) {
+func (quasar *QuasarDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapReading, error) {
 	start = convertTime(start, uot, UOT_NS)
-	return q.queryNearestValue(uuids, start, limit, false)
+	return quasar.queryNearestValue(uuids, start, limit, false)
 }
 
-func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapReading, error) {
+func (quasar *QuasarDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapReading, error) {
 	var ret = make([]SmapReading, len(uuids))
 	start = convertTime(start, uot, UOT_NS)
 	end = convertTime(end, uot, UOT_NS)
 	for i, uu := range uuids {
-		stream_uot := q.store.GetUnitOfTime(uu)
+		stream_uot := quasar.store.GetUnitOfTime(uu)
 		seg := capn.NewBuffer(nil)
 		req := qsr.NewRootRequest(seg)
 		qnv := qsr.NewCmdQueryStandardValues(seg)
@@ -178,16 +187,16 @@ func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) 
 		qnv.SetStartTime(int64(start))
 		qnv.SetEndTime(int64(end))
 		req.SetQueryStandardValues(qnv)
-		conn, err := q.GetConnection()
-		if err != nil {
-			log.Error("Error getting connection %v", err)
-			return ret, err
-		}
-		_, err = seg.WriteTo(conn) // here, ignoring # bytes written
+		conn := quasar.connpool.Get()
+		_, err := seg.WriteTo(conn) // here, ignoring # bytes written
 		if err != nil {
 			return ret, err
 		}
-		sr, err := q.receive(&conn, -1)
+		sr, err := quasar.receive(conn, -1)
+		if err != nil {
+			return ret, err
+		}
+		quasar.connpool.Put(conn)
 		sr.UUID = uu
 		for j, reading := range sr.Readings {
 			reading[0] = float64(convertTime(uint64(reading[0].(float64)), UOT_NS, stream_uot))
@@ -196,20 +205,4 @@ func (q *QDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) 
 		ret[i] = sr
 	}
 	return ret, nil
-}
-
-func (q *QDB) GetConnection() (net.Conn, error) {
-	conn, err := net.DialTCP("tcp", nil, q.addr)
-	if err == nil {
-		conn.SetKeepAlive(true)
-	}
-	return conn, err
-}
-
-func (q *QDB) LiveConnections() int {
-	return 0
-}
-
-func (q *QDB) AddStore(s MetadataStore) {
-	q.store = s
 }
