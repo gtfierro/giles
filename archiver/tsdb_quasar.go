@@ -89,7 +89,12 @@ func (quasar *QuasarDB) Add(sb *StreamBuf) bool {
 	for i, val := range sb.readings[:sb.idx] {
 		time := convertTime(val[0].(uint64), sb.unitOfTime, UOT_NS)
 		rla[i].SetTime(int64(time))
-		rla[i].SetValue(val[1].(float64))
+		if num, ok := val[1].(float64); ok {
+			rla[i].SetValue(num)
+		} else {
+			log.Error("Bad number in buffer %v %v", sb.uuid, val)
+			return false
+		}
 	}
 	qr.ins.SetValues(rl)
 	qr.req.SetInsertValues(*qr.ins)
