@@ -37,6 +37,9 @@ func (sb *StreamBuf) listen() {
 	for {
 		select {
 		case sm := <-sb.incoming:
+			if diff := (len(sm.Readings) + sb.idx) - COALESCE_MAX; diff > 0 {
+				sb.readings = append(sb.readings, make([][]interface{}, diff)...)
+			}
 			for idx, rdg := range sm.Readings {
 				sb.readings[sb.idx+idx] = rdg
 			}
@@ -86,6 +89,11 @@ func (txc *TransactionCoalescer) AddSmapMessage(sm *SmapMessage) {
 	sb.txc = txc
 	txc.Lock()
 	oldStreams := txc.streams.Load().(StreamMap)
+	// check again
+	if sb, found := oldStreams[sm.UUID]; found {
+		sb.incoming <- sm
+		return
+	}
 	newStreams := make(StreamMap)
 	for k, v := range oldStreams {
 		newStreams[k] = v
