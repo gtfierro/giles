@@ -92,6 +92,7 @@ func (txc *TransactionCoalescer) AddSmapMessage(sm *SmapMessage) {
 	// check again
 	if sb, found := oldStreams[sm.UUID]; found {
 		sb.incoming <- sm
+		txc.Unlock()
 		return
 	}
 	newStreams := make(StreamMap)
