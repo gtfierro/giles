@@ -59,8 +59,8 @@ var SmapMsgPool10PathMetadata = &sync.Pool{
 
 func BenchmarkArchiverAddData1(b *testing.B) {
 	uuid := UUID.New()
-	a.store.delkey_byname("name", "email")
-	api, err := a.store.newkey("name", "email", true)
+	a.manager.DeleteKeyByName("name", "email")
+	api, err := a.manager.NewKey("name", "email", true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -77,8 +77,8 @@ func BenchmarkArchiverAddData1(b *testing.B) {
 }
 
 func BenchmarkArchiverAddData10(b *testing.B) {
-	a.store.delkey_byname("name", "email")
-	api, err := a.store.newkey("name", "email", true)
+	a.manager.DeleteKeyByName("name", "email")
+	api, err := a.manager.NewKey("name", "email", true)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -95,8 +95,8 @@ func BenchmarkArchiverAddData10(b *testing.B) {
 
 func BenchmarkArchiverAddData1WithMetadata(b *testing.B) {
 	uuid := UUID.New()
-	a.store.delkey_byname("name", "email")
-	api, err := a.store.newkey("name", "email", true)
+	a.manager.DeleteKeyByName("name", "email")
+	api, err := a.manager.NewKey("name", "email", true)
 	metadata := bson.M{"key1": "val1", "key2": "val2"}
 	if err != nil {
 		fmt.Println(err)
@@ -115,8 +115,8 @@ func BenchmarkArchiverAddData1WithMetadata(b *testing.B) {
 }
 
 func BenchmarkArchiverAddData10WithMetadata(b *testing.B) {
-	a.store.delkey_byname("name", "email")
-	api, err := a.store.newkey("name", "email", true)
+	a.manager.DeleteKeyByName("name", "email")
+	api, err := a.manager.NewKey("name", "email", true)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -49,6 +49,7 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 type Archiver struct {
 	tsdb                 TSDB
 	store                MetadataStore
+	manager              APIKeyManager
 	objstore             ObjectStore
 	republisher          *Republisher
 	incomingcounter      *counter
@@ -171,6 +172,7 @@ func NewArchiver(c *Config) *Archiver {
 	return &Archiver{tsdb: tsdb,
 		store:                store,
 		objstore:             objstore,
+		manager:              manager,
 		republisher:          republisher,
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter(),
