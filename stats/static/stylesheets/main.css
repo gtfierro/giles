@@ -1,0 +1,8 @@
+.systemstat {
+  font-weight: bold;
+  display: block;
+}
+
+.systemstat span {
+  font-weight: normal;
+}

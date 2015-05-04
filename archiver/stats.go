@@ -6,13 +6,15 @@ import (
 
 // This is a helper type for basic counting stats. Calling counter.Mark()
 // will atomically add 1 to the internal count. Calling counter.Reset() will
-// return the current count and return the count to 0
+// return the current count and return the count to 0. Counter.Last contains
+// the value returned by the last Reset().
 type counter struct {
 	Count uint64
+	Last  uint64
 }
 
 func newCounter() *counter {
-	return &counter{Count: 0}
+	return &counter{Count: 0, Last: 0}
 }
 
 func (c *counter) Mark() {
@@ -20,8 +22,9 @@ func (c *counter) Mark() {
 }
 
 func (c *counter) Reset() uint64 {
-	var returncount = c.Count
+	uint64 returncount = atomic.LoadUint64(&c.Count)
 	atomic.StoreUint64(&c.Count, 0)
+	c.Last = returncount
 	return returncount
 }
 
@@ -40,4 +43,20 @@ func (a *Archiver) status() {
 		a.incomingcounter.Reset(),
 		a.pendingwritescounter.Reset(),
 		a.tsdb.LiveConnections())
+}
+
+type gilesStats struct {
+	NumRepubClients  int    `json:"num_repub_clients"`
+	IncomingMessages uint64 `json:"incoming_counter"`
+	PendingWrites    uint64 `json:"pending_writes"`
+	TSDBConnections  int    `json:"tsdb_connections"`
+}
+
+func (a *Archiver) Stats() *gilesStats {
+	return &gilesStats{
+		NumRepubClients:  len(a.republisher.clients),
+		IncomingMessages: a.incomingcounter.Last,
+		PendingWrites:    a.pendingwritescounter.Last,
+		TSDBConnections:  a.tsdb.LiveConnections(),
+	}
 }

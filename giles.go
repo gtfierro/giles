@@ -6,6 +6,7 @@ import (
 	"github.com/gtfierro/giles/cphandler"
 	"github.com/gtfierro/giles/httphandler"
 	"github.com/gtfierro/giles/mphandler"
+	"github.com/gtfierro/giles/stats"
 	"github.com/gtfierro/giles/wshandler"
 	"log"
 	"os"
@@ -62,6 +63,10 @@ func main() {
 
 	if config.MsgPack.UdpEnabled {
 		go mphandler.HandleUDP(a, *config.MsgPack.UdpPort)
+	}
+
+	if config.Stats.Enabled {
+		go stats.Handle(a, *config.Stats.Port)
 	}
 
 	idx := 0

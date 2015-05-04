@@ -1,0 +1,18 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{template "title"}}</title>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="/static/vendor/stylesheets/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/vendor/stylesheets/lumen/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/stylesheets/main.css">
+</head>
+<body>
+  <script src="/static/vendor/js/jquery.min.js"></script>
+  <script src="/static/vendor/js/moment.min.js"></script>
+  {{template "body"}}
+</body>
+</html>
+{{end}}

@@ -1,0 +1,59 @@
+{{define "title"}}Giles Stats{{end}}
+
+{{define "body"}}
+<div class="container">
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="page-header">
+        <h1>Giles Stats</h1>
+      </div>
+    </div>
+  </div> <!-- title row -->
+  <div class="row">
+    <div class="col-md-12">
+      <h3>System Stats</h3>
+    </div>
+  </div>
+  <div class="row systemstats">
+    <div class="col-sm-6">
+      <div class="systemstat">Uptime: <span data-id="uptime"></span></div>
+      <div class="systemstat">CPU: <span data-id="cpu"></span></div>
+      <div class="systemstat">Net IO: <span data-id="netio"></span></div>
+    </div>
+    <div class="col-sm-6">
+      <div class="systemstat">Virtual Memory: <span data-id="memory"></span></div>
+      <div class="systemstat">Disk: <span data-id="disk"></span></div>
+      <div class="systemstat">INodes: <span data-id="inodes"></span></div>
+    </div>
+  </div> <!-- systemstats row -->
+  <div class="row">
+    <div class="col-md-12">
+      <h3>Giles Stats</h3>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="gilesstat">Connected Clients: <span data-id="num_repub_clients"></span></div>
+      <div class="gilesstat">Incoming Connections per Second: <span data-id="incoming_counter"></span></div>
+      <div class="gilesstat">Pending Writes: <span data-id="pending_writes"></span></div>
+      <div class="gilesstat">Timeseries DB Connections: <span data-id="tsdb_connections"></span></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <h3>Timeseries Stats</h3>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12">
+      <table class="table ts-table">
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/index.js"></script>
+
+{{end}}
+
+

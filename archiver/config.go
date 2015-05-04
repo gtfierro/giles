@@ -72,6 +72,11 @@ type Config struct {
 		BenchmarkTimer *int
 		Enabled        bool
 	}
+
+	Stats struct {
+		Enabled bool
+		Port    *int
+	}
 }
 
 func LoadConfig(filename string) *Config {
