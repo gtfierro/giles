@@ -128,7 +128,7 @@ func NewArchiver(c *Config) *Archiver {
 		if err != nil {
 			log.Fatal("Error parsing Quasar address: %v", err)
 		}
-		tsdb = NewQuasarDB(qsraddr, 200)
+		tsdb = NewQuasarDB(qsraddr, *c.Archiver.MaxConnections)
 		tsdb.AddStore(store)
 		if tsdb == nil {
 			log.Fatal("Error connecting to Quasar instance")
