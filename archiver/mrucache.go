@@ -83,9 +83,11 @@ func (c *Cache) Set(key string, value interface{}) {
 		e.prev = c.head
 		c.head.next = e
 		c.head = e
-		delete(c.cache, c.tail.key)
-		c.tail = c.tail.next
-		c.tail.prev = nil
+		if c.tail != nil {
+			delete(c.cache, c.tail.key)
+			c.tail = c.tail.next
+			c.tail.prev = nil
+		}
 	default:
 		c.sendToHead(e)
 	}

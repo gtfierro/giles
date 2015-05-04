@@ -189,7 +189,7 @@ func (quasar *QuasarDB) GetData(uuids []string, start uint64, end uint64, uot Un
 	start = convertTime(start, uot, UOT_NS)
 	end = convertTime(end, uot, UOT_NS)
 	conn := quasar.connpool.Get()
-	quasar.connpool.Put(conn)
+	defer quasar.connpool.Put(conn)
 	for i, uu := range uuids {
 		stream_uot := quasar.store.GetUnitOfTime(uu)
 		seg := capn.NewBuffer(nil)

@@ -13,19 +13,20 @@ import (
 )
 
 type MongoStore struct {
-	session     *mgo.Session
-	db          *mgo.Database
-	streams     *mgo.Collection
-	metadata    *mgo.Collection
-	apikeys     *mgo.Collection
-	apikeylock  sync.Mutex
-	maxsid      *uint32
-	streamlock  sync.Mutex
-	uuidcache   *Cache
-	apikcache   *Cache
-	uotcache    *Cache
-	streamtype  *Cache
-	enforceKeys bool
+	session        *mgo.Session
+	db             *mgo.Database
+	streams        *mgo.Collection
+	metadata       *mgo.Collection
+	apikeys        *mgo.Collection
+	apikeylock     sync.Mutex
+	maxsid         *uint32
+	streamlock     sync.Mutex
+	streamtypelock sync.Mutex
+	uuidcache      *Cache
+	apikcache      *Cache
+	uotcache       *Cache
+	streamtype     *Cache
+	enforceKeys    bool
 }
 
 type rdbStreamId struct {
@@ -314,6 +315,8 @@ func (ms *MongoStore) GetUnitOfTime(uuid string) UnitOfTime {
 }
 
 func (ms *MongoStore) GetStreamType(uuid string) StreamType {
+	ms.streamtypelock.Lock()
+	defer ms.streamtypelock.Unlock()
 	if st, found := ms.streamtype.Get(uuid); found {
 		return st.(StreamType)
 	}
