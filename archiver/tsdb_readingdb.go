@@ -30,39 +30,39 @@ type Message struct {
 */
 func NewMessage(sb *StreamBuf, store MetadataStore) *Message {
 	m := &Message{}
-	var timestamp uint64
-	var value float64
-	var seqno uint64
-	var streamid uint32 = store.GetStreamId(sb.uuid)
-	if streamid == 0 {
-		log.Error("error committing streamid")
-		return nil
-	}
-	var substream uint32 = 0
+	//var timestamp uint64
+	//var value float64
+	//var seqno uint64
+	//var streamid uint32 = store.GetStreamId(sb.uuid)
+	//if streamid == 0 {
+	//	log.Error("error committing streamid")
+	//	return nil
+	//}
+	//var substream uint32 = 0
 
-	// create ReadingSet
-	readingset := &rdbp.ReadingSet{Streamid: &streamid,
-		Substream: &substream,
-		Data:      make([](*rdbp.Reading), len(sb.readings), len(sb.readings))}
-	// populate readings
-	for i, reading := range sb.readings {
-		timestamp = reading[0].(uint64)
-		value = reading[1].(float64)
-		seqno = uint64(i)
-		(*readingset).Data[i] = &rdbp.Reading{Timestamp: &timestamp, Seqno: &seqno, Value: &value}
-	}
+	//// create ReadingSet
+	//readingset := &rdbp.ReadingSet{Streamid: &streamid,
+	//	Substream: &substream,
+	//	Data:      make([](*rdbp.Reading), len(sb.readings), len(sb.readings))}
+	//// populate readings
+	//for i, reading := range sb.readings {
+	//	timestamp = reading[0].(uint64)
+	//	value = reading[1].(float64)
+	//	seqno = uint64(i)
+	//	(*readingset).Data[i] = &rdbp.Reading{Timestamp: &timestamp, Seqno: &seqno, Value: &value}
+	//}
 
-	// marshal for sending over wire
-	data, err := proto.Marshal(readingset)
-	if err != nil {
-		log.Panic("Error marshaling ReadingSet:", err)
-		return nil
-	}
+	//// marshal for sending over wire
+	//data, err := proto.Marshal(readingset)
+	//if err != nil {
+	//	log.Panic("Error marshaling ReadingSet:", err)
+	//	return nil
+	//}
 
-	// create header
-	h := &header{Type: rdbp.MessageType_READINGSET, Length: uint32(len(data))}
-	m.header = h
-	m.data = data
+	//// create header
+	//h := &header{Type: rdbp.MessageType_READINGSET, Length: uint32(len(data))}
+	//m.header = h
+	//m.data = data
 	return m
 }
 
@@ -117,9 +117,9 @@ func (rdb *RDB) AddStore(store MetadataStore) {
 // committed to the underlying store. Returns True if there were readings to be committed,
 // and False if there were no readings found in the incoming message
 func (rdb *RDB) Add(sb *StreamBuf) bool {
-	if sb.readings == nil || len(sb.readings) == 0 {
-		return false
-	}
+	//if sb.readings == nil || len(sb.readings) == 0 {
+	//	return false
+	//}
 	m := NewMessage(sb, rdb.store)
 
 	data := m.ToBytes()

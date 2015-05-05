@@ -157,24 +157,21 @@ timeseries to the metadata collection
 */
 func (ms *MongoStore) SaveTags(messages map[string]*SmapMessage) {
 	for path, msg := range messages {
-		if msg.UUID == "" { // not a timeseries
-			continue
-		}
-		if msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil {
+		if msg.UUID == "" || (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil) {
 			continue
 		}
 		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
-		if msg.Metadata != nil {
+		if msg.Metadata != nil && len(msg.Metadata) > 0 {
 			for k, v := range msg.Metadata {
 				toWrite["Metadata."+k] = v
 			}
 		}
-		if msg.Properties != nil {
+		if msg.Properties != nil && len(msg.Properties) > 0 {
 			for k, v := range msg.Properties {
 				toWrite["Properties."+k] = v
 			}
 		}
-		if msg.Actuator != nil {
+		if msg.Actuator != nil && len(msg.Actuator) > 0 {
 			for k, v := range msg.Actuator {
 				toWrite["Actuator."+k] = v
 			}
