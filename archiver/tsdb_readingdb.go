@@ -1,8 +1,8 @@
 package archiver
 
 import (
-	"github.com/golang/protobuf/proto"
 	"encoding/binary"
+	"github.com/golang/protobuf/proto"
 	rdbp "github.com/gtfierro/giles/internal/readingdbproto"
 	"net"
 )

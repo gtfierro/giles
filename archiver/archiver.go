@@ -297,16 +297,16 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		case IN_TYPE:
 			log.Debug("Data in start %v end %v", start, end)
 			if start < end {
-				response, err = a.GetData(uuids, start, end, UOT_NS)
+				response, err = a.GetData(uuids, start, end, UOT_NS, dq.timeconv)
 			} else {
-				response, err = a.GetData(uuids, end, start, UOT_NS)
+				response, err = a.GetData(uuids, end, start, UOT_NS, dq.timeconv)
 			}
 		case BEFORE_TYPE:
 			log.Debug("Data before time %v", start)
-			response, err = a.PrevData(uuids, start, int32(dq.limit.limit), UOT_NS)
+			response, err = a.PrevData(uuids, start, int32(dq.limit.limit), UOT_NS, dq.timeconv)
 		case AFTER_TYPE:
 			log.Debug("Data after time %v", start)
-			response, err = a.NextData(uuids, start, int32(dq.limit.limit), UOT_NS)
+			response, err = a.NextData(uuids, start, int32(dq.limit.limit), UOT_NS, dq.timeconv)
 		}
 		log.Debug("response %v uuids %v", response, uuids)
 		data, _ = json.Marshal(response)
@@ -319,7 +319,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 // so that each time series database can convert the incoming timestamps to whatever
 // it needs (most of these will query the metadata store for the unit of time for the
 // data stream it is accessing)
-func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot UnitOfTime) ([]SmapReading, error) {
+func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot, to_uot UnitOfTime) ([]SmapReading, error) {
 	resp, err := a.tsdb.GetData(streamids, start, end, query_uot)
 	if err == nil { // if no error, adjust timeseries
 		for i, sr := range resp {
@@ -332,7 +332,7 @@ func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot Unit
 				sr = newrdg
 			}
 			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, UOT_MS))
+				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, to_uot))
 				sr.Readings[j] = reading
 			}
 			resp[i] = sr
@@ -343,7 +343,7 @@ func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot Unit
 
 // For each of the streamids, fetches data before the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
-func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapReading, error) {
+func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query_uot, to_uot UnitOfTime) ([]SmapReading, error) {
 	resp, err := a.tsdb.Prev(streamids, start, limit, query_uot)
 	if err == nil { // if no error, adjust timeseries
 		for i, sr := range resp {
@@ -357,7 +357,7 @@ func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query
 				sr = newrdg
 			}
 			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, UOT_MS))
+				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, to_uot))
 				sr.Readings[j] = reading
 			}
 			resp[i] = sr
@@ -368,7 +368,7 @@ func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query
 
 // For each of the streamids, fetches data after the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
-func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot UnitOfTime) ([]SmapReading, error) {
+func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot, to_uot UnitOfTime) ([]SmapReading, error) {
 	resp, err := a.tsdb.Next(streamids, start, limit, query_uot)
 	if err == nil { // if no error, adjust timeseries
 		for i, sr := range resp {
@@ -382,7 +382,7 @@ func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query
 				sr = newrdg
 			}
 			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, UOT_MS))
+				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, to_uot))
 				sr.Readings[j] = reading
 			}
 			resp[i] = sr

@@ -24,6 +24,7 @@ Notes here
 	dict Dict
 	data *dataquery
 	limit datalimit
+    timeconv UnitOfTime
 	list List
 	time _time.Time
     timediff _time.Duration
@@ -34,7 +35,7 @@ Notes here
 %token <str> DATA BEFORE AFTER LIMIT STREAMLIMIT NOW
 %token <str> LVALUE QSTRING QREGEX
 %token <str> EQ NEQ COMMA ALL
-%token <str> LIKE
+%token <str> LIKE AS
 %token <str> AND OR HAS NOT IN
 %token <str> LPAREN RPAREN
 %token NUMBER
@@ -48,6 +49,7 @@ Notes here
 %type <time> timeref abstime
 %type <timediff> reltime
 %type <limit> limit
+%type <timeconv> timeconv
 %type <str> NUMBER qstring lvalue TIMEUNIT
 %type <str> SEMICOLON NEWLINE
 
@@ -141,21 +143,21 @@ selector	: tagList
 			}
 			;
 
-dataClause : DATA IN LPAREN timeref COMMA timeref RPAREN limit
+dataClause : DATA IN LPAREN timeref COMMA timeref RPAREN limit timeconv
 			{
-				$$ = &dataquery{dtype: IN_TYPE, start: $4, end: $6, limit: $8}
+				$$ = &dataquery{dtype: IN_TYPE, start: $4, end: $6, limit: $8, timeconv: $9}
 			}
-		   | DATA IN timeref COMMA timeref limit
+		   | DATA IN timeref COMMA timeref limit timeconv
 			{
-				$$ = &dataquery{dtype: IN_TYPE, start: $3, end: $5, limit: $6}
+				$$ = &dataquery{dtype: IN_TYPE, start: $3, end: $5, limit: $6, timeconv: $7}
 			}
-		   | DATA BEFORE timeref limit
+		   | DATA BEFORE timeref limit timeconv
 			{
-				$$ = &dataquery{dtype: BEFORE_TYPE, start: $3, limit: $4}
+				$$ = &dataquery{dtype: BEFORE_TYPE, start: $3, limit: $4, timeconv: $5}
 			}
-		   | DATA AFTER timeref limit
+		   | DATA AFTER timeref limit timeconv
 			{
-				$$ = &dataquery{dtype: AFTER_TYPE, start: $3, limit: $4}
+				$$ = &dataquery{dtype: AFTER_TYPE, start: $3, limit: $4, timeconv: $5}
 			}
 		   ;
 
@@ -258,6 +260,21 @@ limit		: /* empty */
 				$$ = datalimit{limit: limit_num, streamlimit: slimit_num}
 			}
 			;
+
+timeconv    : /* empty */
+            {
+                $$ = UOT_MS
+            }
+            | AS TIMEUNIT
+            {
+                uot, err := parseUOT($2)
+                if err != nil {
+                    SQlex.(*SQLex).Error(fmt.Sprintf("Could not parse unit of time %v (%v)", $2, err))
+                }
+                $$ = uot
+            }
+            ;
+
 
 
 whereClause : WHERE whereList
@@ -429,12 +446,14 @@ type dataquery struct {
 	start		_time.Time
 	end			_time.Time
 	limit		datalimit
+    timeconv  UnitOfTime
 }
 
 type datalimit struct {
 	limit		int64
 	streamlimit int64
 }
+
 
 type SQLex struct {
 	querystring string
@@ -464,6 +483,7 @@ func NewSQLex(s string) *SQLex {
 			{Token: AFTER, Pattern: "after"},
 			{Token: COMMA, Pattern: ","},
 			{Token: AND, Pattern: "and"},
+			{Token: AS, Pattern: "as"},
 			{Token: DATA, Pattern: "data"},
 			{Token: OR, Pattern: "or"},
 			{Token: IN, Pattern: "in"},
