@@ -284,9 +284,9 @@ whereClause : WHERE whereList
 			;
 
 
-whereTerm : lvalue LIKE QREGEX
+whereTerm : lvalue LIKE qstring
 			{
-				$$ = Dict{$1: Dict{"$like": $3}}
+				$$ = Dict{$1: Dict{"$regex": $3}}
 			}
 		  | lvalue EQ qstring
 			{
