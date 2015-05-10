@@ -267,7 +267,21 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		}
 		data, _ = json.Marshal(res)
 	case DELETE_TYPE: //TODO: when implementing DELETE, remember to signal republisher.MetadataChange
-		return data, fmt.Errorf("DELETE not yet implemented")
+		var (
+			err error
+			res bson.M
+		)
+		if len(lex.query.Contents) > 0 { // RemoveTags
+			res, err = a.store.RemoveTags(lex.query.ContentsBson(), apikey, lex.query.WhereBson())
+		} else { // RemoveDocs
+			res, err = a.store.RemoveDocs(apikey, lex.query.WhereBson())
+		}
+		a.republisher.MetadataChangeKeys(lex.keys)
+		log.Info("results %v", res)
+		if err != nil {
+			return data, err
+		}
+		data, _ = json.Marshal(res)
 	case SET_TYPE:
 		res, err := a.store.UpdateTags(lex.query.SetBson(), apikey, lex.query.WhereBson())
 		if err != nil {

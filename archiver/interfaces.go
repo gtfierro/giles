@@ -53,29 +53,46 @@ type MetadataStore interface {
 	// "sandbox" deployments, it can be helpful to call this with False, which will
 	// allow ALL operations on ANY streams.
 	EnforceKeys(enforce bool)
+
 	// Returns true if the key @apikey is allowed to write to each of the
 	// streams listed in @messages. Should check each SmapMessage.UUID value.
 	CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error)
+
 	// Commits the metadata contained in each SmapMessage to the metadata
 	// store. Should consult the following properties of SmapMessage:
 	// Properties, Metadata, Actuator
 	SaveTags(messages map[string]*SmapMessage)
+
 	// Retrieves the tags indicated by @target for documents that match the
 	// @where clause. If @is_distinct is true, then it will return a list of
 	// distinct values for the tag @distinct_key
 	GetTags(target bson.M, is_distinct bool, distinct_key string, where bson.M) ([]interface{}, error)
+
 	// For all documents that match the where clause @where, apply the updates
 	// contained in @updates, provided that the key @apikey is valid for all of
 	// them
 	UpdateTags(updates bson.M, apikey string, where bson.M) (bson.M, error)
+
+	// Removes all documents that match the where clause @where, provided that the
+	// key @apikey is valid for them
+	RemoveDocs(apikey string, where bson.M) (bson.M, error)
+
+	// Unapplies all tags in the list @target for all documents that match the
+	// where clause @where, after checking the API key
+	RemoveTags(target bson.M, apikey string, where bson.M) (bson.M, error)
+
 	// Returns all metadata for a given UUID
 	UUIDTags(uuid string) (bson.M, error)
+
 	// Resolve a where clause to a slice of UUIDs
 	GetUUIDs(where bson.M) ([]string, error)
+
 	// Returns the unit of time for the stream identified by the given UUID.
 	GetUnitOfTime(uuid string) UnitOfTime
+
 	// Returns the stream type for the stream identified by the given UUID
 	GetStreamType(uuid string) StreamType
+
 	// For the given UUID, returns the uint32 stream id.
 	//TODO: this is only needed for ReadingDB. Figure out a better way of using this method
 	GetStreamId(uuid string) uint32

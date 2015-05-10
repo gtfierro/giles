@@ -91,6 +91,12 @@ query		: SELECT selector whereClause SEMICOLON
 				SQlex.(*SQLex).query.where = $3
 				SQlex.(*SQLex).query.qtype = DELETE_TYPE
 			}
+			| DELETE whereClause SEMICOLON
+			{
+				SQlex.(*SQLex).query.Contents = []string{}
+				SQlex.(*SQLex).query.where = $2
+				SQlex.(*SQLex).query.qtype = DELETE_TYPE
+			}
 			;
 
 tagList		: lvalue

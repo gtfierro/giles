@@ -255,6 +255,40 @@ func (ms *MongoStore) UpdateTags(updates bson.M, apikey string, where bson.M) (b
 	return bson.M{"Updated": info.Updated}, nil
 }
 
+func (ms *MongoStore) RemoveDocs(apikey string, where bson.M) (bson.M, error) {
+	var res bson.M
+	uuids, err := ms.GetUUIDs(where)
+	if err != nil {
+		return res, err
+	}
+	for _, uuid := range uuids {
+		ok, canWriteErr := ms.CanWrite(apikey, uuid)
+		if !ok || canWriteErr != nil {
+			return res, canWriteErr
+		}
+	}
+	ci, removeErr := ms.metadata.RemoveAll(where)
+	log.Info("Removed %v records", ci.Removed)
+	return bson.M{"Removed": ci.Removed}, removeErr
+}
+
+func (ms *MongoStore) RemoveTags(updates bson.M, apikey string, where bson.M) (bson.M, error) {
+	var res bson.M
+	uuids, err := ms.GetUUIDs(where)
+	if err != nil {
+		return res, err
+	}
+	for _, uuid := range uuids {
+		ok, canWriteErr := ms.CanWrite(apikey, uuid)
+		if !ok || canWriteErr != nil {
+			return res, canWriteErr
+		}
+	}
+	info, updateErr := ms.metadata.UpdateAll(where, bson.M{"$unset": updates})
+	log.Info("Updated %v records", info.Updated)
+	return bson.M{"Updated": info.Updated}, updateErr
+}
+
 // Return all metadata for a certain UUID
 func (ms *MongoStore) UUIDTags(uuid string) (bson.M, error) {
 	staged := ms.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"_id": 0, "_api": 0})
