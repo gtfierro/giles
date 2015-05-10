@@ -185,7 +185,7 @@ The `where-clause` construction is used in nearly all sMAP queries, not just `se
 | Operator | Description | Usage | Example |
 |:--------:| ----------- | ----- | ------  |
 |  `=`     | Compare tag values.  | `tagname = "tagval"` | `Metadata/Location/Building = "Soda Hall"` |
-|  `like`  | String matching. Use `%` to act as a wildcard (think like regex `.*`) | `tagname like "pattern"` | `Metadata/Instrument/Manufacturer like "Dent%"` |
+|  `like`  | String matching. Use Perl-style regex | `tagname like "pattern"` | `Metadata/Instrument/Manufacturer like "Dent.*"` |
 | `has`    | Filters streams that have the provided tag | `has tagname` | `has Metadata/System` |
 | `and`    | Logical AND of two queries (on either side) | `where-clause and where-clause` | `has Metadata/System and Properties/UnitofTime = "s"` |
 | `or`     | Logical OR of two queries | | |
@@ -375,6 +375,29 @@ smap> set Metadata/NewTag = "New Value" where not has Metadata/NewTag
 
 Unless Giles is configured to ignore API keys, a `set` command will only apply tags to streams that match the where clause
 AND have the same API key as the query invoker.
+
+### Delete Query
+
+<p class="message">
+<b>delete</b> tag-list <b>where</b> where-clause
+<b>delete where</b> where-clause
+</p>
+
+Currently, Giles only supports delete queries on metadata, not timeseries data. A delete query is applied to all documents that match the provided where-clause.
+`tag-list` is a comma-separated list of tag names. If provided, the delete query will remove those tags from all matched documents. If `tag-list` is ommitted,
+the delete query will remove **every document** that matches the where clause.
+
+Example of removing tags from a set of documents
+
+```bash
+smap> delete Metadata/System, Metadata/OtherTag  where Metadata/System = "Botched Value";
+```
+
+Example of removing set of documents
+
+```bash
+smap> delete where Path like "/oldsensordeployment/.*"
+```
 
 ## <a name="republish"></a>Republish
 
