@@ -33,7 +33,7 @@ Notes here
 %token <str> SELECT DISTINCT DELETE SET
 %token <str> WHERE
 %token <str> DATA BEFORE AFTER LIMIT STREAMLIMIT NOW
-%token <str> LVALUE QSTRING QREGEX
+%token <str> LVALUE QSTRING
 %token <str> EQ NEQ COMMA ALL
 %token <str> LIKE AS
 %token <str> AND OR HAS NOT IN
@@ -500,7 +500,6 @@ func NewSQLex(s string) *SQLex {
 			{Token: NUMBER, Pattern: "([+-]?([0-9]*\\.)?[0-9]+)"},
 			{Token: LVALUE, Pattern: "[a-zA-Z\\~\\$\\_][a-zA-Z0-9\\/\\%_\\-]*"},
 			{Token: QSTRING, Pattern: "(\"[^\"\\\\]*?(\\.[^\"\\\\]*?)*?\")|('[^'\\\\]*?(\\.[^'\\\\]*?)*?')"},
-			{Token: QREGEX, Pattern: "%?[a-zA-Z0-9]+%?"},
 		})
 	scanner.SetInput(s)
 	q := &query{Contents: []string{}, distinct: false, data: &dataquery{}}
