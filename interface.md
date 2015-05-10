@@ -121,9 +121,9 @@ A `selector` can be
 
     ```json
     [
-      "GeneralControl", 
-      "HVAC", 
-      "Lighting", 
+      "GeneralControl",
+      "HVAC",
+      "Lighting",
       "Monitoring"
     ]
     ```
@@ -195,15 +195,74 @@ The `where-clause` construction is used in nearly all sMAP queries, not just `se
 ### Data Query
 
 <p class="message">
-<b>select data in</b> (start-reference, end-reference) limit <b>where</b> where-clause
+<b>select data in</b> (start-reference, end-reference) limit as <b>where</b> where-clause
 <br />
-<b>select data before</b> reference limit <b>where</b> where-clause
+<b>select data before</b> reference limit as <b>where</b> where-clause
 <br />
-<b>select data after</b> reference limit <b>where</b> where-clause
+<b>select data after</b> reference limit as <b>where</b> where-clause
 </p>
 
 You can access stored data from multiple streams by using a data query. Data matching the indicated ranges will be returned for each of the
 streams that match the provided `where-clause`.
+
+#### As
+
+The `as` component allows a query to specify what units of time it would like the data returned as. The default is milliseconds, but the user
+can specify others (ns, us, ms, s) as per the Unix-compatible notation in the Time Reference table below.
+
+For a sample source, here's the same data point with 4 different units of time. Obviously the resolution is only as good as the underlying source. The
+archiver does not add additional time resolution, so if our source published in milliseconds, querying for data as micro- or nanoseconds would not return
+more detailed information. The sample source here reported in nanoseconds.
+
+**Also note that the nanosecond representation is returned in scientific notation. This is a known issue and will be fixed in an upcoming release**
+
+```
+smap> select data before now as s where uuid = "50e4113d-f58e-468f-b197-8b90a49d42e9";
+{
+  "Readings": [
+    [
+    1431290271.0,
+    577
+    ]
+  ],
+  "uuid": "50e4113d-f58e-468f-b197-8b90a49d42e9"
+}
+
+smap> select data before now as ms where uuid = "50e4113d-f58e-468f-b197-8b90a49d42e9";
+{
+  "Readings": [
+    [
+    1431290271944.0,
+    577
+    ]
+  ],
+  "uuid": "50e4113d-f58e-468f-b197-8b90a49d42e9"
+}
+
+smap> select data before now as us where uuid = "50e4113d-f58e-468f-b197-8b90a49d42e9";
+{
+  "Readings": [
+    [
+    1431290271944557.0,
+    577
+    ]
+  ],
+  "uuid": "50e4113d-f58e-468f-b197-8b90a49d42e9"
+}
+
+smap> select data before now as ns where uuid = "50e4113d-f58e-468f-b197-8b90a49d42e9";
+{
+  "Readings": [
+    [
+    1.431290271944557e+18,
+    577
+    ]
+  ],
+  "uuid": "50e4113d-f58e-468f-b197-8b90a49d42e9"
+}
+
+```
+
 
 #### Limit
 
@@ -242,9 +301,9 @@ counting leap seconds. In Python, the current Unix time (in seconds) can be foun
 
     ```python
     import time
-    # Python actually returns the milliseconds as a decimal, 
+    # Python actually returns the milliseconds as a decimal,
     # so we use int to coerce to seconds only
-    print int(time.time()) 
+    print int(time.time())
     ```
 
     Giles includes support for Unix-style timestamps in units other than seconds. By suffixing timestamps with one of the unit abbreviations
@@ -267,7 +326,7 @@ counting leap seconds. In Python, the current Unix time (in seconds) can be foun
   * `1/2/2006 15:04:05 MST`
   * `1-2-2006` rather than `1/2/2006` is also supported
 
-    These time strings follow the [canonical Go reference time](http://golang.org/pkg/time/#Parse), which is defined to be 
+    These time strings follow the [canonical Go reference time](http://golang.org/pkg/time/#Parse), which is defined to be
 
     ```
     Mon Jan 2 15:04:05 -0700 MST 2006
@@ -399,7 +458,7 @@ Illustrated here are the JSON-versions of sMAP objects, though translations of t
 {
     "/sensor0": {                           // At the top level of a sMAP object is the Path
         "Metadata": {                       // Metadata describes attributes of the data source, and is specified
-            "Location": {                   //  as nested dictionaries. Here, "Berkeley" is under the key 
+            "Location": {                   //  as nested dictionaries. Here, "Berkeley" is under the key
                 "City": "Berkeley"          //  Metadata/Location/City
             },
             "SourceName": "Test Source"     // Metadata/SourceName is how the plotter identifies a stream of data
@@ -407,7 +466,7 @@ Illustrated here are the JSON-versions of sMAP objects, though translations of t
         "Properties": {                         // Properties describe attributes of the stream. These MUST be
             "Timezone": "America/Los_Angeles",  //  kept consistent, because they affect how the stream is stored.
             "ReadingType": "double",        // If a "numeric" stream, designates the class of number permitted
-            "UnitofMeasure": "Watt",        // Units of measure for the stream 
+            "UnitofMeasure": "Watt",        // Units of measure for the stream
             "UnitofTime": "ms",             // Units of time used in the timestamp
             "StreamType": "numeric",        // Describes type of data in Readings: "numeric" or "object"
         },
@@ -468,7 +527,7 @@ to change the city from Berkeley to Mendocino, we would send the following objec
 ```
 
 For the HTTP interface, each of these JSON objects would be sent as the body of a HTTP POST request sent to the `/add/<key>` resource of a running
-archiver. 
+archiver.
 
 In Python, using the [`requests`](http://docs.python-requests.org/en/latest/) library, this would look like
 
