@@ -1,11 +1,13 @@
 package main
 
 import (
+	_ "code.google.com/p/go-uuid/uuid"
 	"fmt"
 	"log"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // regular expression for finding Client headers in the config files
@@ -74,19 +76,6 @@ func GetConfigs(cfg Config) map[int64]Client {
 //	1:Input -> 1:Output -> 2:Input -> 2:Output
 // Alt serial:
 //	1:Input -> 2:Input -> 1:Output -> 2:Output
-//
-// Aside from some syntactic sugar to handle loops/repetitions, this is probably good enough for the regression tests
-// we're going to be running. Parsing should be fairly straightforward, providing that the syntax doesn't change much.
-// The question now is how to implement!
-// The Do() and Check() methods of the client have the same signature, namely
-//	func() error
-// So we could wrap them up in a struct and then chain calls
-// 	type Step struct {
-//		This	func() error
-//		Next	Step
-//	}
-//
-
 type Step struct {
 	this func() error
 	err  error
@@ -124,7 +113,6 @@ func (s *Step) Err() error {
 // Now to parse the layout
 
 func ParseLayout(layout string, clients map[int64]Client) []*Step {
-	log.Printf("layout %v\n", layout)
 	parallelChunks := strings.Split(layout, ";")
 	steps := make([]*Step, len(parallelChunks))
 	for idx, chunk := range parallelChunks {
@@ -150,6 +138,12 @@ func ParseLayout(layout string, clients map[int64]Client) []*Step {
 		steps[idx] = localStep
 	}
 	return steps
+}
+
+func ParseData(data string) string {
+	t := fmt.Sprintf("%v", time.Now().UnixNano())
+	data = strings.Replace(data, "$TIME", t, -1)
+	return data
 }
 
 func getMethod(method string, c Client) func() error {

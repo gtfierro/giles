@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/fatih/color"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
@@ -17,7 +18,7 @@ func main() {
 	}
 
 	for _, filename := range files {
-		log.Printf("Running file %v", filename)
+		color.Cyan("Running file %v", filename)
 		contents, err := ioutil.ReadFile(filename)
 		if err != nil {
 			log.Fatalf("Error reading file %v (%v)\n", filename, err)
@@ -43,13 +44,13 @@ func main() {
 		hasError := false
 		for _, e := range errors {
 			if e != nil {
-				log.Printf("Error on chain: %v", e)
+				color.Red("Error on chain: %v", e)
 				hasError = true
 			}
 		}
 
 		if !hasError {
-			log.Printf("Test [%v] passed!\n", m["name"].(string))
+			color.Green("Test [%v] passed!", m["name"].(string))
 		}
 
 	}

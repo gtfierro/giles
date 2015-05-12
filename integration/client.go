@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 // This is a basic HTTP client that fulfills the expected Client interface
@@ -42,10 +43,13 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 	switch format {
 	case "JSON":
 		toMarshal := make(map[string]interface{})
-		dec := json.NewDecoder(bytes.NewReader([]byte(cfgInput["Data"].(string))))
+		datastring := ParseData(cfgInput["Data"].(string))
+		dec := json.NewDecoder(bytes.NewReader([]byte(datastring)))
 		dec.UseNumber()
 		dec.Decode(&toMarshal)
 		data, encodeErr = json.Marshal(toMarshal)
+	case "string":
+		data = []byte(strings.TrimSpace(cfgInput["Data"].(string)))
 	}
 	if encodeErr != nil {
 		return h, fmt.Errorf("Error encoding data %v as %v (%v)\n", cfgInput["Data"], format, encodeErr)
