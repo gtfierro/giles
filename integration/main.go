@@ -12,7 +12,7 @@ import (
 func main() {
 	var wg sync.WaitGroup
 
-	files, findErr := filepath.Glob("*.yaml")
+	files, findErr := filepath.Glob("tests/*.yaml")
 	if findErr != nil {
 		log.Fatalf("Error reading yaml files in current directory (%v)", findErr)
 	}
@@ -50,7 +50,7 @@ func main() {
 		}
 
 		if !hasError {
-			color.Green("Test [%v] passed!", m["name"].(string))
+			color.Green("Test [%v] passed!\n\n", m["name"].(string))
 		}
 
 	}

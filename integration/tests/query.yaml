@@ -1,0 +1,14 @@
+name: Query data
+layout: 1:Input -> 1:Output
+Client:1:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/api/query
+        Format: string
+        Data: >
+            select distinct Metadata/SourceName
+    Output:
+        Code: 200
+        Contents: '["Demo Driver"]'
+        Format: JSON
