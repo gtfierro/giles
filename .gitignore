@@ -1,6 +1,7 @@
 # binaries
 giles
 gilescmd/gilescmd
+integration/integration
 
 # build directories
 gilescmd/build
