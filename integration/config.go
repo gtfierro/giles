@@ -95,7 +95,6 @@ type Step struct {
 
 func NewStep(f func() error) *Step {
 	s := &Step{this: f, err: nil}
-	log.Printf("s %v", s)
 	return s
 }
 
@@ -108,8 +107,17 @@ func (s *Step) Then(f func() error) *Step {
 func (s *Step) Run() {
 	s.err = s.this()
 	if s.next != nil {
-		log.Printf("run %v", s.next)
 		s.next.Run()
+	}
+}
+
+func (s *Step) Err() error {
+	if s.err != nil {
+		return s.err
+	} else if s.next != nil {
+		return s.next.Err()
+	} else {
+		return nil
 	}
 }
 
@@ -118,7 +126,6 @@ func (s *Step) Run() {
 func ParseLayout(layout string, clients map[int64]Client) []*Step {
 	log.Printf("layout %v\n", layout)
 	parallelChunks := strings.Split(layout, ";")
-	log.Printf("num chunks %v\n", len(parallelChunks))
 	steps := make([]*Step, len(parallelChunks))
 	for idx, chunk := range parallelChunks {
 		clientStrings := strings.Split(chunk, "->")

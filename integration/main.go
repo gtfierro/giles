@@ -4,31 +4,53 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
+	"path/filepath"
 	"sync"
 )
 
 func main() {
 	var wg sync.WaitGroup
 
-	filename := "test.yaml"
-	contents, err := ioutil.ReadFile(filename)
-	if err != nil {
-		log.Fatalf("Error reading file %v (%v)\n", filename, err)
-	}
-	m := make(Config)
-	err = yaml.Unmarshal(contents, &m)
-	if err != nil {
-		log.Fatalf("Error decoding yaml (%v)\n", err)
+	files, findErr := filepath.Glob("*.yaml")
+	if findErr != nil {
+		log.Fatalf("Error reading yaml files in current directory (%v)", findErr)
 	}
 
-	clients := GetConfigs(m)
-	steps := ParseLayout(m["layout"].(string), clients)
-	for _, step := range steps {
-		wg.Add(1)
-		go func(s *Step) {
-			s.Run()
-			defer wg.Done()
-		}(step)
+	for _, filename := range files {
+		log.Printf("Running file %v", filename)
+		contents, err := ioutil.ReadFile(filename)
+		if err != nil {
+			log.Fatalf("Error reading file %v (%v)\n", filename, err)
+		}
+		m := make(Config)
+		err = yaml.Unmarshal(contents, &m)
+		if err != nil {
+			log.Fatalf("Error decoding yaml (%v)\n", err)
+		}
+
+		clients := GetConfigs(m)
+		steps := ParseLayout(m["layout"].(string), clients)
+		errors := make([]error, len(steps))
+		for idx, step := range steps {
+			wg.Add(1)
+			go func(idx int, s *Step) {
+				s.Run()
+				errors[idx] = s.Err()
+				defer wg.Done()
+			}(idx, step)
+		}
+		wg.Wait()
+		hasError := false
+		for _, e := range errors {
+			if e != nil {
+				log.Printf("Error on chain: %v", e)
+				hasError = true
+			}
+		}
+
+		if !hasError {
+			log.Printf("Test [%v] passed!\n", m["name"].(string))
+		}
+
 	}
-	wg.Wait()
 }

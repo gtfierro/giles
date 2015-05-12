@@ -78,18 +78,15 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 
 func (hc *HTTPClient) Input() error {
 	var err error
-	fmt.Printf("do %v\n", hc.GetID())
 	client := &http.Client{}
 	hc.response, err = client.Do(hc.req)
 	return err
 }
 
 func (hc *HTTPClient) Output() error {
-	fmt.Printf("check before %v\n", hc.GetID())
 	if hc.response == nil {
 		return fmt.Errorf("Nil response")
 	}
-	fmt.Println("check")
 	if hc.response.StatusCode != hc.expectedCode {
 		return fmt.Errorf("Status code was %v but expected %v\n", hc.response.StatusCode, hc.expectedCode)
 	}
