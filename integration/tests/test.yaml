@@ -7,7 +7,7 @@ Client:1:
         URI: http://localhost:8079/add/apikey
         Format: JSON
         Data:  > 
-            {"/sensor0": {"Readings": [[1351043674000,0]],"uuid": "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"}}
+            {"/sensor0": {"Readings": [[$TIME_MS,0]],"uuid": "d24325e6-1d7d-11e2-ad69-a7c2fa8dba61"}}
     Output:
         Code: 200
         Contents: ''
@@ -20,7 +20,7 @@ Client:2:
         URI: http://localhost:8079/add/apikey
         Format: JSON
         Data:  > 
-            {"/sensor0": {"Readings": [[1351043674000,0]],"uuid": "d34325e6-1d7d-11e2-ad69-a7c2fa8dba61"}}
+            {"/sensor0": {"Readings": [[$TIME_MS,0]],"uuid": "d34325e6-1d7d-11e2-ad69-a7c2fa8dba61"}}
     Output:
         Code: 200
         Contents: ''

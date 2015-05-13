@@ -140,10 +140,32 @@ func ParseLayout(layout string, clients map[int64]Client) []*Step {
 	return steps
 }
 
+var timeFinder = regexp.MustCompile(`\$TIME_([NMU]?S)`)
+
 func ParseData(data string) string {
-	t := fmt.Sprintf("%v", time.Now().UnixNano())
-	data = strings.Replace(data, "$TIME", t, -1)
+	if timeFinder.MatchString(data) {
+		found := timeFinder.FindAllStringSubmatch(data, -1)
+		for _, match := range found {
+			t := convertTime(time.Now().UnixNano(), match[1])
+			ts := fmt.Sprintf("%v", t)
+			data = strings.Replace(data, match[0], ts, 1)
+		}
+	}
 	return data
+}
+
+func convertTime(time int64, toUnit string) int64 {
+	switch toUnit {
+	case "NS":
+		return time
+	case "US":
+		return int64(float64(time) / float64(1e3))
+	case "MS":
+		return int64(float64(time) / float64(1e6))
+	case "S":
+		return int64(float64(time) / float64(1e9))
+	}
+	return time
 }
 
 func getMethod(method string, c Client) func() error {

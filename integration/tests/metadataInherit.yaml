@@ -25,7 +25,7 @@ Client:2:
         Format: JSON
         Data: >
             {"/root/sensors/0":
-                {"Readings": [[$TIME, 1]],
+                {"Readings": [[$TIME_MS, 1]],
                  "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea"}
             }
     Output:
