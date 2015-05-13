@@ -1,0 +1,37 @@
+name: nanosecond formatting in queries
+layout: 1:Input -> 1:Output -> Sleep:6s -> 2:Input -> 2:Output
+Client:1:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/add/apikey
+        Format: JSON
+        Data: >
+            {
+                "/nanosecondsensor": {
+                    "Properties": {
+                        "UnitofTime": "ns"
+                    },
+                    "uuid": "dafb266c-f92f-11e4-bcda-0cc47a0f7eea",
+                    "Readings": [[1431494282265821952, 1]]
+                }
+            }
+    Output:
+        Code: 200
+        Contents: ''
+        Format: string
+Client:2:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/api/query
+        Format: string
+        Data: "select data before now where uuid = 'dafb266c-f92f-11e4-bcda-0cc47a0f7eea'"
+    Output:
+        Code: 200
+        Format: JSON
+        Contents: >
+            [{
+                "uuid": "dafb266c-f92f-11e4-bcda-0cc47a0f7eea",
+                "Readings": [[1431494282265821952, 1]]
+            }]
