@@ -7,9 +7,11 @@ Client:1:
         URI: http://localhost:8079/add/apikey
         Format: JSON
         Data: >
-            {"/root":
-                {"Metadata":
-                    {"XYZ": 123}
+            {
+                "/root": {
+                    "Metadata": {
+                        "XYZ": 123
+                    }
                 }
             }
     Output:
@@ -24,9 +26,16 @@ Client:2:
         URI: http://localhost:8079/add/apikey
         Format: JSON
         Data: >
-            {"/root/sensors/0":
-                {"Readings": [[$TIME_MS, 1]],
-                 "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea"}
+            {
+                "/root/sensors/0": {
+                    "Readings": [
+                        [
+                            $TIME_MS,
+                            1
+                        ]
+                    ],
+                    "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea"
+                }
             }
     Output:
         Code: 200
@@ -44,8 +53,13 @@ Client:3:
         Code: 200
         Format: JSON
         Contents: >
-            {
-             "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea",
-             "Path": "/root/sensors/0",
-             "Metadata": {"XYZ": 123}
-             }
+            [{
+                "Metadata": {
+                    "XYZ": 123
+                },
+                "Properties": {
+                    "UnitofTime": "ms"
+                },
+                "Path": "/root/sensors/0",
+                "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea"
+            }]

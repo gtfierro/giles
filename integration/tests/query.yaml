@@ -10,5 +10,5 @@ Client:1:
             select distinct Metadata/SourceName
     Output:
         Code: 200
-        Contents: '["Demo Driver"]'
+        Contents: '[]'
         Format: JSON
