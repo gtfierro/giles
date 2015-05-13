@@ -1,0 +1,38 @@
+name: metadata inheritance same message
+layout: 1:Input -> 1:Output -> 2:Input -> 2:Output
+Client:1:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/add/apikey
+        Format: JSON
+        Data: >
+            {"/root":
+                {"Metadata":
+                    {"XYZ": 123}
+                },
+             "/root/sensors/0":
+                {"Readings": [[$TIME_MS, 1]],
+                 "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea"}
+            }
+    Output:
+        Code: 200
+        Contents: ''
+        Format: string
+
+Client:2:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/api/query
+        Format: string
+        Data: select * where uuid = "44e79444-f902-11e4-bcda-0cc47a0f7eea"
+    Output:
+        Code: 200
+        Format: JSON
+        Contents: >
+            {
+             "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea",
+             "Path": "/root/sensors/0",
+             "Metadata": {"XYZ": 123}
+             }
