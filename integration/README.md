@@ -8,7 +8,6 @@ Look in the `tests/` folder for some example tests
 
 ### TODO:
 
-* macros for `$TIME` in different units
 * handling parsing JSON for expected output
 * lots more tests
 * warn when you define a client in a test that isn't included in layout

@@ -73,10 +73,7 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 	}
 	h.expectedCode = code.(int)
 	h.expectedContents = contents.(string)
-	switch format {
-	case "string":
-	case "JSON":
-	}
+	h.expectedFormat = format.(string)
 	return h, nil
 }
 
@@ -94,11 +91,19 @@ func (hc *HTTPClient) Output() error {
 	if hc.response.StatusCode != hc.expectedCode {
 		return fmt.Errorf("Status code was %v but expected %v\n", hc.response.StatusCode, hc.expectedCode)
 	}
-	contents, err := ioutil.ReadAll(hc.response.Body)
-	if err != nil {
-		return err
+	var outputOK = false
+	defer hc.response.Body.Close()
+	contents, readErr := ioutil.ReadAll(hc.response.Body)
+	if readErr != nil {
+		return fmt.Errorf("Error when reading HTTP response body (%v)\n", readErr)
 	}
-	if string(contents) != hc.expectedContents {
+	switch hc.expectedFormat {
+	case "string":
+		outputOK = checkString(string(contents), hc.expectedContents)
+	case "JSON":
+		outputOK = checkJSON(string(contents), hc.expectedContents)
+	}
+	if !outputOK {
 		return fmt.Errorf("Contents were [%v] but expected [%v]\n", string(contents), hc.expectedContents)
 	}
 	return nil
