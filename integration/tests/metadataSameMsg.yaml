@@ -50,9 +50,9 @@ Client:2:
         Code: 200
         Format: JSON
         Contents: >
-            {
+            [{
              "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea",
              "Path": "/root/sensors/0",
              "Metadata": {"XYZ": 123},
              "Properties": {"UnitofTime": "ms"}
-             }
+             }]

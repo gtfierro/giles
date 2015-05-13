@@ -34,7 +34,7 @@ Client:2:
                             1
                         ]
                     ],
-                    "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea"
+                    "uuid": "4f461dc6-f92e-11e4-bcda-0cc47a0f7eea"
                 }
             }
     Output:
@@ -48,7 +48,7 @@ Client:3:
         Method: POST
         URI: http://localhost:8079/api/query
         Format: string
-        Data: select * where uuid = "44e79444-f902-11e4-bcda-0cc47a0f7eea"
+        Data: select * where uuid = "4f461dc6-f92e-11e4-bcda-0cc47a0f7eea"
     Output:
         Code: 200
         Format: JSON
@@ -61,5 +61,5 @@ Client:3:
                     "UnitofTime": "ms"
                 },
                 "Path": "/root/sensors/0",
-                "uuid": "44e79444-f902-11e4-bcda-0cc47a0f7eea"
+                "uuid": "4f461dc6-f92e-11e4-bcda-0cc47a0f7eea"
             }]
