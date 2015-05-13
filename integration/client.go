@@ -46,8 +46,10 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 		datastring := ParseData(cfgInput["Data"].(string))
 		dec := json.NewDecoder(bytes.NewReader([]byte(datastring)))
 		dec.UseNumber()
-		dec.Decode(&toMarshal)
-		data, encodeErr = json.Marshal(toMarshal)
+		encodeErr = dec.Decode(&toMarshal)
+		if encodeErr == nil {
+			data, encodeErr = json.Marshal(toMarshal)
+		}
 	case "string":
 		data = []byte(strings.TrimSpace(cfgInput["Data"].(string)))
 	}
