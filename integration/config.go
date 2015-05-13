@@ -12,6 +12,7 @@ import (
 
 // regular expression for finding Client headers in the config files
 var clientMatcher = regexp.MustCompile(`^Client:[0-9]+$`)
+var sleepMatcher = regexp.MustCompile(`^Sleep:([0-9]+)([nmu]?s)$`)
 
 // Wrapper type to simplify later code
 type Config map[interface{}]interface{}
@@ -67,15 +68,15 @@ func GetConfigs(cfg Config) map[int64]Client {
 
 // Given a config file, how do we parse the layout line and then set up the Clients for execution in the desired order?
 // A execution layout will be 1 or more serial executions performed in parallel. The simplest serial chain is
-//	1:Input -> 1:Output
+//  1:Input -> 1:Output
 // Which means: run the Input for Client 1, then wait for the Output for Client 1.
 // If we have 2 clients, we can have them run in parallel or in serial.
 // Parallel:
-//	1:Input -> 1:Output; 2:Input -> 2:Output
+//  1:Input -> 1:Output; 2:Input -> 2:Output
 // Serial:
-//	1:Input -> 1:Output -> 2:Input -> 2:Output
+//  1:Input -> 1:Output -> 2:Input -> 2:Output
 // Alt serial:
-//	1:Input -> 2:Input -> 1:Output -> 2:Output
+//  1:Input -> 2:Input -> 1:Output -> 2:Output
 type Step struct {
 	this func() error
 	err  error
@@ -121,18 +122,47 @@ func ParseLayout(layout string, clients map[int64]Client) []*Step {
 		var nextStep *Step
 		for chunkIdx, cs := range clientStrings {
 			cs = strings.TrimSpace(cs)
-			_split := strings.Split(cs, ":")
-			clientIdStr, clientMethod := _split[0], _split[1]
-			clientId, convErr := strconv.ParseInt(clientIdStr, 10, 64)
-			if convErr != nil {
-				log.Fatalf("Could not identify clientId in string %v (%v)\n", clientIdStr, convErr)
-			}
-			if chunkIdx == 0 {
-				localStep = NewStep(getMethod(clientMethod, clients[clientId]))
-			} else if chunkIdx == 1 {
-				nextStep = localStep.Then(getMethod(clientMethod, clients[clientId]))
+			if sleepMatcher.MatchString(cs) {
+				found := sleepMatcher.FindStringSubmatch(cs)
+				sleepInt, _ := strconv.ParseInt(found[1], 10, 64)
+				sleepUnit := time.Duration(sleepInt)
+				var sleepDuration time.Duration
+				switch found[2] {
+				case "s":
+					sleepDuration = sleepUnit * time.Second
+				case "ms":
+					sleepDuration = sleepUnit * time.Millisecond
+				case "us":
+					sleepDuration = sleepUnit * time.Microsecond
+				case "ns":
+					sleepDuration = sleepUnit * time.Nanosecond
+				}
+				sleep := func() error {
+					fmt.Printf("sleep %v\n", sleepDuration)
+					time.Sleep(sleepDuration)
+					return nil
+				}
+				if chunkIdx == 0 {
+					localStep = NewStep(sleep)
+				} else if chunkIdx == 1 {
+					nextStep = localStep.Then(sleep)
+				} else {
+					nextStep = nextStep.Then(sleep)
+				}
 			} else {
-				nextStep = nextStep.Then(getMethod(clientMethod, clients[clientId]))
+				_split := strings.Split(cs, ":")
+				clientIdStr, clientMethod := _split[0], _split[1]
+				clientId, convErr := strconv.ParseInt(clientIdStr, 10, 64)
+				if convErr != nil {
+					log.Fatalf("Could not identify clientId in string %v (%v)\n", clientIdStr, convErr)
+				}
+				if chunkIdx == 0 {
+					localStep = NewStep(getMethod(clientMethod, clients[clientId]))
+				} else if chunkIdx == 1 {
+					nextStep = localStep.Then(getMethod(clientMethod, clients[clientId]))
+				} else {
+					nextStep = nextStep.Then(getMethod(clientMethod, clients[clientId]))
+				}
 			}
 		}
 		steps[idx] = localStep
