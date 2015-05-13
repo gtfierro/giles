@@ -5,6 +5,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"sync"
 )
@@ -12,9 +13,22 @@ import (
 func main() {
 	var wg sync.WaitGroup
 
-	files, findErr := filepath.Glob("tests/*.yaml")
-	if findErr != nil {
-		log.Fatalf("Error reading yaml files in current directory (%v)", findErr)
+	var files []string
+	var findErr error
+
+	if len(os.Args) > 1 {
+		for _, file := range os.Args[1:] {
+			found, findErr := filepath.Glob(file)
+			if findErr != nil {
+				log.Fatalf("Error finding file %v (%v)", file, findErr)
+			}
+			files = append(files, found...)
+		}
+	} else {
+		files, findErr = filepath.Glob("tests/*.yaml")
+		if findErr != nil {
+			log.Fatalf("Error reading yaml files in current directory (%v)", findErr)
+		}
 	}
 
 	for _, filename := range files {
