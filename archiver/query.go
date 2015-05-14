@@ -101,7 +101,7 @@ const SQEofCode = 1
 const SQErrCode = 2
 const SQMaxDepth = 200
 
-//line query.y:351
+//line query.y:355
 const eof = 0
 
 var supported_formats = []string{"1/2/2006",
@@ -944,15 +944,19 @@ SQdefault:
 	case 46:
 		//line query.y:338
 		{
-			SQVAL.dict = Dict{"$not": SQS[SQpt-0].dict} // fix this to negate all items in $2
+			tmp := make(Dict)
+			for k, v := range SQS[SQpt-0].dict {
+				tmp[k] = Dict{"$ne": v}
+			}
+			SQVAL.dict = tmp
 		}
 	case 47:
-		//line query.y:342
+		//line query.y:346
 		{
 			SQVAL.dict = SQS[SQpt-1].dict
 		}
 	case 48:
-		//line query.y:346
+		//line query.y:350
 		{
 			SQVAL.dict = SQS[SQpt-0].dict
 		}

@@ -320,7 +320,7 @@ qstring   : QSTRING
 
 lvalue    : LVALUE
           {
-            
+
 		    SQlex.(*SQLex)._keys[$1] = struct{}{}
             $$ = cleantagstring($1)
           }
@@ -336,7 +336,11 @@ whereList : whereList AND whereList
 			}
 		  | NOT whereList
 			{
-				$$ = Dict{"$not": $2} // fix this to negate all items in $2
+                tmp := make(Dict)
+                for k,v := range $2 {
+                    tmp[k] = Dict{"$ne": v}
+                }
+				$$ = tmp
 			}
 		  | LPAREN whereList RPAREN
 			{
