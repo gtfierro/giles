@@ -113,15 +113,7 @@ func NewArchiver(c *Config) *Archiver {
 	switch *c.Archiver.TSDB {
 	/** connect to ReadingDB */
 	case "readingdb":
-		rdbaddr, err := net.ResolveTCPAddr("tcp4", *c.ReadingDB.Address+":"+*c.ReadingDB.Port)
-		if err != nil {
-			log.Fatal("Error parsing ReadingDB address: %v", err)
-		}
-		tsdb = NewReadingDB(rdbaddr, *c.Archiver.Keepalive)
-		tsdb.AddStore(store)
-		if tsdb == nil {
-			log.Fatal("Error connecting to ReadingDB instance")
-		}
+		log.Fatal("No current support for ReadingDB")
 		/** connect to Quasar */
 	case "quasar":
 		qsraddr, err := net.ResolveTCPAddr("tcp4", *c.Quasar.Address+":"+*c.Quasar.Port)
