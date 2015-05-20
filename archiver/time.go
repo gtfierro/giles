@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -14,61 +13,6 @@ var unitmultiplier = map[UnitOfTime]uint64{
 	UOT_US: 1000000,
 	UOT_MS: 1000,
 	UOT_S:  1}
-
-// Takes a string specifying a time, and returns a canonical Time object representing that string.
-// To consider: should this instead return the kind of timestamp expected by ReadingDB? Or can that
-// be handled by another method? I think the latter is the way to go on this, that way I can use
-// this method for displaying and the like
-//
-// Need to support the following:
-// now
-// now -1h
-// now +1h -10m
-// %m/%d/%Y
-// %m-%d-%Y
-// %m/%d/%Y %M:%H
-// %m-%d-%Y %M:%H
-// %Y-%m-%dT%H:%M:%S
-//
-// Go time layout: Mon Jan 2 15:04:05 -0700 MST 2006
-// * 01/02/2006
-// * 01-02-2006
-// * 01/02/2006 04:15
-// * 01-02-2006 04:15
-// * 2006-01-02 15:04:05
-//TODO: deprecate + remove tests
-func handleTime(portions []string) (time.Time, error) {
-	ret := time.Now()
-	idx := len(portions) - 1
-	portions[idx] = strings.Replace(portions[idx], ")", "", -1)
-	isNowToken := regexp.MustCompile("now")
-	// check if parsing relative timestamps
-	if isNowToken.MatchString(portions[0]) {
-		for _, val := range portions[1:] {
-			// parse the relative duration
-			dur, err := parseIntoDuration(val)
-			if err != nil {
-				return ret, err
-			}
-			// adjust the time by the duration amount
-			ret = ret.Add(dur)
-		}
-	} else {
-		portions[0] = strings.Replace(portions[idx], "(", "", -1)
-		portions[0] = strings.Replace(portions[idx], ",", "", -1)
-		timestring := strings.Join(portions, " ")
-		log.Debug("parsing", timestring)
-		for _, format := range supported_formats {
-			t, err := time.Parse(format, timestring)
-			if err != nil {
-				continue
-			}
-			ret = t
-			break
-		}
-	}
-	return ret, nil
-}
 
 func parseReltime(num, units string) (time.Duration, error) {
 	var d time.Duration

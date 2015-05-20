@@ -227,8 +227,6 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 // generated AST. Any actual computation is done as calls to the Archiver API, so if you want
 // to use your own query language or handle queries in some external handler, then you shouldn't
 // need to use any of this method; just use the Archiver API
-//
-//TODO: expand the query language to allow the specification of units of time
 func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	var data []byte
 	var res []interface{}
@@ -258,7 +256,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 			return data, err
 		}
 		data, _ = json.Marshal(res)
-	case DELETE_TYPE: //TODO: when implementing DELETE, remember to signal republisher.MetadataChange
+	case DELETE_TYPE:
 		var (
 			err error
 			res bson.M

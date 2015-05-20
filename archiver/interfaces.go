@@ -92,10 +92,6 @@ type MetadataStore interface {
 
 	// Returns the stream type for the stream identified by the given UUID
 	GetStreamType(uuid string) StreamType
-
-	// For the given UUID, returns the uint32 stream id.
-	//TODO: this is only needed for ReadingDB. Figure out a better way of using this method
-	GetStreamId(uuid string) uint32
 }
 
 type APIKeyManager interface {

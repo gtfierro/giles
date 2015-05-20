@@ -58,7 +58,6 @@ type Subscriber interface {
 	// to unsubscribe the client. The client can of course disconnect on its own
 	// without notifying the Republisher, but this means we cannot protect against
 	// memory leaks resulting from infinitely adding new clients
-	//TODO: maybe add a client ping to test for health?
 	GetNotify() <-chan bool
 }
 
@@ -78,34 +77,6 @@ type RepublishClient struct {
 // included in Giles.  The focus of this version of the republisher is SPEED:
 // efficient discovery of who to deliver a new message to, and efficient
 // reevaluation of queries in the face of new commands + data
-//
-// The basic approach will be to create a normalization for the metadata
-// queries that are used to describe subscriptions to data. Once we have a
-// hashable normalization, we can use them as keys in maps.
-//
-// In order to get efficient lookup of who to forward an incoming message to,
-// we use a map of UUID -> list of clients. The UUID is provided in each
-// message, so this is a simple lookup. TODO: how well does this scale?
-//
-// To facilitate efficient reevaluation of queries, the key is to quickly
-// identify the subset of queries that need to be redone. When a change to the
-// metadata occurs, the Republisher.MetadataChange method should be called with
-// the relevant message.  This message will contain the new metadata that is to
-// be considered.  During the parsing of queries (or perhaps in conjunction
-// with the parsing), there should be a method that keeps track of the metadata
-// keys that are mentioned in the query. In addition, we need a technique that
-// normalizes a query and creates a perfect hash -- this is to get around
-// complications of having queries either represented as flexible strings or as
-// non-hashable maps.
-//
-// This gives the ability to have two helpful maps. The first is a simple map
-// from query -> list of clients that have made that query. The second is a map
-// from metadata key -> list of queries that include that key. What this allows
-// us to do is on the receipt of a metadata change, we can use the keys involved
-// in the change to look up a list of queries that could be affected, reevaluate
-// each of those queries, and then adjust the subscription list of UUIDs on each
-// of the clients associated with that query (if needed -- it could be the case
-// that a metadata change does not affect a query or any clients).
 type Republisher struct {
 	sync.RWMutex
 
@@ -207,7 +178,6 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 	<-client.notify
 
 	r.Lock()
-	//TODO: fixup removing client
 	for i, pubclient := range r.clients {
 		if pubclient == client {
 			r.clients = append(r.clients[:i], r.clients[i+1:]...)
