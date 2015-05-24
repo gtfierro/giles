@@ -152,7 +152,6 @@ func (ms *MongoStore) CanWrite(apikey, uuid string) (bool, error) {
 		if uuid == "" {
 			return false, err
 		}
-		//log.Debug("inserting uuid %v with api %v", uuid, apikey)
 		err = ms.metadata.Insert(bson.M{"uuid": uuid, "_api": apikey})
 		if err != nil {
 			return false, err
@@ -206,7 +205,6 @@ func (ms *MongoStore) SavePathMetadata(messages map[string]*SmapMessage) error {
 
 		pathBson["Path"] = path
 		setBson["$set"] = toWrite
-		log.Debug("saving path metadata %v", toWrite)
 		_, retErr = ms.pathmetadata.Upsert(pathBson, setBson)
 
 	}
@@ -266,10 +264,8 @@ func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) e
 			toWrite["Actuator."+k] = v
 		}
 
-		log.Debug("toWrite %v", toWrite)
 		setBson["$set"] = toWrite
 		uuidBson["uuid"] = msg.UUID
-		log.Debug("inserting metadata %v %v", uuidBson, setBson)
 		_, retErr = ms.metadata.Upsert(uuidBson, setBson)
 		if retErr != nil {
 			log.Critical("error saving md %v", retErr)
@@ -289,11 +285,8 @@ func (ms *MongoStore) GetTags(target bson.M, is_distinct bool, distinct_key stri
 	if uuidErr != nil {
 		return res, uuidErr
 	}
-	log.Debug("where %v", where)
-	log.Debug("UUIDS %v", uuids)
 	staged = ms.metadata.Find(bson.M{"uuid": bson.M{"$in": uuids}}).Select(bson.M{"_id": 0, "_api": 0})
 	err = staged.All(&res)
-	log.Debug("found: %v", res)
 
 	if len(target) == 0 {
 		staged = ms.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
