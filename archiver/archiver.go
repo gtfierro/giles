@@ -180,6 +180,10 @@ func NewArchiver(c *Config) *Archiver {
 // out to any concerned republish clients, and commits the reading to the timeseries database.
 // Returns an error, which is nil if all went well
 func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) error {
+	var (
+		pathMdErr error
+		tsMdErr   error
+	)
 	if a.enforceKeys {
 		ok, err := a.store.CheckKey(apikey, readings)
 		if err != nil {
@@ -191,7 +195,16 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 		}
 	}
 	// save metadata
-	a.store.SaveTags(readings)
+	pathMdErr = a.store.SavePathMetadata(readings)
+	if pathMdErr != nil {
+		return pathMdErr
+	}
+
+	tsMdErr = a.store.SaveTimeseriesMetadata(readings)
+	if tsMdErr != nil {
+		return tsMdErr
+	}
+
 	// if any of these are NOT nil, then we signal the republisher
 	// that some metadata may have changed
 	for _, rdg := range readings {

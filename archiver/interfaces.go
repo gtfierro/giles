@@ -58,10 +58,12 @@ type MetadataStore interface {
 	// streams listed in @messages. Should check each SmapMessage.UUID value.
 	CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error)
 
-	// Commits the metadata contained in each SmapMessage to the metadata
-	// store. Should consult the following properties of SmapMessage:
-	// Properties, Metadata, Actuator
-	SaveTags(messages map[string]*SmapMessage)
+	// Associates metadata k/v pairs with non-terminal (non-timeseries) Paths
+	SavePathMetadata(messages map[string]*SmapMessage) error
+
+	// Associates metadata k/v pairs with timeserise paths. Inherits
+	// from PathMetadata before applying timeseries-specific tags
+	SaveTimeseriesMetadata(messages map[string]*SmapMessage) error
 
 	// Retrieves the tags indicated by @target for documents that match the
 	// @where clause. If @is_distinct is true, then it will return a list of

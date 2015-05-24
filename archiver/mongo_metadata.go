@@ -12,11 +12,15 @@ import (
 	"sync/atomic"
 )
 
+// default select clause to ignore internal variables
+var ignoreDefault = bson.M{"_id": 0, "_api": 0}
+
 type MongoStore struct {
 	session        *mgo.Session
 	db             *mgo.Database
 	streams        *mgo.Collection
 	metadata       *mgo.Collection
+	pathmetadata   *mgo.Collection
 	apikeys        *mgo.Collection
 	apikeylock     sync.Mutex
 	maxsid         *uint32
@@ -46,6 +50,7 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 	db := session.DB("archiver")
 	streams := db.C("streams")
 	metadata := db.C("metadata")
+	pathmetadata := db.C("pathmetadata")
 	apikeys := db.C("apikeys")
 	// create indexes
 	index := mgo.Index{
@@ -60,6 +65,13 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		log.Fatalf("Could not create index on metadata.uuid (%v)", err)
 	}
 
+	index.Key = []string{"Path"}
+	err = pathmetadata.EnsureIndex(index)
+	if err != nil {
+		log.Fatalf("Could not create index on pathmetadata.Path (%v)", err)
+	}
+
+	index.Key = []string{"uuid"}
 	err = streams.EnsureIndex(index)
 	if err != nil {
 		log.Fatalf("Could not create index on streams.uuid (%v)", err)
@@ -78,16 +90,17 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		maxsid = maxstreamid.StreamId + 1
 	}
 	return &MongoStore{session: session,
-		db:          db,
-		streams:     streams,
-		metadata:    metadata,
-		apikeys:     apikeys,
-		maxsid:      &maxsid,
-		uuidcache:   NewCache(1000),
-		apikcache:   NewCache(1000),
-		uotcache:    NewCache(1000),
-		streamtype:  NewCache(1000),
-		enforceKeys: true}
+		db:           db,
+		streams:      streams,
+		metadata:     metadata,
+		pathmetadata: pathmetadata,
+		apikeys:      apikeys,
+		maxsid:       &maxsid,
+		uuidcache:    NewCache(1000),
+		apikcache:    NewCache(1000),
+		uotcache:     NewCache(1000),
+		streamtype:   NewCache(1000),
+		enforceKeys:  true}
 }
 
 /* MetadataStore interface implementation*/
@@ -149,18 +162,32 @@ func (ms *MongoStore) CanWrite(apikey, uuid string) (bool, error) {
 	return true, nil
 }
 
-/*
-The incoming messages will be in the form of {pathname: metadata/properties/etc}.
-Only the timeseries will have UUIDs attached. When we receive a message like this, we need
-to compress all of the prefix-path kv pairs into each of the timeseries, and then save those
-timeseries to the metadata collection
-*/
-func (ms *MongoStore) SaveTags(messages map[string]*SmapMessage) {
+// SavePathMetadata takes a map of paths to sMAP messages and saves them to the
+// path metadata store.  The Path keys can be terminal paths, e.g. the full
+// path of a timeseries, which are identified by the linked sMAP message having
+// a UUID (and optionally a Readings) field. Path keys can also be non-terminal
+// paths, which do not have an associated UUID.
+//
+// This method stores the metadata associated with paths, indexed by each path.
+// The pathmetadata collection should be queried internally by SaveTimeseriesMetadata
+// to build up the full document for each individual timeseries
+func (ms *MongoStore) SavePathMetadata(messages map[string]*SmapMessage) error {
+	var (
+		toWrite  bson.M
+		setBson  = bson.M{"$set": ""}
+		pathBson = bson.M{"Path": ""}
+		retErr   error
+	)
 	for path, msg := range messages {
-		if msg.UUID == "" || (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil) {
+		// check if we have anything to do
+		if msg.Path == "" || (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil) {
 			continue
 		}
-		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
+
+		// construct base object
+		toWrite = bson.M{"Path": path}
+
+		// populate the toWrite object with the metadata
 		if msg.Metadata != nil && len(msg.Metadata) > 0 {
 			for k, v := range msg.Metadata {
 				toWrite["Metadata."+k] = v
@@ -176,28 +203,80 @@ func (ms *MongoStore) SaveTags(messages map[string]*SmapMessage) {
 				toWrite["Actuator."+k] = v
 			}
 		}
-		for _, prefix := range getPrefixes(path) { // accumulate all metadata for this timeseries
-			if messages[prefix] == nil {
-				continue
-			}
-			if messages[prefix].Metadata != nil {
-				for k, v := range messages[prefix].Metadata {
-					toWrite["Metadata."+k] = v
+
+		pathBson["Path"] = path
+		setBson["$set"] = toWrite
+		log.Debug("saving path metadata %v", toWrite)
+		_, retErr = ms.pathmetadata.Upsert(pathBson, setBson)
+
+	}
+	return retErr
+}
+
+// Here, we are handed a chunk of incoming sMAP messages, which can include both non-terminal
+// and terminal (timeseries) paths. Timeseries (terminal) paths are identified by having a UUID
+// key in their SmapMessage struct. For each of these, we decompose the full timeseries Path
+// into its components -- e.g. /a/b/c -> /, /a, /a/b -- and inherit from the PathMetadata
+// collection into the metadata for this source. Timeseries-specific metadata is then upserted
+// into this document, and the result is saved in the Metadata collection
+func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) error {
+	var (
+		one      bson.M
+		queryErr error
+		retErr   error
+		ignore   = bson.M{"_id": 0, "_api": 0, "Path": 0}
+		setBson  = bson.M{"$set": ""}
+		uuidBson = bson.M{"uuid": ""}
+	)
+	querypath := bson.M{"Path": ""}
+	for path, msg := range messages {
+		if msg.UUID == "" { // not a timeseries path
+			continue
+		}
+		// here, we know we have a timeseries path, so we initialize the eventual document
+		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
+
+		// for each of its prefixes, fetch the document from the PathMetadata collection
+		// and merge it into the toWrite doc
+		for _, prefix := range getPrefixes(path) {
+			if queryErr == nil {
+				querypath["Path"] = prefix
+
+				// ignore "not found" path errors
+				queryErr = ms.pathmetadata.Find(querypath).Select(ignore).One(&one)
+				if queryErr != nil && queryErr.Error() == "not found" {
+					queryErr = nil
 				}
-			}
-			if messages[prefix].Properties != nil {
-				for k, v := range messages[prefix].Properties {
-					toWrite["Properties."+k] = v
+
+				// do the merge
+				for k, v := range one {
+					toWrite[k] = v
 				}
 			}
 		}
-		if len(toWrite) > 0 {
-			_, err := ms.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
-			if err != nil {
-				log.Critical("Error saving metadata for %v: %v", msg.UUID, err)
-			}
+
+		// finally, merge in the timeseries-specific metadata
+		for k, v := range msg.Metadata {
+			toWrite["Metadata."+k] = v
+		}
+		for k, v := range msg.Properties {
+			toWrite["Properties."+k] = v
+		}
+		for k, v := range msg.Actuator {
+			toWrite["Actuator."+k] = v
+		}
+
+		log.Debug("toWrite %v", toWrite)
+		setBson["$set"] = toWrite
+		uuidBson["uuid"] = msg.UUID
+		log.Debug("inserting metadata %v %v", uuidBson, setBson)
+		_, retErr = ms.metadata.Upsert(uuidBson, setBson)
+		if retErr != nil {
+			log.Critical("error saving md %v", retErr)
+			return retErr
 		}
 	}
+	return queryErr
 }
 
 // Retrieves the tags indicated by `target` for documents that match the `where` clause. If `is_distinct` is true,
@@ -206,6 +285,16 @@ func (ms *MongoStore) GetTags(target bson.M, is_distinct bool, distinct_key stri
 	var res []interface{}
 	var err error
 	var staged *mgo.Query
+	uuids, uuidErr := ms.GetUUIDs(where)
+	if uuidErr != nil {
+		return res, uuidErr
+	}
+	log.Debug("where %v", where)
+	log.Debug("UUIDS %v", uuids)
+	staged = ms.metadata.Find(bson.M{"uuid": bson.M{"$in": uuids}}).Select(bson.M{"_id": 0, "_api": 0})
+	err = staged.All(&res)
+	log.Debug("found: %v", res)
+
 	if len(target) == 0 {
 		staged = ms.metadata.Find(where).Select(bson.M{"_id": 0, "_api": 0})
 	} else {
