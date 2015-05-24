@@ -8,9 +8,12 @@ Client:1:
         Format: JSON
         Data: >
             {
-                "/root": {
+                "/root2": {
                     "Metadata": {
-                        "XYZ": 123
+                        "ABC": 123
+                    },
+                    "Properties": {
+                        "UnitofTime": "ms"
                     }
                 }
             }
@@ -27,14 +30,14 @@ Client:2:
         Format: JSON
         Data: >
             {
-                "/root/sensors/0": {
+                "/root2/sensors/0": {
                     "Readings": [
                         [
                             $TIME_MS,
                             1
                         ]
                     ],
-                    "uuid": "4f461dc6-f92e-11e4-bcda-0cc47a0f7eea"
+                    "uuid": "1a1f1e54-00c7-11e5-bcda-0cc47a0f7eea"
                 }
             }
     Output:
@@ -48,18 +51,18 @@ Client:3:
         Method: POST
         URI: http://localhost:8079/api/query
         Format: string
-        Data: select * where uuid = "4f461dc6-f92e-11e4-bcda-0cc47a0f7eea"
+        Data: select * where uuid = "1a1f1e54-00c7-11e5-bcda-0cc47a0f7eea"
     Output:
         Code: 200
         Format: JSON
         Contents: >
             [{
                 "Metadata": {
-                    "XYZ": 123
+                    "ABC": 123
                 },
                 "Properties": {
                     "UnitofTime": "ms"
                 },
-                "Path": "/root/sensors/0",
-                "uuid": "4f461dc6-f92e-11e4-bcda-0cc47a0f7eea"
+                "Path": "/root2/sensors/0",
+                "uuid": "1a1f1e54-00c7-11e5-bcda-0cc47a0f7eea"
             }]
