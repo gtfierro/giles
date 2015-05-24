@@ -1,5 +1,5 @@
 name: apply NOT to one part of binary query
-layout: 1:Input -> 1:Output -> 2:Input -> 2:Output
+layout: 1:Input -> 1:Output -> 2:Input -> 2:Output -> 3:Input -> 3:Output
 Client:1:
     Interface: HTTP
     Input:
@@ -28,6 +28,19 @@ Client:2:
         URI: http://localhost:8079/api/query
         Format: string
         Data: "select uuid where Metadata/Tag1 = 'ABC' and not Metadata/Tag2 = 'ABC'"
+    Output:
+        Code: 200
+        Format: JSON
+        Contents: >
+            [{"uuid":  "94078c7e-f9d3-11e4-bcda-0cc47a0f7eea"}]
+
+Client:3:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/api/query
+        Format: string
+        Data: "select uuid where (not Metadata/Tag2 = 'ABC') and Metadata/Tag1 = 'ABC'"
     Output:
         Code: 200
         Format: JSON
