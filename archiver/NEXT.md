@@ -1,7 +1,7 @@
 ## Move towards io.{Reader, Writer}
 
 This will help take care of sending and receiving large amounts of data. Using Reader and Writers instead of our
-bulk reads and writes will not only improve time spent allocating, but will also force a more pipeline oriented
+bulk reads and writes will not only reduce time spent allocating, but will also force a more pipeline oriented
 design.
 
 ### What's Next
