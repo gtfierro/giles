@@ -43,3 +43,7 @@ func (bn *BaseNode) AddChild(n Node) bool {
 	}
 	return found
 }
+
+func (bn *BaseNode) Input(args ...interface{}) {
+	fmt.Println("BaseNode has no Input")
+}

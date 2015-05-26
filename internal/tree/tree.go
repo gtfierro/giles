@@ -13,6 +13,8 @@ type Node interface {
 	Children() map[string]Node
 	// adds the given node as a child of this node
 	AddChild(n Node) bool
+	// Pass input to this node
+	Input(args ...interface{})
 }
 
 // Stores a direction from parent node to child node
