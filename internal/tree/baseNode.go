@@ -5,13 +5,13 @@ import (
 	"fmt"
 )
 
-type baseNode struct {
+type BaseNode struct {
 	id       string
 	children map[string]Node
 	tags     map[string]interface{}
 }
 
-func NewBaseNode(kv map[string]interface{}) (bn *baseNode, err error) {
+func NewBaseNode(kv map[string]interface{}) (bn *BaseNode, err error) {
 	for _, v := range kv {
 		switch v.(type) {
 		case uint64, float64, int64, string:
@@ -20,7 +20,7 @@ func NewBaseNode(kv map[string]interface{}) (bn *baseNode, err error) {
 			return
 		}
 	}
-	bn = &baseNode{
+	bn = &BaseNode{
 		id:       uuid.New(),
 		tags:     kv,
 		children: make(map[string]Node, 4),
@@ -28,15 +28,15 @@ func NewBaseNode(kv map[string]interface{}) (bn *baseNode, err error) {
 	return
 }
 
-func (bn *baseNode) Id() string {
+func (bn *BaseNode) Id() string {
 	return bn.id
 }
 
-func (bn *baseNode) Children() map[string]Node {
+func (bn *BaseNode) Children() map[string]Node {
 	return bn.children
 }
 
-func (bn *baseNode) AddChild(n Node) bool {
+func (bn *BaseNode) AddChild(n Node) bool {
 	var found bool
 	if _, found = bn.children[n.Id()]; !found {
 		bn.children[n.Id()] = n
