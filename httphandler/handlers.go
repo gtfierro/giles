@@ -15,6 +15,7 @@
 package httphandler
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/gtfierro/giles/archiver"
 	"github.com/julienschmidt/httprouter"
@@ -36,6 +37,7 @@ func Handle(a *archiver.Archiver, port int) {
 	r.POST("/add/:key", curryhandler(a, AddReadingHandler))
 	r.POST("/republish", curryhandler(a, RepublishHandler))
 	r.POST("/api/query", curryhandler(a, QueryHandler))
+	r.POST("/api/test", curryhandler(a, Query2Handler))
 	r.GET("/api/tags/uuid/:uuid", curryhandler(a, TagsHandler))
 
 	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+strconv.Itoa(port))
@@ -84,7 +86,6 @@ func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.Response
 //      }
 //    }
 func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	//TODO: add transaction coalescing
 	defer req.Body.Close()
 	apikey := ps.ByName("key")
 	messages, err := handleJSON(req.Body)
@@ -135,6 +136,28 @@ func QueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Reques
 	}
 	rw.WriteHeader(200)
 	rw.Write(res)
+}
+
+// Resolves sMAP queries and returns results
+func Query2Handler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	defer req.Body.Close()
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	key := unescape(ps.ByName("key"))
+	stringquery, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Error("Error reading query: %v", err)
+	}
+	var b bytes.Buffer
+	err = a.Query2(string(stringquery), key, &b)
+	if err != nil {
+		log.Error("Error evaluating query: %v", err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	rw.WriteHeader(200)
+	b.WriteTo(rw)
 }
 
 /**

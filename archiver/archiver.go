@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"github.com/op/go-logging"
 	"gopkg.in/mgo.v2/bson"
+	"io"
 	"net"
 	"os"
 	"time"
@@ -329,6 +330,13 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		data, _ = json.Marshal(response)
 	}
 	return data, nil
+}
+
+// TODO: first create a generic graph/node framework for adding children and finding other nodes
+// TODO: then figure out the interface between components. Data source, filter, selector, operators, etc
+// TODO: then create the graph from the parsed query
+func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error {
+	return nil
 }
 
 // For each of the streamids, fetches all data between start and end (where
