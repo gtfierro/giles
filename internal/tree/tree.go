@@ -14,7 +14,9 @@ type Node interface {
 	// adds the given node as a child of this node
 	AddChild(n Node) bool
 	// Pass input to this node
-	Input(args ...interface{})
+	Input(args ...interface{}) error
+	// Get output from the node
+	Output() (interface{}, error)
 }
 
 // Stores a direction from parent node to child node

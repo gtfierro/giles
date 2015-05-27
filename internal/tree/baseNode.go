@@ -28,6 +28,21 @@ func NewBaseNode(kv map[string]interface{}) (bn *BaseNode, err error) {
 	return
 }
 
+func InitBaseNode(bn *BaseNode, kv map[string]interface{}) (err error) {
+	for _, v := range kv {
+		switch v.(type) {
+		case uint64, float64, int64, string:
+		default:
+			err = fmt.Errorf("Value %v must be uint64, int64, float64 or string", v)
+			return
+		}
+	}
+	bn.id = uuid.New()
+	bn.tags = kv
+	bn.children = make(map[string]Node, 4)
+	return
+}
+
 func (bn *BaseNode) Id() string {
 	return bn.id
 }
@@ -44,6 +59,10 @@ func (bn *BaseNode) AddChild(n Node) bool {
 	return found
 }
 
-func (bn *BaseNode) Input(args ...interface{}) {
-	fmt.Println("BaseNode has no Input")
+func (bn *BaseNode) Input(args ...interface{}) error {
+	return fmt.Errorf("BaseNode has no Input")
+}
+
+func (bn *BaseNode) Output() (interface{}, error) {
+	return nil, fmt.Errorf("BaseNode has no Output")
 }
