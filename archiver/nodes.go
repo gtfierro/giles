@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gtfierro/giles/internal/tree"
 	"gopkg.in/mgo.v2/bson"
+	"math"
 )
 
 type NodeType uint
@@ -19,14 +20,19 @@ type OperationType uint
 
 const (
 	WINDOW OperationType = iota
+	MIN
 )
 
-var NodeLookup map[OperationType](map[NodeType]tree.Node)
+type NodeConstructor func(map[string]interface{}, ...interface{}) tree.Node
+
+var NodeLookup map[OperationType](map[NodeType]NodeConstructor)
 
 // Populate the NodeLookup table
 func init() {
 	fmt.Println("Initializing NodeLookup table...")
-	//NodeType[WINDOW] =
+	NodeLookup = make(map[OperationType](map[NodeType]NodeConstructor))
+	NodeLookup[MIN] = make(map[NodeType]NodeConstructor)
+	NodeLookup[MIN][SCALAR_TS] = NewMinScalarNode
 }
 
 /* These nodes implement the node interface in internal/tree */
@@ -118,4 +124,66 @@ func (sn *SelectDataNode) Output() (interface{}, error) {
 		response, err = sn.a.NextData(uuids, start, int32(sn.dq.limit.limit), UOT_NS, sn.dq.timeconv)
 	}
 	return response, err
+}
+
+/** Min Scalar Node **/
+
+type MinScalarNode struct {
+	data []SmapReading
+	tree.BaseNode
+}
+
+func NewMinScalarNode(kv map[string]interface{}, args ...interface{}) tree.Node {
+	msn := &MinScalarNode{}
+	kv["output"] = SCALAR
+	kv["input"] = SCALAR_TS
+	tree.InitBaseNode(&msn.BaseNode, kv)
+	return msn
+}
+
+// arg0: list of SmapReading to compute MIN of. Must be scalars
+func (msn *MinScalarNode) Input(args ...interface{}) (err error) {
+	var ok bool
+	msn.data, ok = args[0].([]SmapReading)
+	if !ok {
+		err = fmt.Errorf("Arg0 to MinScalarNode must be []SmapReading")
+	}
+	return
+}
+
+func (msn *MinScalarNode) Output() (interface{}, error) {
+	var (
+		err    error
+		result = make([]interface{}, len(msn.data))
+	)
+	if len(msn.data) == 0 {
+		err = fmt.Errorf("No data to compute min over")
+		return result, err
+	}
+	for idx, stream := range msn.data {
+		if len(stream.Readings) == 0 {
+			result[idx] = nil
+		}
+		switch stream.Readings[0][1].(type) {
+		case uint64:
+			min := uint64(math.MaxUint64)
+			for _, reading := range stream.Readings {
+				if reading[1].(uint64) < min {
+					min = reading[1].(uint64)
+				}
+			}
+		case float64:
+			min := float64(math.MaxFloat64)
+			for _, reading := range stream.Readings {
+				if reading[1].(float64) < min {
+					min = reading[1].(float64)
+				}
+			}
+		default:
+			err = fmt.Errorf("Data type in (%v) was not uint64 or float64 (scalar)", msn.data[0])
+		}
+		result[idx] = min
+	}
+
+	return result, err
 }
