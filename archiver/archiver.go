@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gtfierro/giles/internal/tree"
 	"github.com/op/go-logging"
 	"gopkg.in/mgo.v2/bson"
 	"io"
@@ -332,10 +333,23 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	return data, nil
 }
 
-// TODO: first create a generic graph/node framework for adding children and finding other nodes
 // TODO: then figure out the interface between components. Data source, filter, selector, operators, etc
 // TODO: then create the graph from the parsed query
 func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error {
+	log.Info(querystring)
+	lex := Parse(querystring)
+	if lex.error != nil {
+		return fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
+	}
+	log.Debug("query %v", lex.query)
+	wn := NewWhereNode(nil, lex.query.WhereBson(), a.store)
+	t := tree.NewTree(wn)
+	t.Root.Input()
+	res, err := t.Root.Output()
+	log.Debug("node %v %v", res, err)
+	sn := NewSelectDataNode(nil, a, lex.query.data)
+	t.AddChild(wn, sn)
+	t.Run()
 	return nil
 }
 
