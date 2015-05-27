@@ -80,11 +80,11 @@ type RepublishClient struct {
 type Republisher struct {
 	sync.RWMutex
 
+	// Pointer to archiver
+	a *Archiver
+
 	// list of all republish clients (unique)
 	clients [](*RepublishClient)
-
-	// reference to the metadata store (should be added by archiver.go)
-	store MetadataStore
 
 	// stores hash -> query object
 	queries map[QueryHash]*Query
@@ -99,8 +99,10 @@ type Republisher struct {
 	uuidConcern map[string][]QueryHash
 }
 
-func NewRepublisher() *Republisher {
-	return &Republisher{clients: [](*RepublishClient){},
+func NewRepublisher(a *Archiver) *Republisher {
+	return &Republisher{
+		a:            a,
+		clients:      [](*RepublishClient){},
 		queries:      make(map[QueryHash]*Query),
 		queryConcern: make(map[QueryHash][](*RepublishClient)),
 		keyConcern:   make(map[string][]QueryHash),
@@ -114,14 +116,14 @@ func NewRepublisher() *Republisher {
 // that describes what the client is subscribing to. This query should be a
 // valid sMAP query
 func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
-	q := HandleQuery(query)
+	q := r.HandleQuery(query)
 	if prev_q, found := r.queries[q.hash]; found {
 		// this query has already been done
 		q = prev_q
 	} else {
 		// add it to the cache of queries
-		uuids, err := r.store.GetUUIDs(q.where)
-		//q.uuids, err = r.store.GetUUIDs(q.where)
+		uuids, err := r.a.store.GetUUIDs(q.where)
+		//q.uuids, err = r.a.store.GetUUIDs(q.where)
 		if err != nil {
 			s.SendError(err)
 			return
@@ -249,7 +251,7 @@ func (r *Republisher) EvaluateQuery(qh QueryHash) {
 
 	// mark UUIDs that match the new query with 'true'. Old UUIDs no longer
 	// covered will still be marked as 'false'
-	uuids, err := r.store.GetUUIDs(query.where)
+	uuids, err := r.a.store.GetUUIDs(query.where)
 
 	if err != nil {
 		log.Error("Received error when getting UUIDs for %v: (%v)", query.where, err)

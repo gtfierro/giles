@@ -62,7 +62,7 @@ type Archiver struct {
 }
 
 // Creates a new Archiver instance:
-func NewArchiver(c *Config) *Archiver {
+func NewArchiver(c *Config) (a *Archiver) {
 
 	logBackendLeveled := logging.AddModuleLevel(logBackend)
 	// handle log level
@@ -131,10 +131,6 @@ func NewArchiver(c *Config) *Archiver {
 		log.Fatal(c.Archiver.TSDB, " is not a valid timeseries database")
 	}
 
-	// Configure republisher
-	republisher := NewRepublisher()
-	republisher.store = store
-
 	// Configure Object store
 	var objstore ObjectStore
 	switch *c.Archiver.Objects {
@@ -163,17 +159,24 @@ func NewArchiver(c *Config) *Archiver {
 			c.SSH.PasswordEnabled, c.SSH.KeyAuthEnabled)
 		go sshscs.Listen()
 	}
-	return &Archiver{tsdb: tsdb,
+	a = &Archiver{tsdb: tsdb,
 		store:                store,
 		objstore:             objstore,
 		manager:              manager,
-		republisher:          republisher,
 		incomingcounter:      newCounter(),
 		pendingwritescounter: newCounter(),
 		coalescer:            NewTransactionCoalescer(&tsdb, &store),
 		sshscs:               sshscs,
 		enforceKeys:          c.Archiver.EnforceKeys}
 
+	// Configure query processor
+	qp := NewQueryProcessor(a)
+	a.qp = qp
+
+	// Configure republisher
+	republisher := NewRepublisher(a)
+	a.republisher = republisher
+	return
 }
 
 // Takes a map of string/SmapMessage (path, sMAP JSON object) and commits them to
