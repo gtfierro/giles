@@ -127,3 +127,44 @@ func (t *Tree) HasCycle() (hasCycle bool) {
 	}
 	return
 }
+
+// Run() starts at the root, then iterates through nodes following BFS. Starting with the root,
+// it runs Output() to get the results, then feeds the output into each of the Input() of the children
+// nodes, then runs Output() on each of those children, etc. To be specific, the Output() of a parent
+// node is fed to Input() on each child nodes when those nodes are added to the stack/queue, and Output()
+// is called when they are popped from that queue
+func (t *Tree) Run() (err error) {
+	var (
+		next     interface{}
+		nextNode Node
+		q        = NewQueue()
+		output   interface{}
+	)
+	q.Push(t.Root)
+	for {
+		// pop next node off of queue
+		next = q.Pop()
+
+		// check if we are done
+		if next == nil {
+			return
+		}
+
+		// assert type
+		nextNode = next.(Node)
+		// get Output
+		output, err = nextNode.Output()
+		fmt.Printf("got output %v", output)
+		if err != nil {
+			return
+		}
+		for _, childNode := range nextNode.Children() {
+			err = childNode.Input(output)
+			if err != nil {
+				return
+			}
+			q.Push(childNode)
+		}
+	}
+	return nil
+}
