@@ -31,9 +31,9 @@ const (
 
 // Given a query string, tokenize and parse the query, also keeping
 // track of what keys are mentioned in the query.
-func HandleQuery(querystring string) *Query {
+func (r *Republisher) HandleQuery(querystring string) *Query {
 	q := &Query{}
-	lex := Parse("select * where " + querystring)
+	lex := r.a.qp.Parse("select * where " + querystring)
 	q.where = lex.query.WhereBson()
 	q.keys = lex.keys
 	q.hash = QueryHash(strings.Join(lex.tokens, ""))

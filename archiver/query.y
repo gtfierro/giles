@@ -5,12 +5,10 @@ package archiver
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"github.com/taylorchu/toki"
 	"strconv"
 	"gopkg.in/mgo.v2/bson"
     _time "time"
-    "strings"
 )
 
 
@@ -22,6 +20,7 @@ Notes here
 %union{
 	str string
 	dict Dict
+    oplist []*OpNode
 	data *dataquery
 	limit datalimit
     timeconv UnitOfTime
@@ -30,21 +29,22 @@ Notes here
     timediff _time.Duration
 }
 
-%token <str> SELECT DISTINCT DELETE SET
+%token <str> SELECT DISTINCT DELETE SET APPLY
 %token <str> WHERE
 %token <str> DATA BEFORE AFTER LIMIT STREAMLIMIT NOW
-%token <str> LVALUE QSTRING
-%token <str> EQ NEQ COMMA ALL
+%token <str> LVALUE QSTRING OPERATOR
+%token <str> EQ NEQ COMMA ALL LEFTPIPE
 %token <str> LIKE AS
-%token <str> AND OR HAS NOT IN
+%token <str> AND OR HAS NOT IN TO
 %token <str> LPAREN RPAREN
 %token NUMBER
 %token SEMICOLON
 %token NEWLINE
 %token TIMEUNIT
 
-%type <dict> whereList whereTerm whereClause setList
+%type <dict> whereList whereTerm whereClause setList opArgs
 %type <list> selector tagList
+%type <oplist> operatorList
 %type <data> dataClause
 %type <time> timeref abstime
 %type <timediff> reltime
@@ -97,6 +97,13 @@ query		: SELECT selector whereClause SEMICOLON
 				SQlex.(*SQLex).query.where = $2
 				SQlex.(*SQLex).query.qtype = DELETE_TYPE
 			}
+            | APPLY operatorList TO dataClause whereClause SEMICOLON
+            {
+				SQlex.(*SQLex).query.where = $5
+				SQlex.(*SQLex).query.data = $4
+                SQlex.(*SQLex).query.operators  = $2
+				SQlex.(*SQLex).query.qtype = APPLY_TYPE
+            }
 			;
 
 tagList		: lvalue
@@ -352,6 +359,38 @@ whereList : whereList AND whereList
 			}
 		  ;
 
+operatorList    : LVALUE LPAREN opArgs RPAREN
+                {
+                    o := &OpNode{Operator: $1, Arguments: $3}
+                    $$ = []*OpNode{o}
+                }
+                | LVALUE LPAREN opArgs RPAREN LEFTPIPE operatorList
+                {
+                    o := &OpNode{Operator: $1, Arguments: $3}
+                    $$ = append($6, o)
+                }
+                ;
+
+opArgs  : LVALUE EQ NUMBER
+        {
+            fmt.Printf("op args %v %v\n", $1, $3)
+            $$ = Dict{$1: $3}
+        }
+        | LVALUE EQ qstring
+        {
+            $$ = Dict{$1: $3}
+        }
+        | LVALUE EQ NUMBER COMMA opArgs
+        {
+            $5[$1] = $3
+            $$ = $5
+        }
+        | LVALUE EQ qstring COMMA opArgs
+        {
+            $5[$1] = $3
+            $$ = $5
+        }
+        ;
 %%
 
 const eof = 0
@@ -364,12 +403,17 @@ var supported_formats = []string{"1/2/2006",
                                  "2006-1-2 15:04:05 MST"}
 type Dict map[string]interface{}
 type List []string
+type OpNode struct {
+    Operator    string
+    Arguments   Dict
+}
 type queryType uint
 const (
 	SELECT_TYPE queryType = iota
 	DELETE_TYPE
 	SET_TYPE
 	DATA_TYPE
+    APPLY_TYPE
 )
 func (qt queryType) String() string {
 	ret := ""
@@ -399,6 +443,8 @@ type query struct {
 	distinct  bool
 	// list of tags to target for deletion, selection
 	Contents  []string
+    // formed operator tree
+    operators []*OpNode
 }
 
 func (q *query) Print() {
@@ -482,6 +528,7 @@ func NewSQLex(s string) *SQLex {
 		[]toki.Def{
 			{Token: WHERE, Pattern: "where"},
 			{Token: SELECT, Pattern: "select"},
+            {Token: APPLY, Pattern: "apply"},
 			{Token: DELETE, Pattern: "delete"},
 			{Token: DISTINCT, Pattern: "distinct"},
 			{Token: LIMIT, Pattern: "limit"},
@@ -494,6 +541,7 @@ func NewSQLex(s string) *SQLex {
 			{Token: COMMA, Pattern: ","},
 			{Token: AND, Pattern: "and"},
 			{Token: AS, Pattern: "as"},
+			{Token: TO, Pattern: "to"},
 			{Token: DATA, Pattern: "data"},
 			{Token: OR, Pattern: "or"},
 			{Token: IN, Pattern: "in"},
@@ -501,6 +549,7 @@ func NewSQLex(s string) *SQLex {
 			{Token: NOT, Pattern: "not"},
 			{Token: NEQ, Pattern: "!="},
 			{Token: EQ, Pattern: "="},
+			{Token: LEFTPIPE, Pattern: "<"},
 			{Token: LPAREN, Pattern: "\\("},
 			{Token: RPAREN, Pattern: "\\)"},
 			{Token: SEMICOLON, Pattern: ";"},
@@ -540,30 +589,5 @@ func readline(fi *bufio.Reader) (string, bool) {
 	return s, true
 }
 
-func Parse(querystring string) *SQLex {
-    if !strings.HasSuffix(querystring, ";") {
-        querystring = querystring + ";"
-    }
-	l := NewSQLex(querystring)
-    fmt.Printf("Query: %v\n", querystring)
-	SQParse(l)
-	l.query.Print()
-    l.keys = make([]string, len(l._keys))
-    i := 0
-    for key, _ := range l._keys {
-        l.keys[i] = cleantagstring(key)
-        i += 1
-    }
-    return l
-}
 
-func main() {
-	fi := bufio.NewReader(os.NewFile(0, "stdin"))
-	for {
-		if querystring, ok := readline(fi); ok {
-			Parse(querystring)
-		} else {
-			break
-		}
-	}
-}
+// Parse has been moved to query_processor.go

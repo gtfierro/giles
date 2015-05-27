@@ -53,6 +53,7 @@ type Archiver struct {
 	store                MetadataStore
 	manager              APIKeyManager
 	objstore             ObjectStore
+	qp                   *QueryProcessor
 	republisher          *Republisher
 	incomingcounter      *counter
 	pendingwritescounter *counter
@@ -253,7 +254,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		log.Info("query with key: %v", apikey)
 	}
 	log.Info(querystring)
-	lex := Parse(querystring)
+	lex := a.qp.Parse(querystring)
 	if lex.error != nil {
 		return data, fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
 	}
@@ -340,7 +341,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 // TODO: then create the graph from the parsed query
 func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error {
 	log.Info(querystring)
-	lex := Parse(querystring)
+	lex := a.qp.Parse(querystring)
 	if lex.error != nil {
 		return fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
 	}
