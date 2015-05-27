@@ -101,5 +101,4 @@ func (bn *BaseNode) Run() (err error) {
 			q.Push(childNode)
 		}
 	}
-	return nil
 }

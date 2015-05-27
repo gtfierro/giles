@@ -127,7 +127,6 @@ func (t *Tree) HasCycle() (hasCycle bool) {
 			}
 		}
 	}
-	return
 }
 
 // Run() starts at the root, then iterates through nodes following BFS. Starting with the root,
