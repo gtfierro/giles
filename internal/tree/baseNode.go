@@ -102,3 +102,8 @@ func (bn *BaseNode) Run() (err error) {
 		}
 	}
 }
+
+func (bn *BaseNode) Get(key string) (val interface{}, found bool) {
+	val, found = bn.tags[key]
+	return
+}

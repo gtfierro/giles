@@ -19,6 +19,8 @@ type Node interface {
 	Output() (interface{}, error)
 	// See Tree.Run()
 	Run() error
+	// retrieves the given key from the node
+	Get(key string) (interface{}, bool)
 }
 
 // Stores a direction from parent node to child node
