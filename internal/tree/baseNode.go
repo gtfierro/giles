@@ -68,43 +68,8 @@ func (bn *BaseNode) Input(args ...interface{}) error {
 }
 
 func (bn *BaseNode) Output() (interface{}, error) {
+	fmt.Printf("Node kv: %v\n", bn.tags)
 	return nil, fmt.Errorf("BaseNode has no Output")
-}
-
-// Starts Run() from this node. Assumes Input() has already been run
-func (bn *BaseNode) Run() (err error) {
-	var (
-		next     interface{}
-		nextNode Node
-		q        = NewQueue()
-		output   interface{}
-	)
-	q.Push(bn)
-	for {
-		// pop next node off of queue
-		next = q.Pop()
-
-		// check if we are done
-		if next == nil {
-			return
-		}
-
-		// assert type
-		nextNode = next.(Node)
-		// get Output
-		output, err = nextNode.Output()
-		fmt.Printf("got output %v", output)
-		if err != nil {
-			return
-		}
-		for _, childNode := range nextNode.Children() {
-			err = childNode.Input(output)
-			if err != nil {
-				return
-			}
-			q.Push(childNode)
-		}
-	}
 }
 
 func (bn *BaseNode) Get(key string) (val interface{}, found bool) {

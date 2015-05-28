@@ -17,8 +17,6 @@ type Node interface {
 	Input(args ...interface{}) error
 	// Get output from the node
 	Output() (interface{}, error)
-	// See Tree.Run()
-	Run() error
 	// retrieves the given key from the node
 	Get(key string) (interface{}, bool)
 	// sets a key/value pair
@@ -139,5 +137,37 @@ func (t *Tree) HasCycle() (hasCycle bool) {
 // node is fed to Input() on each child nodes when those nodes are added to the stack/queue, and Output()
 // is called when they are popped from that queue
 func (t *Tree) Run() (err error) {
-	return t.Root.Run()
+	var (
+		next     interface{}
+		nextNode Node
+		q        = NewQueue()
+		output   interface{}
+	)
+	q.Push(t.Root)
+	for {
+		// pop next node off of queue
+		next = q.Pop()
+
+		// check if we are done
+		if next == nil {
+			fmt.Printf("Finishing Run()\n")
+			return
+		}
+
+		// assert type
+		nextNode = next.(Node)
+		// get Output
+		output, err = nextNode.Output()
+		fmt.Printf("got output %v\n", output)
+		if err != nil {
+			return
+		}
+		for _, childNode := range nextNode.Children() {
+			err = childNode.Input(output)
+			if err != nil {
+				return
+			}
+			q.Push(childNode)
+		}
+	}
 }
