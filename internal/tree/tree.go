@@ -21,6 +21,8 @@ type Node interface {
 	Run() error
 	// retrieves the given key from the node
 	Get(key string) (interface{}, bool)
+	// sets a key/value pair
+	Set(key string, val interface{})
 }
 
 // Stores a direction from parent node to child node

@@ -38,7 +38,11 @@ func InitBaseNode(bn *BaseNode, kv map[string]interface{}) (err error) {
 		}
 	}
 	bn.id = uuid.New()
-	bn.tags = kv
+	if kv == nil {
+		bn.tags = make(map[string]interface{})
+	} else {
+		bn.tags = kv
+	}
 	bn.children = make(map[string]Node, 4)
 	return
 }
@@ -106,4 +110,8 @@ func (bn *BaseNode) Run() (err error) {
 func (bn *BaseNode) Get(key string) (val interface{}, found bool) {
 	val, found = bn.tags[key]
 	return
+}
+
+func (bn *BaseNode) Set(key string, val interface{}) {
+	bn.tags[key] = val
 }
