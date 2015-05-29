@@ -346,15 +346,31 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 		return fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
 	}
 	log.Debug("query %v", lex.query)
+	// create root node from WHERE clause of tree
 	wn := NewWhereNode(nil, lex.query.WhereBson(), a.store)
 	t := tree.NewTree(wn)
+	// evalutes where clause
+	// TODO: should this go into the tree.Run?
 	t.Root.Input()
-	res, err := t.Root.Output()
-	log.Debug("node %v %v", res, err)
+	// add the selector node to the tree
 	sn := NewSelectDataNode(nil, a, lex.query.data)
 	t.AddChild(wn, sn)
-	t.Run()
-	return nil
+	// run through the operators and build up the tree
+	var (
+		last    tree.Node = sn
+		newNode tree.Node
+	)
+	for _, op := range lex.query.operators {
+		fmt.Printf("OP %v\n", *op)
+		if outputType, found := last.Get("output"); found {
+			newNode = a.qp.GetNodeFromOp(op, outputType.(NodeType))
+			t.AddChild(last, newNode)
+			last = newNode
+		} else {
+			return fmt.Errorf("Node %v has no output type", last)
+		}
+	}
+	return t.Run()
 }
 
 // For each of the streamids, fetches all data between start and end (where

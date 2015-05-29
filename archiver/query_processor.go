@@ -36,3 +36,17 @@ func (qp *QueryProcessor) Parse(querystring string) *SQLex {
 	fmt.Printf("operator list %v\n", l.query.operators)
 	return l
 }
+
+func (qp *QueryProcessor) GetNodeFromOp(op *OpNode, inputType NodeType) tree.Node {
+	var (
+		operator OperationType
+		found    bool
+	)
+	if operator, found = OpLookup[op.Operator]; !found {
+		return nil
+	}
+	fmt.Printf("options %v\n", NodeLookup[operator])
+	fmt.Printf("found? %v\n", NodeLookup[operator][inputType])
+	//return
+	return NodeLookup[operator][inputType](op.Arguments)
+}

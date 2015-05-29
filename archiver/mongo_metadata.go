@@ -15,6 +15,7 @@ import (
 // default select clause to ignore internal variables
 var ignoreDefault = bson.M{"_id": 0, "_api": 0}
 
+//TODO: copy the session for a transaction -- this is faster
 type MongoStore struct {
 	session        *mgo.Session
 	db             *mgo.Database
@@ -217,6 +218,10 @@ func (ms *MongoStore) SavePathMetadata(messages map[string]*SmapMessage) error {
 // into its components -- e.g. /a/b/c -> /, /a, /a/b -- and inherit from the PathMetadata
 // collection into the metadata for this source. Timeseries-specific metadata is then upserted
 // into this document, and the result is saved in the Metadata collection
+// TODO: this is super slow: Find and Upsert take the most time. Avoid this method if we already
+// have all the new metadata!
+// Important to note: sMAP 2.0 archiver does *not* do path inheritance of metadata within the archiver.
+// Inheritance only happens w/n a source, when multiple messages are sent
 func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) error {
 	var (
 		one      bson.M
@@ -226,6 +231,10 @@ func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) e
 		setBson  = bson.M{"$set": ""}
 		uuidBson = bson.M{"uuid": ""}
 	)
+	session := ms.session.Copy()
+	pm := session.DB("archiver").C("pathmetadata")
+	md := session.DB("archiver").C("metadata")
+	defer session.Close()
 	querypath := bson.M{"Path": ""}
 	for path, msg := range messages {
 		if msg.UUID == "" { // not a timeseries path
@@ -241,7 +250,7 @@ func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) e
 				querypath["Path"] = prefix
 
 				// ignore "not found" path errors
-				queryErr = ms.pathmetadata.Find(querypath).Select(ignore).One(&one)
+				queryErr = pm.Find(querypath).Select(ignore).One(&one)
 				if queryErr != nil && queryErr.Error() == "not found" {
 					queryErr = nil
 				}
@@ -254,22 +263,30 @@ func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) e
 		}
 
 		// finally, merge in the timeseries-specific metadata
-		for k, v := range msg.Metadata {
-			toWrite["Metadata."+k] = v
+		if msg.Metadata != nil && len(msg.Metadata) > 0 {
+			for k, v := range msg.Metadata {
+				toWrite["Metadata."+k] = v
+			}
 		}
-		for k, v := range msg.Properties {
-			toWrite["Properties."+k] = v
+		if msg.Properties != nil && len(msg.Properties) > 0 {
+			for k, v := range msg.Properties {
+				toWrite["Properties."+k] = v
+			}
 		}
-		for k, v := range msg.Actuator {
-			toWrite["Actuator."+k] = v
+		if msg.Actuator != nil && len(msg.Actuator) > 0 {
+			for k, v := range msg.Actuator {
+				toWrite["Actuator."+k] = v
+			}
 		}
 
 		setBson["$set"] = toWrite
 		uuidBson["uuid"] = msg.UUID
-		_, retErr = ms.metadata.Upsert(uuidBson, setBson)
-		if retErr != nil {
-			log.Critical("error saving md %v", retErr)
-			return retErr
+		if len(toWrite) > 2 {
+			_, retErr = md.Upsert(uuidBson, setBson)
+			if retErr != nil {
+				log.Critical("error saving md %v", retErr)
+				return retErr
+			}
 		}
 	}
 	return queryErr

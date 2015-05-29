@@ -26,13 +26,17 @@ const (
 type NodeConstructor func(map[string]interface{}, ...interface{}) tree.Node
 
 var NodeLookup map[OperationType](map[NodeType]NodeConstructor)
+var OpLookup map[string]OperationType
 
-// Populate the NodeLookup table
+// Populate the NodeLookup table and OpLookup
 func init() {
 	fmt.Println("Initializing NodeLookup table...")
 	NodeLookup = make(map[OperationType](map[NodeType]NodeConstructor))
 	NodeLookup[MIN] = make(map[NodeType]NodeConstructor)
 	NodeLookup[MIN][SCALAR_TS] = NewMinScalarNode
+
+	OpLookup = make(map[string]OperationType)
+	OpLookup["min"] = MIN
 }
 
 /* These nodes implement the node interface in internal/tree */
@@ -54,6 +58,7 @@ func NewWhereNode(kv map[string]interface{}, args ...interface{}) (wn *WhereNode
 		store: args[1].(MetadataStore),
 	}
 	tree.InitBaseNode(&wn.BaseNode, kv)
+	wn.BaseNode.Set("name", "wherenode")
 	return
 }
 
@@ -88,6 +93,8 @@ func NewSelectDataNode(kv map[string]interface{}, args ...interface{}) (sn *Sele
 		dq: args[1].(*dataquery),
 	}
 	tree.InitBaseNode(&sn.BaseNode, kv)
+	// TODO: don't hardcode
+	sn.BaseNode.Set("output", SCALAR_TS)
 	return
 }
 
@@ -135,9 +142,11 @@ type MinScalarNode struct {
 
 func NewMinScalarNode(kv map[string]interface{}, args ...interface{}) tree.Node {
 	msn := &MinScalarNode{}
-	kv["output"] = SCALAR
-	kv["input"] = SCALAR_TS
 	tree.InitBaseNode(&msn.BaseNode, kv)
+
+	// TODO: don't hardcode
+	msn.BaseNode.Set("output", SCALAR)
+	msn.BaseNode.Set("input", SCALAR_TS)
 	return msn
 }
 
@@ -163,6 +172,7 @@ func (msn *MinScalarNode) Output() (interface{}, error) {
 	for idx, stream := range msn.data {
 		if len(stream.Readings) == 0 {
 			result[idx] = nil
+			continue
 		}
 		switch stream.Readings[0][1].(type) {
 		case uint64:
@@ -172,6 +182,7 @@ func (msn *MinScalarNode) Output() (interface{}, error) {
 					min = reading[1].(uint64)
 				}
 			}
+			result[idx] = min
 		case float64:
 			min := float64(math.MaxFloat64)
 			for _, reading := range stream.Readings {
@@ -179,11 +190,15 @@ func (msn *MinScalarNode) Output() (interface{}, error) {
 					min = reading[1].(float64)
 				}
 			}
+			result[idx] = min
 		default:
 			err = fmt.Errorf("Data type in (%v) was not uint64 or float64 (scalar)", msn.data[0])
 		}
-		result[idx] = min
 	}
 
+	fmt.Printf("ran! %v\n", result)
+	for _, x := range result {
+		fmt.Printf("min %v\n", x.(float64))
+	}
 	return result, err
 }
