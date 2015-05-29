@@ -1,9 +1,12 @@
 package archiver
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/gtfierro/giles/internal/tree"
+	"github.com/gtfierro/msgpack"
 	"gopkg.in/mgo.v2/bson"
+	"io"
 	"math"
 )
 
@@ -133,6 +136,37 @@ func (sn *SelectDataNode) Output() (interface{}, error) {
 	return response, err
 }
 
+/** Echo Node **/
+
+type EchoNode struct {
+	// writes its Input to the writer when Output() is called
+	w       io.Writer
+	data    *bytes.Buffer
+	mybytes []byte
+	tree.BaseNode
+}
+
+func NewEchoNode(kv map[string]interface{}, args ...interface{}) tree.Node {
+	en := &EchoNode{
+		w:       args[0].(io.Writer),
+		mybytes: make([]byte, 1024),
+	}
+	tree.InitBaseNode(&en.BaseNode, kv)
+	return en
+}
+
+// Takes the first argument and encodes it as msgpack
+func (en *EchoNode) Input(args ...interface{}) (err error) {
+	length := msgpack.Encode(args[0], &en.mybytes)
+	en.data = bytes.NewBuffer(en.mybytes[:length])
+	return nil
+}
+
+func (en *EchoNode) Output() (interface{}, error) {
+	log.Debug("EchoNode writing out %v", en.data.Len())
+	return en.data.WriteTo(en.w)
+}
+
 /** Min Scalar Node **/
 
 type MinScalarNode struct {
@@ -196,9 +230,5 @@ func (msn *MinScalarNode) Output() (interface{}, error) {
 		}
 	}
 
-	fmt.Printf("ran! %v\n", result)
-	for _, x := range result {
-		fmt.Printf("min %v\n", x.(float64))
-	}
 	return result, err
 }
