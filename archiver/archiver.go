@@ -370,6 +370,8 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 			return fmt.Errorf("Node %v has no output type", last)
 		}
 	}
+	echoClient := NewEchoNode(nil, w)
+	t.AddChild(last, echoClient)
 	return t.Run()
 }
 
