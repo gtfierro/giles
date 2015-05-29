@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/gtfierro/giles/archiver"
+	"github.com/gtfierro/msgpack"
 	"github.com/julienschmidt/httprouter"
 	"github.com/op/go-logging"
 	"io/ioutil"
@@ -156,8 +157,18 @@ func Query2Handler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Reque
 		rw.Write([]byte(err.Error()))
 		return
 	}
+	encodedbytes := b.Bytes()
+	decoded, _ := msgpack.Decode(&encodedbytes, 0)
+	log.Debug("decoded %v", decoded)
+	res, err := json.Marshal(decoded)
+	if err != nil {
+		log.Error("Error converting to json: %v", err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
 	rw.WriteHeader(200)
-	b.WriteTo(rw)
+	rw.Write(res)
 }
 
 /**
