@@ -184,7 +184,7 @@ timeref		: abstime
 			}
 			;
 
-abstime		: NUMBER TIMEUNIT
+abstime		: NUMBER LVALUE
             {
                 foundtime, err := parseAbsTime($1, $2)
                 if err != nil {
@@ -238,22 +238,6 @@ reltime		: NUMBER lvalue
                 }
                 $$ = addDurations(newDuration, $3)
             }
-            | NUMBER TIMEUNIT
-            {
-                var err error
-                $$, err = parseReltime($1, $2)
-                if err != nil {
-				    SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", $1, $2, err.Error()))
-                }
-            }
-            | NUMBER TIMEUNIT reltime
-            {
-                newDuration, err := parseReltime($1, $2)
-                if err != nil {
-				    SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", $1, $2, err.Error()))
-                }
-                $$ = addDurations(newDuration, $3)
-            }
 			;
 
 limit		: /* empty */
@@ -294,7 +278,7 @@ timeconv    : /* empty */
             {
                 $$ = UOT_MS
             }
-            | AS TIMEUNIT
+            | AS LVALUE
             {
                 uot, err := parseUOT($2)
                 if err != nil {
@@ -575,7 +559,6 @@ func NewSQLex(s string) *SQLex {
 			{Token: RPAREN, Pattern: "\\)"},
 			{Token: SEMICOLON, Pattern: ";"},
 			{Token: NEWLINE, Pattern: "\n"},
-            {Token: TIMEUNIT, Pattern: "(ns|us|ms|s)"},
 			{Token: LIKE, Pattern: "(like)|~"},
 			{Token: NUMBER, Pattern: "([+-]?([0-9]*\\.)?[0-9]+)"},
 			{Token: LVALUE, Pattern: "[a-zA-Z\\~\\$\\_][a-zA-Z0-9\\/\\%_\\-]*"},
