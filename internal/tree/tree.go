@@ -21,6 +21,8 @@ type Node interface {
 	Get(key string) (interface{}, bool)
 	// sets a key/value pair
 	Set(key string, val interface{})
+	HasOutput(structure, datatype uint) bool
+	HasInput(structure, datatype uint) bool
 }
 
 // Stores a direction from parent node to child node
@@ -158,7 +160,6 @@ func (t *Tree) Run() (err error) {
 		nextNode = next.(Node)
 		// get Output
 		output, err = nextNode.Output()
-		fmt.Printf("got output %v\n", output)
 		if err != nil {
 			return
 		}
