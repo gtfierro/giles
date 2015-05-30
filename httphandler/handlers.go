@@ -158,7 +158,7 @@ func Query2Handler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Reque
 		return
 	}
 	encodedbytes := b.Bytes()
-	decoded, _ := msgpack.Decode(&encodedbytes, 0)
+	_, decoded := msgpack.Decode(&encodedbytes, 0)
 	log.Debug("decoded %v", decoded)
 	res, err := json.Marshal(decoded)
 	if err != nil {
