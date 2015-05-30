@@ -337,8 +337,6 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	return data, nil
 }
 
-// TODO: then figure out the interface between components. Data source, filter, selector, operators, etc
-// TODO: then create the graph from the parsed query
 func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error {
 	log.Info(querystring)
 	lex := a.qp.Parse(querystring)

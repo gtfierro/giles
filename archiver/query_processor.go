@@ -57,6 +57,7 @@ func (qp *QueryProcessor) GetNodeFromOp(op *OpNode) tree.Node {
 // checks that they are potentially compatible. The actual type resolution
 // is performed when the nodes are evaluated
 func (qp *QueryProcessor) CheckOutToIn(out, in tree.Node) bool {
+	// check structures exist
 	outStructure, outFound := out.Get("out:structure")
 	inStructure, inFound := in.Get("in:structure")
 	if !inFound || !outFound {
@@ -70,7 +71,7 @@ func (qp *QueryProcessor) CheckOutToIn(out, in tree.Node) bool {
 		return false
 	}
 
-	// check datatypes
+	// check datatypes exist
 	outDatatype, outFound := out.Get("out:datatype")
 	inDatatype, inFound := in.Get("in:datatype")
 	if !outFound || !inFound {
@@ -78,7 +79,7 @@ func (qp *QueryProcessor) CheckOutToIn(out, in tree.Node) bool {
 		return false
 	}
 
-	// check structure matches
+	// check datatype matches
 	if (outDatatype.(DataType) & inDatatype.(DataType)) == 0 {
 		log.Error("Out datatype does not match in: %v %v\n", outDatatype, inDatatype)
 		return false

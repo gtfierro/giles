@@ -7,7 +7,6 @@ import (
 	"github.com/gtfierro/msgpack"
 	"gopkg.in/mgo.v2/bson"
 	"io"
-	"math"
 )
 
 type ListItem struct {
@@ -34,6 +33,8 @@ type OperationType uint
 const (
 	WINDOW OperationType = iota
 	MIN
+	MAX
+	EDGE
 )
 
 type NodeConstructor func(...interface{}) tree.Node
@@ -45,10 +46,16 @@ var OpLookup map[string]OperationType
 func init() {
 	fmt.Println("Initializing NodeLookup table...")
 	NodeLookup = make(map[OperationType]NodeConstructor)
-	NodeLookup[MIN] = NewMinScalarNode
+	NodeLookup[WINDOW] = NewWindowNode
+	NodeLookup[MIN] = NewMinNode
+	NodeLookup[MAX] = NewMaxNode
+	NodeLookup[EDGE] = NewEdgeNode
 
 	OpLookup = make(map[string]OperationType)
+	OpLookup["window"] = WINDOW
 	OpLookup["min"] = MIN
+	OpLookup["max"] = MAX
+	OpLookup["edge"] = EDGE
 }
 
 /* These nodes implement the node interface in internal/tree */
@@ -159,12 +166,16 @@ type EchoNode struct {
 	tree.BaseNode
 }
 
-func NewEchoNode(kv map[string]interface{}, args ...interface{}) tree.Node {
+func NewEchoNode(args ...interface{}) tree.Node {
 	en := &EchoNode{
 		w:       args[0].(io.Writer),
 		mybytes: make([]byte, 1024),
 	}
-	tree.InitBaseNode(&en.BaseNode, kv)
+	tree.InitBaseNode(&en.BaseNode)
+	en.BaseNode.Set("in:structure", LIST|TIMESERIES)
+	en.BaseNode.Set("in:datatype", SCALAR|OBJECT)
+	en.BaseNode.Set("out:structure", LIST|TIMESERIES)
+	en.BaseNode.Set("out:datatype", SCALAR|OBJECT)
 	return en
 }
 
@@ -178,73 +189,4 @@ func (en *EchoNode) Input(args ...interface{}) (err error) {
 func (en *EchoNode) Output() (interface{}, error) {
 	log.Debug("EchoNode writing out %v", en.data.Len())
 	return en.data.WriteTo(en.w)
-}
-
-/** Min Scalar Node **/
-
-type MinScalarNode struct {
-	data []SmapReading
-	tree.BaseNode
-}
-
-func NewMinScalarNode(args ...interface{}) tree.Node {
-	msn := &MinScalarNode{}
-	tree.InitBaseNode(&msn.BaseNode)
-
-	msn.BaseNode.Set("out:datatype", SCALAR)
-	msn.BaseNode.Set("out:structure", LIST)
-	msn.BaseNode.Set("in:datatype", SCALAR)
-	msn.BaseNode.Set("in:structure", TIMESERIES)
-	return msn
-}
-
-// arg0: list of SmapReading to compute MIN of. Must be scalars
-func (msn *MinScalarNode) Input(args ...interface{}) (err error) {
-	var ok bool
-	msn.data, ok = args[0].([]SmapReading)
-	if !ok {
-		err = fmt.Errorf("Arg0 to MinScalarNode must be []SmapReading")
-	}
-	return
-}
-
-func (msn *MinScalarNode) Output() (interface{}, error) {
-	var (
-		err    error
-		result = make([]*ListItem, len(msn.data))
-	)
-	if len(msn.data) == 0 {
-		err = fmt.Errorf("No data to compute min over")
-		return result, err
-	}
-	for idx, stream := range msn.data {
-		item := &ListItem{UUID: stream.UUID}
-		if len(stream.Readings) == 0 {
-			result[idx] = item
-			continue
-		}
-		switch stream.Readings[0][1].(type) {
-		case uint64:
-			min := uint64(math.MaxUint64)
-			for _, reading := range stream.Readings {
-				if reading[1].(uint64) < min {
-					min = reading[1].(uint64)
-				}
-			}
-			item.Data = min
-		case float64:
-			min := float64(math.MaxFloat64)
-			for _, reading := range stream.Readings {
-				if reading[1].(float64) < min {
-					min = reading[1].(float64)
-				}
-			}
-			item.Data = min
-		default:
-			err = fmt.Errorf("Data type in (%v) was not uint64 or float64 (scalar)", msn.data[0])
-		}
-		result[idx] = item
-	}
-
-	return result, err
 }

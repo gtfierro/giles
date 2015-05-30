@@ -238,6 +238,22 @@ reltime		: NUMBER lvalue
                 }
                 $$ = addDurations(newDuration, $3)
             }
+            | NUMBER TIMEUNIT
+            {
+                var err error
+                $$, err = parseReltime($1, $2)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", $1, $2, err.Error()))
+                }
+            }
+            | NUMBER TIMEUNIT reltime
+            {
+                newDuration, err := parseReltime($1, $2)
+                if err != nil {
+				    SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", $1, $2, err.Error()))
+                }
+                $$ = addDurations(newDuration, $3)
+            }
 			;
 
 limit		: /* empty */
@@ -359,7 +375,12 @@ whereList : whereList AND whereList
 			}
 		  ;
 
-operatorList    : LVALUE LPAREN opArgs RPAREN
+operatorList    : LVALUE LPAREN RPAREN
+                {
+                    o := &OpNode{Operator: $1}
+                    $$ = []*OpNode{o}
+                }
+                | LVALUE LPAREN opArgs RPAREN
                 {
                     o := &OpNode{Operator: $1, Arguments: $3}
                     $$ = []*OpNode{o}
