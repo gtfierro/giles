@@ -10,13 +10,23 @@ import (
 	"math"
 )
 
-type NodeType uint
+type ListItem struct {
+	Data interface{}
+	UUID string `json:"uuid"`
+}
+
+type StructureType uint
 
 const (
-	SCALAR NodeType = iota
-	SCALAR_TS
+	LIST StructureType = 1 << iota
+	TIMESERIES
+)
+
+type DataType uint
+
+const (
+	SCALAR DataType = 1 << iota
 	OBJECT
-	OBJECT_TS
 )
 
 type OperationType uint
@@ -26,17 +36,16 @@ const (
 	MIN
 )
 
-type NodeConstructor func(map[string]interface{}, ...interface{}) tree.Node
+type NodeConstructor func(...interface{}) tree.Node
 
-var NodeLookup map[OperationType](map[NodeType]NodeConstructor)
+var NodeLookup map[OperationType]NodeConstructor
 var OpLookup map[string]OperationType
 
 // Populate the NodeLookup table and OpLookup
 func init() {
 	fmt.Println("Initializing NodeLookup table...")
-	NodeLookup = make(map[OperationType](map[NodeType]NodeConstructor))
-	NodeLookup[MIN] = make(map[NodeType]NodeConstructor)
-	NodeLookup[MIN][SCALAR_TS] = NewMinScalarNode
+	NodeLookup = make(map[OperationType]NodeConstructor)
+	NodeLookup[MIN] = NewMinScalarNode
 
 	OpLookup = make(map[string]OperationType)
 	OpLookup["min"] = MIN
@@ -55,12 +64,14 @@ type WhereNode struct {
 // First argument are the k/v tags for this node, second are the arguments to the constructor
 // arg0: BSON where clause, most likely from a parsed query
 // arg1: pointer to a metadata store
-func NewWhereNode(kv map[string]interface{}, args ...interface{}) (wn *WhereNode) {
+func NewWhereNode(args ...interface{}) (wn *WhereNode) {
 	wn = &WhereNode{
 		where: args[0].(bson.M),
 		store: args[1].(MetadataStore),
 	}
-	tree.InitBaseNode(&wn.BaseNode, kv)
+	tree.InitBaseNode(&wn.BaseNode)
+	wn.BaseNode.Set("out:structure", LIST)
+	wn.BaseNode.Set("out:datatype", SCALAR|OBJECT)
 	wn.BaseNode.Set("name", "wherenode")
 	return
 }
@@ -90,14 +101,16 @@ type SelectDataNode struct {
 
 // arg0: archiver reference
 // arg1: query.y dataquery struct
-func NewSelectDataNode(kv map[string]interface{}, args ...interface{}) (sn *SelectDataNode) {
+func NewSelectDataNode(args ...interface{}) (sn *SelectDataNode) {
 	sn = &SelectDataNode{
 		a:  args[0].(*Archiver),
 		dq: args[1].(*dataquery),
 	}
-	tree.InitBaseNode(&sn.BaseNode, kv)
-	// TODO: don't hardcode
-	sn.BaseNode.Set("output", SCALAR_TS)
+	tree.InitBaseNode(&sn.BaseNode)
+	sn.BaseNode.Set("in:structure", LIST)
+	sn.BaseNode.Set("in:datatype", SCALAR|OBJECT)
+	sn.BaseNode.Set("out:structure", TIMESERIES)
+	sn.BaseNode.Set("out:datatype", SCALAR|OBJECT)
 	return
 }
 
@@ -174,13 +187,14 @@ type MinScalarNode struct {
 	tree.BaseNode
 }
 
-func NewMinScalarNode(kv map[string]interface{}, args ...interface{}) tree.Node {
+func NewMinScalarNode(args ...interface{}) tree.Node {
 	msn := &MinScalarNode{}
-	tree.InitBaseNode(&msn.BaseNode, kv)
+	tree.InitBaseNode(&msn.BaseNode)
 
-	// TODO: don't hardcode
-	msn.BaseNode.Set("output", SCALAR)
-	msn.BaseNode.Set("input", SCALAR_TS)
+	msn.BaseNode.Set("out:datatype", SCALAR)
+	msn.BaseNode.Set("out:structure", LIST)
+	msn.BaseNode.Set("in:datatype", SCALAR)
+	msn.BaseNode.Set("in:structure", TIMESERIES)
 	return msn
 }
 
@@ -197,15 +211,16 @@ func (msn *MinScalarNode) Input(args ...interface{}) (err error) {
 func (msn *MinScalarNode) Output() (interface{}, error) {
 	var (
 		err    error
-		result = make([]interface{}, len(msn.data))
+		result = make([]*ListItem, len(msn.data))
 	)
 	if len(msn.data) == 0 {
 		err = fmt.Errorf("No data to compute min over")
 		return result, err
 	}
 	for idx, stream := range msn.data {
+		item := &ListItem{UUID: stream.UUID}
 		if len(stream.Readings) == 0 {
-			result[idx] = nil
+			result[idx] = item
 			continue
 		}
 		switch stream.Readings[0][1].(type) {
@@ -216,7 +231,7 @@ func (msn *MinScalarNode) Output() (interface{}, error) {
 					min = reading[1].(uint64)
 				}
 			}
-			result[idx] = min
+			item.Data = min
 		case float64:
 			min := float64(math.MaxFloat64)
 			for _, reading := range stream.Readings {
@@ -224,10 +239,11 @@ func (msn *MinScalarNode) Output() (interface{}, error) {
 					min = reading[1].(float64)
 				}
 			}
-			result[idx] = min
+			item.Data = min
 		default:
 			err = fmt.Errorf("Data type in (%v) was not uint64 or float64 (scalar)", msn.data[0])
 		}
+		result[idx] = item
 	}
 
 	return result, err
