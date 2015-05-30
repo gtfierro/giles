@@ -37,17 +37,26 @@ func (qp *QueryProcessor) Parse(querystring string) *SQLex {
 	return l
 }
 
-func (qp *QueryProcessor) GetNodeFromOp(op *OpNode) tree.Node {
+func (qp *QueryProcessor) GetNodeFromOp(op *OpNode, query *query) tree.Node {
 	var (
 		operator OperationType
 		found    bool
+		node     tree.Node
 	)
 	if operator, found = OpLookup[op.Operator]; !found {
 		return nil
 	}
 	fmt.Printf("found? %v\n", NodeLookup[operator])
-	//return
-	return NodeLookup[operator](op.Arguments)
+
+	// Populate extra information in nodes that need it
+	switch operator {
+	case WINDOW:
+		node = NodeLookup[operator](op.Arguments, query.data)
+	default:
+		node = NodeLookup[operator](op.Arguments)
+	}
+
+	return node
 }
 
 // Checks that the ouput of node @out is compatible with the input of node @in.

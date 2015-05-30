@@ -359,7 +359,7 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 		newNode tree.Node
 	)
 	for _, op := range lex.query.operators {
-		newNode = a.qp.GetNodeFromOp(op)
+		newNode = a.qp.GetNodeFromOp(op, lex.query)
 		if !a.qp.CheckOutToIn(last, newNode) {
 			return fmt.Errorf("Node types do not match!")
 		}
