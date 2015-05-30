@@ -213,9 +213,12 @@ func (en *EdgeNode) Output() (interface{}, error) {
 }
 
 type WindowNode struct {
-	data    []SmapReading
-	window  uint64
-	aggFunc string
+	data         []SmapReading
+	window       uint64
+	aggFunc      string
+	start        uint64
+	end          uint64
+	fromTimeUnit UnitOfTime
 	tree.BaseNode
 }
 
@@ -225,7 +228,7 @@ func NewWindowNode(args ...interface{}) tree.Node {
 
 	var windowSize interface{}
 	var aggFunc interface{}
-	if len(args) > 0 {
+	if args[0] != nil {
 		kv := args[0].(Dict)
 		windowSize = kv["size"]
 		aggFunc = kv["func"]
@@ -239,15 +242,25 @@ func NewWindowNode(args ...interface{}) tree.Node {
 		aggFunc = "mean"
 	}
 
+	dq := args[1].(*dataquery)
+
+	wn.start = uint64(dq.start.UnixNano())
+	wn.end = uint64(dq.end.UnixNano())
+	wn.fromTimeUnit = dq.timeconv
+
 	// evaluate windowSize
 	parsed, err := parseIntoDuration(windowSize.(string))
 	if err != nil {
 		log.Error("Could not parse window size %v (%v)", windowSize, err)
 		return wn
 	}
-	fmt.Printf("time: %v\n", parsed)
+	wn.window = uint64(parsed.Nanoseconds())
+
+	log.Debug("time: %v", parsed)
+	log.Debug("start: %v end %v", wn.start, wn.end)
 
 	// evaluate aggFunc
+	//TODO
 
 	wn.BaseNode.Set("out:datatype", SCALAR)
 	wn.BaseNode.Set("out:structure", TIMESERIES)
@@ -265,6 +278,7 @@ func (wn *WindowNode) Input(args ...interface{}) (err error) {
 	return
 }
 
+//TODO: do we assume that data is sorted?
 func (wn *WindowNode) Output() (interface{}, error) {
 	if len(wn.data) == 0 {
 		return nil, fmt.Errorf("No data to compute window")
@@ -277,8 +291,30 @@ func (wn *WindowNode) Output() (interface{}, error) {
 			continue
 		}
 
+		upperBound := wn.start
+		lowerBound := wn.start
+		lastIdx := 0
+		upperBound += wn.window //TODO: min of upperbound+window and wn.end
+		for upperBound < wn.end {
+			window := [][]interface{}{}
+			for lastIdx < len(stream.Readings) {
+				time := uint64(stream.Readings[lastIdx][0].(float64))
+				time = convertTime(time, wn.fromTimeUnit, UOT_NS)
+				if time >= lowerBound && time < upperBound {
+					window = append(window, []interface{}{time, stream.Readings[lastIdx][1]})
+					lastIdx += 1
+				} else {
+					fmt.Printf("fail: %v %v %v\n", lowerBound, time, upperBound)
+					break
+				}
+			}
+			lowerBound += wn.window
+			upperBound += wn.window
+			fmt.Printf("got window %v out of total %v\n", len(window), len(stream.Readings))
+			newTime := convertTime(lowerBound, UOT_NS, wn.fromTimeUnit)
+			item.Readings = append(item.Readings, []interface{}{newTime, opFuncMean(window)})
+		}
 		result[idx] = item
-
 	}
 
 	return result, nil
