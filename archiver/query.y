@@ -21,6 +21,7 @@ Notes here
 	str string
 	dict Dict
     oplist []*OpNode
+    op *OpNode
 	data *dataquery
 	limit datalimit
     timeconv UnitOfTime
@@ -45,6 +46,7 @@ Notes here
 %type <dict> whereList whereTerm whereClause setList opArgs
 %type <list> selector tagList
 %type <oplist> operatorList
+%type <op> operator
 %type <data> dataClause
 %type <time> timeref abstime
 %type <timediff> reltime
@@ -359,22 +361,25 @@ whereList : whereList AND whereList
 			}
 		  ;
 
-operatorList    : LVALUE LPAREN RPAREN
+operatorList    : operator
                 {
-                    o := &OpNode{Operator: $1}
-                    $$ = []*OpNode{o}
+                    $$ = []*OpNode{$1}
                 }
-                | LVALUE LPAREN opArgs RPAREN
+                | operator LEFTPIPE operatorList
                 {
-                    o := &OpNode{Operator: $1, Arguments: $3}
-                    $$ = []*OpNode{o}
-                }
-                | LVALUE LPAREN opArgs RPAREN LEFTPIPE operatorList
-                {
-                    o := &OpNode{Operator: $1, Arguments: $3}
-                    $$ = append($6, o)
+                    $$ = append($3, $1)
                 }
                 ;
+
+operator    : LVALUE LPAREN RPAREN
+            {
+                $$ = &OpNode{Operator: $1}
+            }
+            | LVALUE LPAREN opArgs RPAREN
+            {
+                $$ = &OpNode{Operator: $1, Arguments: $3}
+            }
+            ;
 
 opArgs  : LVALUE EQ NUMBER
         {
