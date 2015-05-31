@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-var referenceManager = NewManager()
+var referenceManager *Manager
 
 func main() {
 	var wg sync.WaitGroup
@@ -34,6 +34,8 @@ func main() {
 	}
 
 	for _, filename := range files {
+		// create new set of references for each file
+		referenceManager = NewManager()
 		color.Cyan("Running file %v", filename)
 		contents, err := ioutil.ReadFile(filename)
 		if err != nil {
