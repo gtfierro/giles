@@ -170,8 +170,6 @@ func ParseLayout(layout string, clients map[int64]Client) []*Step {
 	return steps
 }
 
-var timeFinder = regexp.MustCompile(`\$TIME_([NMU]?S)`)
-
 func ParseData(data string) string {
 	if timeFinder.MatchString(data) {
 		found := timeFinder.FindAllStringSubmatch(data, -1)

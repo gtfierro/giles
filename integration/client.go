@@ -43,7 +43,7 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 	switch format {
 	case "JSON":
 		toMarshal := make(map[string]interface{})
-		datastring := ParseData(cfgInput["Data"].(string))
+		datastring := referenceManager.ParseData(cfgInput["Data"].(string))
 		dec := json.NewDecoder(bytes.NewReader([]byte(datastring)))
 		dec.UseNumber()
 		encodeErr = dec.Decode(&toMarshal)
@@ -51,7 +51,8 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 			data, encodeErr = json.Marshal(toMarshal)
 		}
 	case "string":
-		data = []byte(strings.TrimSpace(cfgInput["Data"].(string)))
+		datastring := referenceManager.ParseData(cfgInput["Data"].(string))
+		data = []byte(strings.TrimSpace(datastring))
 	}
 	if encodeErr != nil {
 		return h, fmt.Errorf("Error encoding data %v as %v (%v)\n", cfgInput["Data"], format, encodeErr)
@@ -74,7 +75,7 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 		return h, fmt.Errorf("Output section for client was invalid: %v\n", string(d))
 	}
 	h.expectedCode = code.(int)
-	h.expectedContents = contents.(string)
+	h.expectedContents = referenceManager.ParseData(contents.(string))
 	h.expectedFormat = format.(string)
 	return h, nil
 }

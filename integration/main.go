@@ -10,6 +10,8 @@ import (
 	"sync"
 )
 
+var referenceManager = NewManager()
+
 func main() {
 	var wg sync.WaitGroup
 
