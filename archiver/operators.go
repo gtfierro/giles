@@ -124,7 +124,7 @@ func (msn *MaxNode) Output() (interface{}, error) {
 		case uint64:
 			max := uint64(0)
 			for _, reading := range stream.Readings {
-				if reading[1].(uint64) < max {
+				if reading[1].(uint64) > max {
 					max = reading[1].(uint64)
 				}
 			}
@@ -132,7 +132,7 @@ func (msn *MaxNode) Output() (interface{}, error) {
 		case float64:
 			max := float64(0)
 			for _, reading := range stream.Readings {
-				if reading[1].(float64) < max {
+				if reading[1].(float64) > max {
 					max = reading[1].(float64)
 				}
 			}
@@ -188,19 +188,23 @@ func (en *EdgeNode) Output() (interface{}, error) {
 		switch stream.Readings[0][1].(type) {
 		case uint64:
 			var last uint64
-			for _, reading := range stream.Readings {
+			for idx, reading := range stream.Readings {
 				if reading[1].(uint64) != last {
 					toPut := []interface{}{reading[0], reading[1].(uint64) - last}
-					item.Readings = append(item.Readings, toPut)
+					if idx > 0 {
+						item.Readings = append(item.Readings, toPut)
+					}
 					last = reading[1].(uint64)
 				}
 			}
 		case float64:
 			var last float64
-			for _, reading := range stream.Readings {
+			for idx, reading := range stream.Readings {
 				if reading[1].(float64) != last {
 					toPut := []interface{}{reading[0], reading[1].(float64) - last}
-					item.Readings = append(item.Readings, toPut)
+					if idx > 0 {
+						item.Readings = append(item.Readings, toPut)
+					}
 					last = reading[1].(float64)
 				}
 			}
