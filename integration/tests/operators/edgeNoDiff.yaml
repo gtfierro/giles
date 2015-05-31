@@ -1,0 +1,37 @@
+name: test edge detector with no edges
+layout: 1:Input -> 1:Output -> Sleep:2s -> 2:Input -> 2:Output
+Client:1:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/add/apikey
+        Format: JSON
+        Data: >
+            {
+                "/nanosecondsensor": {
+                    "Properties": {
+                        "UnitofTime": "ns"
+                    },
+                    "uuid": "$UUID(1)",
+                    "Readings": [[$TIME_NS(1), 1], [$TIME_NS(2), 1], [$TIME_NS(3), 1]]
+                }
+            }
+    Output:
+        Code: 200
+        Contents: ''
+        Format: string
+Client:2:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/api/test
+        Format: string
+        Data: "apply edge() to data in ($TIME_NS(1)ns -1s, $TIME_NS(3)ns +1s) where uuid = '$UUID(1)'"
+    Output:
+        Code: 200
+        Format: JSON
+        Contents: >
+            [{
+                "UUID": "$UUID(1)",
+                "Readings": []
+            }]
