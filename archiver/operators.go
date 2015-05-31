@@ -298,7 +298,7 @@ func (wn *WindowNode) Output() (interface{}, error) {
 		upperBound := wn.start
 		lowerBound := wn.start
 		lastIdx := 0
-		upperBound += wn.window //TODO: min of upperbound+window and wn.end
+		upperBound += min64(wn.window, wn.end)
 		for upperBound < wn.end {
 			window := [][]interface{}{}
 			for lastIdx < len(stream.Readings) {
@@ -313,7 +313,7 @@ func (wn *WindowNode) Output() (interface{}, error) {
 				}
 			}
 			lowerBound += wn.window
-			upperBound += wn.window
+			upperBound += min64(wn.window, wn.end)
 			fmt.Printf("got window %v out of total %v\n", len(window), len(stream.Readings))
 			newTime := convertTime(lowerBound, UOT_NS, wn.fromTimeUnit)
 			item.Readings = append(item.Readings, []interface{}{newTime, opFuncMean(window)})

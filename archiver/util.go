@@ -21,6 +21,15 @@ func min(a, b uint32) uint32 {
 	}
 }
 
+// Go doesn't provide min for uint32
+func min64(a, b uint64) uint64 {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
+}
+
 // Calls function f and then pauses for [pause]. Loops forever.
 func periodicCall(pause time.Duration, f func()) {
 	for {
