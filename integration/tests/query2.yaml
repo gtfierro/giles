@@ -1,0 +1,30 @@
+name: Query data with nodes
+layout: 1:Input -> 1:Output -> Sleep:2s -> 2:Input -> 2:Output
+Client:1:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/add/apikey
+        Format: string
+        Data: >
+            {"/sensor0": {"Metadata": {"ABC": "$UUID(2)"}, "Properties": {"UnitofTime": "ms"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(1)"}}
+    Output:
+        Code: 200
+        Contents: ''
+        Format: string
+Client:2:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/api/test
+        Format: string
+        Data: >
+            select data before now where Metadata/ABC="$UUID(2)";
+    Output:
+        Code: 200
+        Format: JSON
+        Contents: >
+            [{
+                "uuid": "$UUID(1)",
+                "Readings": [[$TIME_MS(1), 0]]
+            }]
