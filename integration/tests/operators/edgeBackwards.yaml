@@ -1,5 +1,5 @@
 name: test edge detector, but w/ data in different order
-layout: 1:Input -> 1:Output -> Sleep:6s -> 2:Input -> 2:Output
+layout: 1:Input -> 1:Output -> Sleep:2s -> 2:Input -> 2:Output
 Client:1:
     Interface: HTTP
     Input:
@@ -26,12 +26,12 @@ Client:2:
         Method: POST
         URI: http://localhost:8079/api/test
         Format: string
-        Data: "apply edge() to data in ($TIME_NS(1)ns -1s, $TIME_NS(3)ns +1s) where uuid = '$UUID(1)'"
+        Data: "apply edge() to data in ($TIME_NS(1)ns -1ns, $TIME_NS(3)ns +1ns) as ns where uuid = '$UUID(1)'"
     Output:
         Code: 200
         Format: JSON
         Contents: >
             [{
-                "UUID": "$UUID(1)",
-                "Readings": [[$TIME_NS(1), -1], [$TIME_NS(2), -1]]
+                "uuid": "$UUID(1)",
+                "Readings": [[$TIME_NS(2), -1], [$TIME_NS(3), -1]]
             }]

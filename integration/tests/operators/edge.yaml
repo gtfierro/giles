@@ -26,12 +26,12 @@ Client:2:
         Method: POST
         URI: http://localhost:8079/api/test
         Format: string
-        Data: "apply edge() to data in ($TIME_NS(1)ns -1s, $TIME_NS(3)ns +1s) where uuid = '$UUID(1)'"
+        Data: "apply edge() to data in ($TIME_NS(1)ns -1s, $TIME_NS(3)ns +1s) as ns where uuid = '$UUID(1)'"
     Output:
         Code: 200
         Format: JSON
         Contents: >
             [{
-                "UUID": "$UUID(1)",
-                "Readings": [[$TIME_NS(1), 1], [$TIME_NS(2), 1]]
+                "uuid": "$UUID(1)",
+                "Readings": [[$TIME_NS(2), 1], [$TIME_NS(3), 1]]
             }]

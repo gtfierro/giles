@@ -32,6 +32,6 @@ Client:2:
         Format: JSON
         Contents: >
             [{
-                "UUID": "$UUID(1)",
+                "uuid": "$UUID(1)",
                 "Data": 1
             }]

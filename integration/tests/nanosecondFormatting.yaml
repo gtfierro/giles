@@ -26,7 +26,7 @@ Client:2:
         Method: POST
         URI: http://localhost:8079/api/query
         Format: string
-        Data: "select data before now where uuid = 'dafb266c-f92f-11e4-bcda-0cc47a0f7eea'"
+        Data: "select data before now as ns where uuid = 'dafb266c-f92f-11e4-bcda-0cc47a0f7eea'"
     Output:
         Code: 200
         Format: JSON

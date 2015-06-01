@@ -19,7 +19,7 @@ Client:2:
         Method: POST
         URI: http://localhost:8079/api/query
         Format: string
-        Data: select data before now where uuid = "$UUID(1)"
+        Data: select data before now as ms where uuid = "$UUID(1)"
     Output:
         Code: 200
         Format: JSON
