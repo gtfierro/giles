@@ -91,9 +91,9 @@ func (ms *MongoObjectStore) AddObject(msg *SmapMessage) (bool, error) {
 	return true, nil
 }
 
-func (ms *MongoObjectStore) PrevObject(uuid string, time uint64, uot UnitOfTime) (SmapReading, error) {
+func (ms *MongoObjectStore) PrevObject(uuid string, time uint64, uot UnitOfTime) (SmapObjectResponse, error) {
 	var res bson.M
-	var ret SmapReading
+	var ret SmapObjectResponse
 	time_ns := convertTime(time, uot, UOT_NS)
 	err := ms.objects.Find(bson.M{"uuid": uuid, "timestamp": bson.M{"$lte": time_ns}}).Sort("-timestamp").One(&res)
 	if err != nil {
@@ -104,13 +104,13 @@ func (ms *MongoObjectStore) PrevObject(uuid string, time uint64, uot UnitOfTime)
 	_, decoded := msgpack.Decode(&bytes, 0)
 	uot = ms.store.GetUnitOfTime(uuid)
 	timestamp := convertTime(uint64(res["timestamp"].(int64)), UOT_NS, uot)
-	ret = SmapReading{Readings: [][]interface{}{[]interface{}{float64(timestamp), decoded}}, UUID: res["uuid"].(string)}
+	ret = SmapObjectResponse{Readings: []*SmapObjectReading{{timestamp, decoded}}, UUID: res["uuid"].(string)}
 	return ret, nil
 }
 
-func (ms *MongoObjectStore) NextObject(uuid string, time uint64, uot UnitOfTime) (SmapReading, error) {
+func (ms *MongoObjectStore) NextObject(uuid string, time uint64, uot UnitOfTime) (SmapObjectResponse, error) {
 	var res bson.M
-	var ret SmapReading
+	var ret SmapObjectResponse
 	time_ns := convertTime(time, uot, UOT_NS)
 	err := ms.objects.Find(bson.M{"uuid": uuid, "timestamp": bson.M{"$gte": time_ns}}).Sort("+timestamp").One(&res)
 	if err != nil {
@@ -121,13 +121,13 @@ func (ms *MongoObjectStore) NextObject(uuid string, time uint64, uot UnitOfTime)
 	_, decoded := msgpack.Decode(&bytes, 0)
 	uot = ms.store.GetUnitOfTime(uuid)
 	timestamp := convertTime(uint64(res["timestamp"].(int64)), UOT_NS, uot)
-	ret = SmapReading{Readings: [][]interface{}{[]interface{}{float64(timestamp), decoded}}, UUID: res["uuid"].(string)}
+	ret = SmapObjectResponse{Readings: []*SmapObjectReading{{timestamp, decoded}}, UUID: res["uuid"].(string)}
 	return ret, nil
 }
 
-func (ms *MongoObjectStore) GetObjects(uuid string, start uint64, end uint64, uot UnitOfTime) (SmapReading, error) {
+func (ms *MongoObjectStore) GetObjects(uuid string, start uint64, end uint64, uot UnitOfTime) (SmapObjectResponse, error) {
 	var res []bson.M
-	var ret SmapReading
+	var ret SmapObjectResponse
 	start_time_ns := convertTime(start, uot, UOT_NS)
 	end_time_ns := convertTime(end, uot, UOT_NS)
 	err := ms.objects.Find(bson.M{"uuid": uuid,
@@ -139,12 +139,12 @@ func (ms *MongoObjectStore) GetObjects(uuid string, start uint64, end uint64, uo
 	}
 	log.Debug("res %v", res)
 	uot = ms.store.GetUnitOfTime(uuid)
-	ret = SmapReading{Readings: make([][]interface{}, len(res)), UUID: uuid}
+	ret = SmapObjectResponse{Readings: make([]*SmapObjectReading, len(res)), UUID: uuid}
 	for idx, chunk := range res {
 		bytes := chunk["object"].([]byte)
 		_, decoded := msgpack.Decode(&bytes, 0)
-		timestamp := convertTime(uint64(chunk["timestamp"].(int64)), UOT_NS, uot)
-		ret.Readings[idx] = []interface{}{float64(timestamp), decoded}
+		ret.Readings[idx].Time = convertTime(uint64(chunk["timestamp"].(int64)), UOT_NS, uot)
+		ret.Readings[idx].Value = decoded
 	}
 	return ret, nil
 }

@@ -142,7 +142,7 @@ func convertTime(time uint64, stream_uot, target_uot UnitOfTime) uint64 {
 	}
 	if target_uot < stream_uot { // target/stream is > 1, so we can use uint64
 		return time * (unitmultiplier[target_uot] / unitmultiplier[stream_uot])
-	} else { // if target/stream < 1, we need float64
-		return uint64(float64(time) * (float64(unitmultiplier[target_uot]) / float64(unitmultiplier[stream_uot])))
+	} else {
+		return time / uint64(unitmultiplier[stream_uot]/unitmultiplier[target_uot])
 	}
 }

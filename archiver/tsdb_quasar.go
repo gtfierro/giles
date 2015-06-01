@@ -108,8 +108,8 @@ func (quasar *QuasarDB) Add(sb *StreamBuf) bool {
 	return true
 }
 
-func (quasar *QuasarDB) receive(conn *TSDBConn, limit int32) (SmapReading, error) {
-	var sr = SmapReading{}
+func (quasar *QuasarDB) receive(conn *TSDBConn, limit int32) (SmapNumbersResponse, error) {
+	var sr = SmapNumbersResponse{}
 	seg, err := capn.ReadFromStream(conn, nil)
 	if err != nil {
 		log.Error("Error receiving data from Quasar %v", err)
@@ -126,13 +126,13 @@ func (quasar *QuasarDB) receive(conn *TSDBConn, limit int32) (SmapReading, error
 		if resp.StatusCode() != 0 {
 			return sr, errors.New("Error when reading from Quasar:" + resp.StatusCode().String())
 		}
-		sr.Readings = [][]interface{}{}
+		sr.Readings = []*SmapNumberReading{}
 		log.Debug("limit %v, num values %v", limit, len(resp.Records().Values().ToArray()))
 		for i, rec := range resp.Records().Values().ToArray() {
 			if limit > -1 && int32(i) >= limit {
 				break
 			}
-			sr.Readings = append(sr.Readings, []interface{}{float64(rec.Time()), rec.Value()})
+			sr.Readings = append(sr.Readings, &SmapNumberReading{Time: uint64(rec.Time()), Value: rec.Value()})
 		}
 		return sr, nil
 	default:
@@ -142,8 +142,8 @@ func (quasar *QuasarDB) receive(conn *TSDBConn, limit int32) (SmapReading, error
 
 }
 
-func (quasar *QuasarDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapReading, error) {
-	var ret = make([]SmapReading, len(uuids))
+func (quasar *QuasarDB) queryNearestValue(uuids []string, start uint64, limit int32, backwards bool) ([]SmapNumbersResponse, error) {
+	var ret = make([]SmapNumbersResponse, len(uuids))
 	conn := quasar.connpool.Get()
 	defer quasar.connpool.Put(conn)
 	for i, uu := range uuids {
@@ -165,27 +165,26 @@ func (quasar *QuasarDB) queryNearestValue(uuids []string, start uint64, limit in
 			return ret, err
 		}
 		sr.UUID = uu
-		for j, reading := range sr.Readings {
-			reading[0] = float64(convertTime(uint64(reading[0].(float64)), UOT_NS, stream_uot))
-			sr.Readings[j] = reading
+		for _, reading := range sr.Readings {
+			reading.Time = convertTime(reading.Time, UOT_NS, stream_uot)
 		}
 		ret[i] = sr
 	}
 	return ret, nil
 }
 
-func (quasar *QuasarDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapReading, error) {
+func (quasar *QuasarDB) Prev(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapNumbersResponse, error) {
 	start = convertTime(start, uot, UOT_NS)
 	return quasar.queryNearestValue(uuids, start, limit, true)
 }
 
-func (quasar *QuasarDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapReading, error) {
+func (quasar *QuasarDB) Next(uuids []string, start uint64, limit int32, uot UnitOfTime) ([]SmapNumbersResponse, error) {
 	start = convertTime(start, uot, UOT_NS)
 	return quasar.queryNearestValue(uuids, start, limit, false)
 }
 
-func (quasar *QuasarDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapReading, error) {
-	var ret = make([]SmapReading, len(uuids))
+func (quasar *QuasarDB) GetData(uuids []string, start uint64, end uint64, uot UnitOfTime) ([]SmapNumbersResponse, error) {
+	var ret = make([]SmapNumbersResponse, len(uuids))
 	start = convertTime(start, uot, UOT_NS)
 	end = convertTime(end, uot, UOT_NS)
 	conn := quasar.connpool.Get()
@@ -209,9 +208,8 @@ func (quasar *QuasarDB) GetData(uuids []string, start uint64, end uint64, uot Un
 			return ret, err
 		}
 		sr.UUID = uu
-		for j, reading := range sr.Readings {
-			reading[0] = float64(convertTime(uint64(reading[0].(float64)), UOT_NS, stream_uot))
-			sr.Readings[j] = reading
+		for _, reading := range sr.Readings {
+			reading.Time = convertTime(reading.Time, UOT_NS, stream_uot)
 		}
 		ret[i] = sr
 	}

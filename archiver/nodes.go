@@ -9,11 +9,6 @@ import (
 	"io"
 )
 
-type ListItem struct {
-	Data interface{}
-	UUID string `json:"uuid"`
-}
-
 type StructureType uint
 
 const (
@@ -135,7 +130,7 @@ func (sn *SelectDataNode) Output() (interface{}, error) {
 		uuids = uuids[:sn.dq.limit.streamlimit]
 	}
 
-	var response []SmapReading
+	var response interface{}
 	start := uint64(sn.dq.start.UnixNano())
 	end := uint64(sn.dq.end.UnixNano())
 	switch sn.dq.dtype {
@@ -153,7 +148,14 @@ func (sn *SelectDataNode) Output() (interface{}, error) {
 		log.Debug("Data after time %v", start)
 		response, err = sn.a.NextData(uuids, start, int32(sn.dq.limit.limit), UOT_NS, sn.dq.timeconv)
 	}
-	return response, err
+	//TODO: make this work for objects too
+	var toreturn = make([]SmapNumbersResponse, len(response.([]interface{})))
+	for idx, resp := range response.([]interface{}) {
+		if snr, ok := resp.(SmapNumbersResponse); ok {
+			toreturn[idx] = snr
+		}
+	}
+	return toreturn, err
 }
 
 /** Echo Node **/
@@ -181,8 +183,20 @@ func NewEchoNode(args ...interface{}) tree.Node {
 
 // Takes the first argument and encodes it as msgpack
 func (en *EchoNode) Input(args ...interface{}) (err error) {
-	length := msgpack.Encode(args[0], &en.mybytes)
-	en.data = bytes.NewBuffer(en.mybytes[:length])
+	fmt.Printf("encoding %v\n", args[0])
+	switch args[0].(type) {
+	case []SmapNumbersResponse:
+		mpfriendly := transformSmapNumResp(args[0].([]SmapNumbersResponse))
+		length := msgpack.Encode(mpfriendly, &en.mybytes)
+		en.data = bytes.NewBuffer(en.mybytes[:length])
+	case []*SmapItem:
+		mpfriendly := transformSmapItem(args[0].([]*SmapItem))
+		length := msgpack.Encode(mpfriendly, &en.mybytes)
+		en.data = bytes.NewBuffer(en.mybytes[:length])
+	default:
+		length := msgpack.Encode(args[0], &en.mybytes)
+		en.data = bytes.NewBuffer(en.mybytes[:length])
+	}
 	return nil
 }
 

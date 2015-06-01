@@ -9,7 +9,7 @@ import (
 /** Min Node **/
 
 type MinNode struct {
-	data []SmapReading
+	data []SmapNumbersResponse
 	tree.BaseNode
 }
 
@@ -25,12 +25,12 @@ func NewMinNode(args ...interface{}) tree.Node {
 	return msn
 }
 
-// arg0: list of SmapReading to compute MIN of. Must be scalars
+// arg0: list of SmapNumbersResponse to compute MIN of. Must be scalars
 func (msn *MinNode) Input(args ...interface{}) (err error) {
 	var ok bool
-	msn.data, ok = args[0].([]SmapReading)
+	msn.data, ok = args[0].([]SmapNumbersResponse)
 	if !ok {
-		err = fmt.Errorf("Arg0 to MinNode must be []SmapReading")
+		err = fmt.Errorf("Arg0 to MinNode must be []SmapNumbersResponse")
 	}
 	return
 }
@@ -38,38 +38,25 @@ func (msn *MinNode) Input(args ...interface{}) (err error) {
 func (msn *MinNode) Output() (interface{}, error) {
 	var (
 		err    error
-		result = make([]*ListItem, len(msn.data))
+		result = make([]*SmapItem, len(msn.data))
 	)
 	if len(msn.data) == 0 {
 		err = fmt.Errorf("No data to compute min over")
 		return result, err
 	}
 	for idx, stream := range msn.data {
-		item := &ListItem{UUID: stream.UUID}
+		item := &SmapItem{UUID: stream.UUID}
 		if len(stream.Readings) == 0 {
 			result[idx] = item
 			continue
 		}
-		switch stream.Readings[0][1].(type) {
-		case uint64:
-			min := uint64(math.MaxUint64)
-			for _, reading := range stream.Readings {
-				if reading[1].(uint64) < min {
-					min = reading[1].(uint64)
-				}
+		min := float64(math.MaxFloat64)
+		for _, reading := range stream.Readings {
+			if reading.Value < min {
+				min = reading.Value
 			}
-			item.Data = min
-		case float64:
-			min := float64(math.MaxFloat64)
-			for _, reading := range stream.Readings {
-				if reading[1].(float64) < min {
-					min = reading[1].(float64)
-				}
-			}
-			item.Data = min
-		default:
-			err = fmt.Errorf("Data type in (%v) was not uint64 or float64 (scalar)", msn.data[0])
 		}
+		item.Data = min
 		result[idx] = item
 	}
 
@@ -79,7 +66,7 @@ func (msn *MinNode) Output() (interface{}, error) {
 /** Max Node **/
 
 type MaxNode struct {
-	data []SmapReading
+	data []SmapNumbersResponse
 	tree.BaseNode
 }
 
@@ -95,12 +82,12 @@ func NewMaxNode(args ...interface{}) tree.Node {
 	return msn
 }
 
-// arg0: list of SmapReading to compute max of. Must be scalars
+// arg0: list of SmapNumbersResponse to compute max of. Must be scalars
 func (msn *MaxNode) Input(args ...interface{}) (err error) {
 	var ok bool
-	msn.data, ok = args[0].([]SmapReading)
+	msn.data, ok = args[0].([]SmapNumbersResponse)
 	if !ok {
-		err = fmt.Errorf("Arg0 to MaxNode must be []SmapReading")
+		err = fmt.Errorf("Arg0 to MaxNode must be []SmapNumbersResponse")
 	}
 	return
 }
@@ -108,38 +95,25 @@ func (msn *MaxNode) Input(args ...interface{}) (err error) {
 func (msn *MaxNode) Output() (interface{}, error) {
 	var (
 		err    error
-		result = make([]*ListItem, len(msn.data))
+		result = make([]*SmapItem, len(msn.data))
 	)
 	if len(msn.data) == 0 {
 		err = fmt.Errorf("No data to compute max over")
 		return result, err
 	}
 	for idx, stream := range msn.data {
-		item := &ListItem{UUID: stream.UUID}
+		item := &SmapItem{UUID: stream.UUID}
 		if len(stream.Readings) == 0 {
 			result[idx] = item
 			continue
 		}
-		switch stream.Readings[0][1].(type) {
-		case uint64:
-			max := uint64(0)
-			for _, reading := range stream.Readings {
-				if reading[1].(uint64) > max {
-					max = reading[1].(uint64)
-				}
+		max := float64(0)
+		for _, reading := range stream.Readings {
+			if reading.Value > max {
+				max = reading.Value
 			}
-			item.Data = max
-		case float64:
-			max := float64(0)
-			for _, reading := range stream.Readings {
-				if reading[1].(float64) > max {
-					max = reading[1].(float64)
-				}
-			}
-			item.Data = max
-		default:
-			err = fmt.Errorf("Data type in (%v) was not uint64 or float64 (scalar)", msn.data[0])
 		}
+		item.Data = max
 		result[idx] = item
 	}
 
@@ -148,7 +122,7 @@ func (msn *MaxNode) Output() (interface{}, error) {
 
 // The Edge operator essentially takes the 1st order derivative of a stream
 type EdgeNode struct {
-	data []SmapReading
+	data []SmapNumbersResponse
 	tree.BaseNode
 }
 
@@ -163,12 +137,12 @@ func NewEdgeNode(args ...interface{}) tree.Node {
 	return en
 }
 
-// arg0: list of SmapReading to compute max of. Must be scalars
+// arg0: list of SmapNumbersResponse to compute max of. Must be scalars
 func (en *EdgeNode) Input(args ...interface{}) (err error) {
 	var ok bool
-	en.data, ok = args[0].([]SmapReading)
+	en.data, ok = args[0].([]SmapNumbersResponse)
 	if !ok {
-		err = fmt.Errorf("Arg0 to EdgeNode must be []SmapReading")
+		err = fmt.Errorf("Arg0 to EdgeNode must be []SmapNumbersResponse")
 	}
 	return
 }
@@ -177,39 +151,23 @@ func (en *EdgeNode) Output() (interface{}, error) {
 	if len(en.data) == 0 {
 		return nil, fmt.Errorf("No data to compute edge")
 	}
-	var result = make([]SmapReading, len(en.data))
+	var result = make([]SmapNumbersResponse, len(en.data))
 
 	for idx, stream := range en.data {
-		item := SmapReading{UUID: stream.UUID, Readings: [][]interface{}{}}
+		item := SmapNumbersResponse{UUID: stream.UUID, Readings: []*SmapNumberReading{}}
 		if len(stream.Readings) == 0 {
 			result[idx] = item
 			continue
 		}
-		switch stream.Readings[0][1].(type) {
-		case uint64:
-			var last uint64
-			for idx, reading := range stream.Readings {
-				if reading[1].(uint64) != last {
-					toPut := []interface{}{reading[0], reading[1].(uint64) - last}
-					if idx > 0 {
-						item.Readings = append(item.Readings, toPut)
-					}
-					last = reading[1].(uint64)
+		var last float64
+		for idx, reading := range stream.Readings {
+			if reading.Value != last {
+				toPut := &SmapNumberReading{Time: reading.Time, Value: reading.Value - last}
+				if idx > 0 {
+					item.Readings = append(item.Readings, toPut)
 				}
+				last = reading.Value
 			}
-		case float64:
-			var last float64
-			for idx, reading := range stream.Readings {
-				if reading[1].(float64) != last {
-					toPut := []interface{}{reading[0], reading[1].(float64) - last}
-					if idx > 0 {
-						item.Readings = append(item.Readings, toPut)
-					}
-					last = reading[1].(float64)
-				}
-			}
-		default:
-			return nil, fmt.Errorf("Data type in (%v) was not uint64 or float64 (scalar)", en.data[0])
 		}
 		result[idx] = item
 	}
@@ -217,7 +175,7 @@ func (en *EdgeNode) Output() (interface{}, error) {
 }
 
 type WindowNode struct {
-	data         []SmapReading
+	data         []SmapNumbersResponse
 	window       uint64
 	aggFunc      string
 	start        uint64
@@ -275,9 +233,9 @@ func NewWindowNode(args ...interface{}) tree.Node {
 
 func (wn *WindowNode) Input(args ...interface{}) (err error) {
 	var ok bool
-	wn.data, ok = args[0].([]SmapReading)
+	wn.data, ok = args[0].([]SmapNumbersResponse)
 	if !ok {
-		err = fmt.Errorf("Arg0 to EdgeNode must be []SmapReading")
+		err = fmt.Errorf("Arg0 to EdgeNode must be []SmapNumbersResponse")
 	}
 	return
 }
@@ -287,9 +245,9 @@ func (wn *WindowNode) Output() (interface{}, error) {
 	if len(wn.data) == 0 {
 		return nil, fmt.Errorf("No data to compute window")
 	}
-	var result = make([]SmapReading, len(wn.data))
+	var result = make([]SmapNumbersResponse, len(wn.data))
 	for idx, stream := range wn.data {
-		item := SmapReading{UUID: stream.UUID, Readings: [][]interface{}{}}
+		item := SmapNumbersResponse{UUID: stream.UUID, Readings: []*SmapNumberReading{}}
 		if len(stream.Readings) == 0 {
 			result[idx] = item
 			continue
@@ -302,10 +260,10 @@ func (wn *WindowNode) Output() (interface{}, error) {
 		for upperBound < wn.end {
 			window := [][]interface{}{}
 			for lastIdx < len(stream.Readings) {
-				time := uint64(stream.Readings[lastIdx][0].(float64))
+				time := stream.Readings[lastIdx].Time
 				time = convertTime(time, wn.fromTimeUnit, UOT_NS)
 				if time >= lowerBound && time < upperBound {
-					window = append(window, []interface{}{time, stream.Readings[lastIdx][1]})
+					window = append(window, []interface{}{time, stream.Readings[lastIdx].Value})
 					lastIdx += 1
 				} else {
 					fmt.Printf("fail: %v %v %v\n", lowerBound, time, upperBound)
@@ -316,7 +274,7 @@ func (wn *WindowNode) Output() (interface{}, error) {
 			upperBound += min64(wn.window, wn.end)
 			fmt.Printf("got window %v out of total %v\n", len(window), len(stream.Readings))
 			newTime := convertTime(lowerBound, UOT_NS, wn.fromTimeUnit)
-			item.Readings = append(item.Readings, []interface{}{newTime, opFuncMean(window)})
+			item.Readings = append(item.Readings, &SmapNumberReading{Time: newTime, Value: opFuncMean(window)})
 		}
 		result[idx] = item
 	}

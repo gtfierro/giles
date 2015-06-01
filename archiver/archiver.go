@@ -20,7 +20,6 @@
 package archiver
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gtfierro/giles/internal/tree"
@@ -246,9 +245,8 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 // generated AST. Any actual computation is done as calls to the Archiver API, so if you want
 // to use your own query language or handle queries in some external handler, then you shouldn't
 // need to use any of this method; just use the Archiver API
-func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
-	var data []byte
-	var res []interface{}
+func (a *Archiver) HandleQuery(querystring, apikey string) (interface{}, error) {
+	var res interface{}
 	var err error
 	if apikey != "" {
 		log.Info("query with key: %v", apikey)
@@ -256,7 +254,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 	log.Info(querystring)
 	lex := a.qp.Parse(querystring)
 	if lex.error != nil {
-		return data, fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
+		return res, fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
 	}
 	log.Debug("query %v", lex.query)
 	switch lex.query.qtype {
@@ -264,7 +262,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		target := lex.query.ContentsBson()
 		if lex.query.distinct {
 			if len(target) != 1 {
-				return data, fmt.Errorf("Distinct query can only use one tag\n")
+				return res, fmt.Errorf("Distinct query can only use one tag\n")
 			}
 			res, err = a.store.GetTags(target, true, lex.query.Contents[0], lex.query.WhereBson())
 		} else {
@@ -272,13 +270,11 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		}
 
 		if err != nil {
-			return data, err
+			return res, err
 		}
-		data, _ = json.Marshal(res)
 	case DELETE_TYPE:
 		var (
 			err error
-			res bson.M
 		)
 		if len(lex.query.Contents) > 0 { // RemoveTags
 			res, err = a.store.RemoveTags(lex.query.ContentsBson(), apikey, lex.query.WhereBson())
@@ -288,16 +284,14 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		a.republisher.MetadataChangeKeys(lex.keys)
 		log.Info("results %v", res)
 		if err != nil {
-			return data, err
+			return res, err
 		}
-		data, _ = json.Marshal(res)
 	case SET_TYPE:
-		res, err := a.store.UpdateTags(lex.query.SetBson(), apikey, lex.query.WhereBson())
+		res, err = a.store.UpdateTags(lex.query.SetBson(), apikey, lex.query.WhereBson())
 		if err != nil {
-			return data, err
+			return res, err
 		}
 		a.republisher.MetadataChangeKeys(lex.keys)
-		data, _ = json.Marshal(res)
 	case DATA_TYPE:
 		// grab reference to the data query
 		dq := lex.query.data
@@ -305,7 +299,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 		// fetch all possible UUIDs that match the query
 		uuids, err := a.GetUUIDs(lex.query.WhereBson())
 		if err != nil {
-			return data, err
+			return res, err
 		}
 
 		// limit number of streams
@@ -313,28 +307,26 @@ func (a *Archiver) HandleQuery(querystring, apikey string) ([]byte, error) {
 			uuids = uuids[:dq.limit.streamlimit]
 		}
 
-		var response []SmapReading
 		start := uint64(dq.start.UnixNano())
 		end := uint64(dq.end.UnixNano())
 		switch dq.dtype {
 		case IN_TYPE:
 			log.Debug("Data in start %v end %v", start, end)
 			if start < end {
-				response, err = a.GetData(uuids, start, end, UOT_NS, dq.timeconv)
+				res, err = a.GetData(uuids, start, end, UOT_NS, dq.timeconv)
 			} else {
-				response, err = a.GetData(uuids, end, start, UOT_NS, dq.timeconv)
+				res, err = a.GetData(uuids, end, start, UOT_NS, dq.timeconv)
 			}
 		case BEFORE_TYPE:
 			log.Debug("Data before time %v", start)
-			response, err = a.PrevData(uuids, start, int32(dq.limit.limit), UOT_NS, dq.timeconv)
+			res, err = a.PrevData(uuids, start, int32(dq.limit.limit), UOT_NS, dq.timeconv)
 		case AFTER_TYPE:
 			log.Debug("Data after time %v", start)
-			response, err = a.NextData(uuids, start, int32(dq.limit.limit), UOT_NS, dq.timeconv)
+			res, err = a.NextData(uuids, start, int32(dq.limit.limit), UOT_NS, dq.timeconv)
 		}
-		log.Debug("response %v uuids %v", response, uuids)
-		data, _ = json.Marshal(response)
+		log.Debug("response %v uuids %v", res, uuids)
 	}
-	return data, nil
+	return res, nil
 }
 
 func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error {
@@ -371,76 +363,131 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 	return t.Run()
 }
 
+// A major problem is not knowing data types as they flow through. We really need a more efficient transport
+// mechanism through giles, without this reliance on marshalling json. It would be nice to just copy data
+// in and have the interface on the other side figure out what it is and then marshal/unmarshal appropriately.
+// For any of the core archiver methods that right now return []SmapReading, these should instead return interface{},
+// and then the interfaces on the other side must do a type switch to determine if it is []SmapReadingObject, []SmapReadingNumber
+// or []SmapItem. These types have to be touched up, but because we are no longer directly serializing them,
+// the structs can be constructed in a much more straightforward manner, with more type information!
+//
+// Fixing this should start from the databases up. The timeseries databases should return SmapNumbersResponse objects,
+// and the object database should return SmapObjectResponse objects. Those changes will propagate up to the archiver API,
+// which should return an interface{} rather than []SmapReading. Lastly, the front interfaces should use a type switch
+// to determine what they're dealing with
+
 // For each of the streamids, fetches all data between start and end (where
 // start < end). The units for start/end are given by query_uot. We give the units
 // so that each time series database can convert the incoming timestamps to whatever
 // it needs (most of these will query the metadata store for the unit of time for the
 // data stream it is accessing)
-func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot, to_uot UnitOfTime) ([]SmapReading, error) {
-	resp, err := a.tsdb.GetData(streamids, start, end, query_uot)
-	if err == nil { // if no error, adjust timeseries
-		for i, sr := range resp {
-			stream_uot := a.store.GetUnitOfTime(sr.UUID)
-			if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
-				newrdg, err := a.objstore.GetObjects(sr.UUID, start, end, query_uot)
-				if err != nil {
-					return resp, err
-				}
-				sr = newrdg
+func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot, to_uot UnitOfTime) (interface{}, error) {
+	//resp, err := a.tsdb.GetData(streamids, start, end, query_uot)
+	//if err == nil { // if no error, adjust timeseries
+	//	for i, sr := range resp {
+	//		stream_uot := a.store.GetUnitOfTime(sr.UUID)
+	//		if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
+	//			//newrdg, err := a.objstore.GetObjects(sr.UUID, start, end, query_uot)
+	//			//if err != nil {
+	//			//	return resp, err
+	//			//}
+	//			//sr = newrdg
+	//		}
+	//		for _, reading := range sr.Readings {
+	//            reading.Time = convertTime(reading.Time, stream_uot, to_uot)
+	//		}
+	//		resp[i] = sr
+	//	}
+	//}
+	//
+	//
+	//	return resp, err
+
+	var err error
+	ret := make([]interface{}, len(streamids))
+	for idx, streamid := range streamids {
+		stream_uot := a.store.GetUnitOfTime(streamid)
+		if a.store.GetStreamType(streamid) == NUMERIC_STREAM {
+			res, _ := a.tsdb.GetData(streamids[idx:idx+1], start, end, query_uot)
+			ret[idx] = res[0]
+			for _, reading := range ret[idx].(SmapNumbersResponse).Readings {
+				reading.Time = convertTime(reading.Time, stream_uot, to_uot)
 			}
-			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, to_uot))
-				sr.Readings[j] = reading
+		} else {
+			ret[idx], _ = a.objstore.GetObjects(streamid, start, end, query_uot)
+			for _, reading := range ret[idx].(SmapObjectResponse).Readings {
+				reading.Time = convertTime(reading.Time, stream_uot, to_uot)
 			}
-			resp[i] = sr
 		}
 	}
-	return resp, err
+	return ret, err
 }
 
 // For each of the streamids, fetches data before the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
-func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query_uot, to_uot UnitOfTime) ([]SmapReading, error) {
-	resp, err := a.tsdb.Prev(streamids, start, limit, query_uot)
-	if err == nil { // if no error, adjust timeseries
-		for i, sr := range resp {
-			stream_uot := a.store.GetUnitOfTime(sr.UUID)
-			// if no readings from timeseries database, it might be an object stream
-			if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
-				newrdg, err := a.objstore.PrevObject(sr.UUID, start, query_uot)
-				if err != nil {
-					return resp, err
-				}
-				sr = newrdg
+func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query_uot, to_uot UnitOfTime) (interface{}, error) {
+	var err error
+	ret := make([]interface{}, len(streamids))
+	for idx, streamid := range streamids {
+		stream_uot := a.store.GetUnitOfTime(streamid)
+		if a.store.GetStreamType(streamid) == NUMERIC_STREAM {
+			res, _ := a.tsdb.Prev(streamids[idx:idx+1], start, limit, query_uot)
+			ret[idx] = res[0]
+			for _, reading := range ret[idx].(SmapNumbersResponse).Readings {
+				reading.Time = convertTime(reading.Time, stream_uot, to_uot)
 			}
-			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, to_uot))
-				sr.Readings[j] = reading
+		} else {
+			ret[idx], _ = a.objstore.PrevObject(streamid, start, query_uot)
+			for _, reading := range ret[idx].(SmapObjectResponse).Readings {
+				reading.Time = convertTime(reading.Time, stream_uot, to_uot)
 			}
-			resp[i] = sr
 		}
 	}
-	return resp, err
+
+	//resp, err := a.tsdb.Prev(streamids, start, limit, query_uot)
+	//if err == nil { // if no error, adjust timeseries
+	//	for i, sr := range resp {
+	//		stream_uot := a.store.GetUnitOfTime(sr.UUID)
+	//		// if no readings from timeseries database, it might be an object stream
+	//		if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
+	//			//newrdg, err := a.objstore.PrevObject(sr.UUID, start, query_uot)
+	//			//if err != nil {
+	//			//	return resp, err
+	//			//}
+	//			//sr = newrdg
+	//		}
+	//		for _, reading := range sr.Readings {
+	//            reading.Time = convertTime(reading.Time, stream_uot, to_uot)
+	//		}
+	//		resp[i] = sr
+	//	}
+	//}
+	return ret, err
 }
+
+// How do we handle getting data from 2 databases where we don't know which database each UUID is in?
+// We can retrieve the stream type for each uuid, and use that to separate the uuids into two lists: timeseries streams
+// and object streams. It would be nice to zip these back in order. Unsure if we should dispatch object
+// and timeseries database transactions in parallel or serially (will this make a huge difference?), but might
+// as well do serially for now.
 
 // For each of the streamids, fetches data after the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
-func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot, to_uot UnitOfTime) ([]SmapReading, error) {
+func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot, to_uot UnitOfTime) (interface{}, error) {
 	resp, err := a.tsdb.Next(streamids, start, limit, query_uot)
 	if err == nil { // if no error, adjust timeseries
 		for i, sr := range resp {
 			stream_uot := a.store.GetUnitOfTime(sr.UUID)
 			// if no readings from timeseries database, it might be an object stream
 			if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
-				newrdg, err := a.objstore.NextObject(sr.UUID, start, query_uot)
-				if err != nil {
-					return resp, err
-				}
-				sr = newrdg
+				//newrdg, err := a.objstore.NextObject(sr.UUID, start, query_uot)
+				//if err != nil {
+				//	return resp, err
+				//}
+				//sr = newrdg
 			}
-			for j, reading := range sr.Readings {
-				reading[0] = float64(convertTime(uint64(reading[0].(float64)), stream_uot, to_uot))
-				sr.Readings[j] = reading
+			for _, reading := range sr.Readings {
+				reading.Time = convertTime(reading.Time, stream_uot, to_uot)
 			}
 			resp[i] = sr
 		}

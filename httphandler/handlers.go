@@ -121,6 +121,7 @@ func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Re
 // Resolves sMAP queries and returns results
 func QueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	defer req.Body.Close()
+	writer := json.NewEncoder(rw)
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	rw.Header().Set("Access-Control-Allow-Origin", "*")
 	key := unescape(ps.ByName("key"))
@@ -135,8 +136,18 @@ func QueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Reques
 		rw.Write([]byte(err.Error()))
 		return
 	}
-	rw.WriteHeader(200)
-	rw.Write(res)
+	switch res.(type) {
+	case []archiver.SmapNumbersResponse:
+		err = writer.Encode(res.([]archiver.SmapNumbersResponse))
+	default:
+		err = writer.Encode(res)
+	}
+	if err != nil {
+		log.Error("Error evaluating query: %v", err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
 }
 
 // Resolves sMAP queries and returns results
@@ -159,7 +170,6 @@ func Query2Handler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Reque
 	}
 	encodedbytes := b.Bytes()
 	_, decoded := msgpack.Decode(&encodedbytes, 0)
-	log.Debug("decoded %v", decoded)
 	res, err := json.Marshal(decoded)
 	if err != nil {
 		log.Error("Error converting to json: %v", err)

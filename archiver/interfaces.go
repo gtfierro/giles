@@ -19,11 +19,11 @@ type TSDB interface {
 	Add(*StreamBuf) bool
 	// uuids, reference time, limit, unit of time
 	// retrieve data before reference time
-	Prev([]string, uint64, int32, UnitOfTime) ([]SmapReading, error)
+	Prev([]string, uint64, int32, UnitOfTime) ([]SmapNumbersResponse, error)
 	// retrieve data after reference time
-	Next([]string, uint64, int32, UnitOfTime) ([]SmapReading, error)
+	Next([]string, uint64, int32, UnitOfTime) ([]SmapNumbersResponse, error)
 	// uuids, start time, end time, unit of time
-	GetData([]string, uint64, uint64, UnitOfTime) ([]SmapReading, error)
+	GetData([]string, uint64, uint64, UnitOfTime) ([]SmapNumbersResponse, error)
 	// get a new connection to the timeseries database
 	GetConnection() (net.Conn, error)
 	// return the number of live connections
@@ -38,11 +38,11 @@ type ObjectStore interface {
 	// archive the given SmapMessage that contains non-numerical Readings
 	AddObject(*SmapMessage) (bool, error)
 	// retrieve blob closest before the reference time for the given UUID
-	PrevObject(string, uint64, UnitOfTime) (SmapReading, error)
+	PrevObject(string, uint64, UnitOfTime) (SmapObjectResponse, error)
 	// retrieve blob closest after the reference time for the given UUIDs
-	NextObject(string, uint64, UnitOfTime) (SmapReading, error)
+	NextObject(string, uint64, UnitOfTime) (SmapObjectResponse, error)
 	// retrieves all blobs between the start/end times for the given UUIDs
-	GetObjects(string, uint64, uint64, UnitOfTime) (SmapReading, error)
+	GetObjects(string, uint64, uint64, UnitOfTime) (SmapObjectResponse, error)
 	// Adds a pointer to metadata store for streamid/uuid conversion and the like
 	AddStore(MetadataStore)
 }
