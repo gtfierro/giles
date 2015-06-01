@@ -66,6 +66,26 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		log.Fatalf("Could not create index on metadata.uuid (%v)", err)
 	}
 
+	index.Key = []string{"Properties.UnitofTime"}
+	index.Unique = false
+	err = metadata.EnsureIndex(index)
+	if err != nil {
+		log.Fatalf("Could not create index on metadata.properties.unitofmeasure (%v)", err)
+	}
+
+	index.Key = []string{"Properties.UnitofMeasure"}
+	err = metadata.EnsureIndex(index)
+	if err != nil {
+		log.Fatalf("Could not create index on metadata.properties.unitofmeasure (%v)", err)
+	}
+
+	index.Key = []string{"Properties.StreamType"}
+	err = metadata.EnsureIndex(index)
+	if err != nil {
+		log.Fatalf("Could not create index on metadata.properties.streamtype (%v)", err)
+	}
+
+	index.Unique = true
 	index.Key = []string{"Path"}
 	err = pathmetadata.EnsureIndex(index)
 	if err != nil {
