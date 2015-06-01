@@ -33,7 +33,7 @@ Client:2:
                     },
                     "Readings": [
                         [
-                            $TIME_MS,
+                            $TIME_MS(1),
                             1
                         ]
                     ],

@@ -33,7 +33,7 @@ Client:2:
                 "/root2/sensors/0": {
                     "Readings": [
                         [
-                            $TIME_MS,
+                            $TIME_MS(1),
                             1
                         ]
                     ],

@@ -14,7 +14,7 @@ Client:1:
                         "Tag2": "DEF"
                     },
                     "uuid": "94078c7e-f9d3-11e4-bcda-0cc47a0f7eea",
-                    "Readings": [[$TIME_MS, 0]]
+                    "Readings": [[$TIME_MS(1), 0]]
                 }
             }
     Output:
