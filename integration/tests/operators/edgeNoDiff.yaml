@@ -1,5 +1,5 @@
 name: test edge detector with no edges
-layout: 1:Input -> 1:Output -> Sleep:2s -> 2:Input -> 2:Output
+layout: 1:Input -> 1:Output -> Sleep:3s -> 2:Input -> 2:Output
 Client:1:
     Interface: HTTP
     Input:
