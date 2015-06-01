@@ -387,27 +387,6 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 // it needs (most of these will query the metadata store for the unit of time for the
 // data stream it is accessing)
 func (a *Archiver) GetData(streamids []string, start, end uint64, query_uot, to_uot UnitOfTime) (interface{}, error) {
-	//resp, err := a.tsdb.GetData(streamids, start, end, query_uot)
-	//if err == nil { // if no error, adjust timeseries
-	//	for i, sr := range resp {
-	//		stream_uot := a.store.GetUnitOfTime(sr.UUID)
-	//		if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
-	//			//newrdg, err := a.objstore.GetObjects(sr.UUID, start, end, query_uot)
-	//			//if err != nil {
-	//			//	return resp, err
-	//			//}
-	//			//sr = newrdg
-	//		}
-	//		for _, reading := range sr.Readings {
-	//            reading.Time = convertTime(reading.Time, stream_uot, to_uot)
-	//		}
-	//		resp[i] = sr
-	//	}
-	//}
-	//
-	//
-	//	return resp, err
-
 	var err error
 	ret := make([]interface{}, len(streamids))
 	for idx, streamid := range streamids {
@@ -448,25 +427,6 @@ func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query
 			}
 		}
 	}
-
-	//resp, err := a.tsdb.Prev(streamids, start, limit, query_uot)
-	//if err == nil { // if no error, adjust timeseries
-	//	for i, sr := range resp {
-	//		stream_uot := a.store.GetUnitOfTime(sr.UUID)
-	//		// if no readings from timeseries database, it might be an object stream
-	//		if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
-	//			//newrdg, err := a.objstore.PrevObject(sr.UUID, start, query_uot)
-	//			//if err != nil {
-	//			//	return resp, err
-	//			//}
-	//			//sr = newrdg
-	//		}
-	//		for _, reading := range sr.Readings {
-	//            reading.Time = convertTime(reading.Time, stream_uot, to_uot)
-	//		}
-	//		resp[i] = sr
-	//	}
-	//}
 	return ret, err
 }
 
@@ -479,25 +439,24 @@ func (a *Archiver) PrevData(streamids []string, start uint64, limit int32, query
 // For each of the streamids, fetches data after the start time. If limit is < 0, fetches all data.
 // If limit >= 0, fetches only that number of points. See Archiver.GetData for explanation of query_uot
 func (a *Archiver) NextData(streamids []string, start uint64, limit int32, query_uot, to_uot UnitOfTime) (interface{}, error) {
-	resp, err := a.tsdb.Next(streamids, start, limit, query_uot)
-	if err == nil { // if no error, adjust timeseries
-		for i, sr := range resp {
-			stream_uot := a.store.GetUnitOfTime(sr.UUID)
-			// if no readings from timeseries database, it might be an object stream
-			if len(sr.Readings) == 0 && a.store.GetStreamType(sr.UUID) == OBJECT_STREAM {
-				//newrdg, err := a.objstore.NextObject(sr.UUID, start, query_uot)
-				//if err != nil {
-				//	return resp, err
-				//}
-				//sr = newrdg
-			}
-			for _, reading := range sr.Readings {
+	var err error
+	ret := make([]interface{}, len(streamids))
+	for idx, streamid := range streamids {
+		stream_uot := a.store.GetUnitOfTime(streamid)
+		if a.store.GetStreamType(streamid) == NUMERIC_STREAM {
+			res, _ := a.tsdb.Next(streamids[idx:idx+1], start, limit, query_uot)
+			ret[idx] = res[0]
+			for _, reading := range ret[idx].(SmapNumbersResponse).Readings {
 				reading.Time = convertTime(reading.Time, stream_uot, to_uot)
 			}
-			resp[i] = sr
+		} else {
+			ret[idx], _ = a.objstore.NextObject(streamid, start, query_uot)
+			for _, reading := range ret[idx].(SmapObjectResponse).Readings {
+				reading.Time = convertTime(reading.Time, stream_uot, to_uot)
+			}
 		}
 	}
-	return resp, err
+	return ret, err
 }
 
 // For all streams that match the provided where clause in where_tags, returns the values of the requested
