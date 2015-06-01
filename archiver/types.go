@@ -6,8 +6,6 @@ import (
 	"strconv"
 )
 
-)
-
 // Struct representing data readings to and from sMAP
 type SmapReading struct {
 	// Readings will be interpreted as a list of [uint64, float64] = [time, value]

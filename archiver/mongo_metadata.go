@@ -312,6 +312,56 @@ func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) e
 	return queryErr
 }
 
+/*
+The incoming messages will be in the form of {pathname: metadata/properties/etc}.
+Only the timeseries will have UUIDs attached. When we receive a message like this, we need
+to compress all of the prefix-path kv pairs into each of the timeseries, and then save those
+timeseries to the metadata collection
+*/
+func (ms *MongoStore) SaveTags(messages map[string]*SmapMessage) error {
+	var err error
+	for path, msg := range messages {
+		if msg.UUID == "" || (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil) {
+			continue
+		}
+		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
+		if msg.Metadata != nil && len(msg.Metadata) > 0 {
+			for k, v := range msg.Metadata {
+				toWrite["Metadata."+k] = v
+			}
+		}
+		if msg.Properties != nil && len(msg.Properties) > 0 {
+			for k, v := range msg.Properties {
+				toWrite["Properties."+k] = v
+			}
+		}
+		if msg.Actuator != nil && len(msg.Actuator) > 0 {
+			for k, v := range msg.Actuator {
+				toWrite["Actuator."+k] = v
+			}
+		}
+		for _, prefix := range getPrefixes(path) { // accumulate all metadata for this timeseries
+			if messages[prefix] == nil {
+				continue
+			}
+			if messages[prefix].Metadata != nil {
+				for k, v := range messages[prefix].Metadata {
+					toWrite["Metadata."+k] = v
+				}
+			}
+			if messages[prefix].Properties != nil {
+				for k, v := range messages[prefix].Properties {
+					toWrite["Properties."+k] = v
+				}
+			}
+		}
+		if len(toWrite) > 0 {
+			_, err = ms.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
+		}
+	}
+	return err
+}
+
 // Retrieves the tags indicated by `target` for documents that match the `where` clause. If `is_distinct` is true,
 // then it will return a list of distinct values for the tag `distinct_key`
 func (ms *MongoStore) GetTags(target bson.M, is_distinct bool, distinct_key string, where bson.M) ([]interface{}, error) {
@@ -466,8 +516,8 @@ func (ms *MongoStore) GetUnitOfTime(uuid string) UnitOfTime {
 
 func (ms *MongoStore) GetStreamType(uuid string) StreamType {
 	ms.streamtypelock.Lock()
-	defer ms.streamtypelock.Unlock()
 	if st, found := ms.streamtype.Get(uuid); found {
+		ms.streamtypelock.Unlock()
 		return st.(StreamType)
 	}
 	var res bson.M
@@ -479,14 +529,17 @@ func (ms *MongoStore) GetStreamType(uuid string) StreamType {
 		if st, found := prop.(bson.M)["StreamType"]; found {
 			if st.(string) == "object" {
 				ms.streamtype.Set(uuid, OBJECT_STREAM)
+				ms.streamtypelock.Unlock()
 				return OBJECT_STREAM
 			} else {
 				ms.streamtype.Set(uuid, NUMERIC_STREAM)
+				ms.streamtypelock.Unlock()
 				return NUMERIC_STREAM
 			}
 		}
 	}
 	ms.streamtype.Set(uuid, NUMERIC_STREAM)
+	ms.streamtypelock.Unlock()
 	return NUMERIC_STREAM
 }
 

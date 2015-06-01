@@ -186,8 +186,8 @@ func NewArchiver(c *Config) (a *Archiver) {
 // Returns an error, which is nil if all went well
 func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) error {
 	var (
-		pathMdErr error
-		tsMdErr   error
+		//pathMdErr error
+		tsMdErr error
 	)
 	if a.enforceKeys {
 		ok, err := a.store.CheckKey(apikey, readings)
@@ -200,12 +200,17 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 		}
 	}
 	// save metadata
-	pathMdErr = a.store.SavePathMetadata(readings)
-	if pathMdErr != nil {
-		return pathMdErr
-	}
+	//pathMdErr = a.store.SavePathMetadata(readings)
+	//if pathMdErr != nil {
+	//	return pathMdErr
+	//}
 
-	tsMdErr = a.store.SaveTimeseriesMetadata(readings)
+	//tsMdErr = a.store.SaveTimeseriesMetadata(readings)
+	//if tsMdErr != nil {
+	//	return tsMdErr
+	//}
+
+	tsMdErr = a.store.SaveTags(readings)
 	if tsMdErr != nil {
 		return tsMdErr
 	}
