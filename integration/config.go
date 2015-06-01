@@ -38,6 +38,8 @@ func GetClient(id int64, cfg Config) (Client, error) {
 	switch iface {
 	case "HTTP":
 		return NewHTTPClient(id, cfg)
+	case "HTTP Stream":
+		return NewHTTPStreamClient(id, cfg)
 	}
 
 	return c, nil
