@@ -152,14 +152,8 @@ func NewHTTPStreamClient(id int64, c Config) (*HTTPStreamClient, error) {
 	var encodeErr error
 	switch format {
 	case "JSON":
-		toMarshal := make(map[string]interface{})
 		datastring := referenceManager.ParseData(cfgInput["Data"].(string))
-		dec := json.NewDecoder(bytes.NewReader([]byte(datastring)))
-		dec.UseNumber()
-		encodeErr = dec.Decode(&toMarshal)
-		if encodeErr == nil {
-			data, encodeErr = json.Marshal(toMarshal)
-		}
+		data = []byte(datastring)
 	case "string":
 		datastring := referenceManager.ParseData(cfgInput["Data"].(string))
 		data = []byte(strings.TrimSpace(datastring))
