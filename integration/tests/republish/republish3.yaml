@@ -1,5 +1,5 @@
 name: Test republish 2 adds
-layout: 1:Input -> 2:Input -> 2:Output -> Sleep:1s -> 3:Input -> 3:Output -> Sleep:1s -> 1:Output:1 -> 1:Output:2
+layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> Sleep:1s -> 3:Input -> 3:Output -> Sleep:1s -> 1:Output:1 -> 1:Output:2
 Client:1:
     Interface: HTTP Stream
     Input:

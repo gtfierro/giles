@@ -1,5 +1,5 @@
 name: Test that republish does not deliver message from streams that become unqualified
-layout: 1:Input -> 2:Input -> 2:Output -> 3:Input -> 3:Output -> Sleep:1s -> 1:Output:1 -> 1:Output:2
+layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> 3:Input -> 3:Output -> Sleep:1s -> 1:Output:1 -> 1:Output:2
 Client:1:
     Interface: HTTP Stream
     Input:
@@ -38,7 +38,7 @@ Client:3:
         URI: http://localhost:8079/add/apikey
         Format: string
         Data:  >
-            {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "no match"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(1)"}}
+            {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "no match"}, "Readings": [[$TIME_MS(2),1]],"uuid": "$UUID(1)"}}
     Output:
         Code: 200
         Contents: ""
