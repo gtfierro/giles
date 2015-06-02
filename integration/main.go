@@ -7,22 +7,44 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
 var referenceManager *Manager
 
+func findall(directory string) []string {
+	var ret []string
+	files, _ := ioutil.ReadDir(directory)
+	for _, f := range files {
+		filename := directory + "/" + f.Name()
+		if f.IsDir() {
+			ret = append(ret, findall(filename)...)
+			continue
+		}
+		if strings.HasSuffix(f.Name(), ".yaml") {
+			ret = append(ret, filename)
+		}
+	}
+	return ret
+}
+
 func main() {
 	var wg sync.WaitGroup
 
 	var files []string
+	var found []string
 	var findErr error
 
 	if len(os.Args) > 1 {
 		for _, file := range os.Args[1:] {
-			found, findErr := filepath.Glob(file)
-			if findErr != nil {
-				log.Fatalf("Error finding file %v (%v)", file, findErr)
+			if strings.HasSuffix(file, ".yaml") {
+				found, findErr = filepath.Glob(file)
+				if findErr != nil {
+					log.Fatalf("Error finding file %v (%v)", file, findErr)
+				}
+			} else { //directory
+				found = findall(os.Args[1])
 			}
 			files = append(files, found...)
 		}
