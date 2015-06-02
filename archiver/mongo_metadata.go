@@ -59,7 +59,7 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 		Unique:     true,
 		DropDups:   false,
 		Background: false,
-		Sparse:     true,
+		Sparse:     false,
 	}
 	err = metadata.EnsureIndex(index)
 	if err != nil {
