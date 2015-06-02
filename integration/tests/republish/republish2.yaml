@@ -1,10 +1,10 @@
-name: Test republish single add
+name: Test republish single add /republish/data endpoint
 layout: 1:Input -> 2:Input -> 2:Output -> Sleep:1s -> 1:Output
 Client:1:
     Interface: HTTP Stream
     Input:
         Method: POST
-        URI: http://localhost:8079/republish
+        URI: http://localhost:8079/republish/data
         Format: string
         Data: >
             Metadata/tag = "$UUID(1)"

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // This is a basic HTTP client that fulfills the expected Client interface
@@ -121,15 +122,17 @@ func (hc *HTTPClient) GetID() int64 {
 type HTTPStreamClient struct {
 	id               int64
 	req              *http.Request
-	expectedCode     int
-	expectedContents string
-	expectedFormat   string
+	expectedCode     []int
+	expectedContents []string
+	expectedFormat   []string
 	response         *http.Response
+	reader           *bufio.Reader
+	outputIndex      int
 }
 
 func NewHTTPStreamClient(id int64, c Config) (*HTTPStreamClient, error) {
 	// handle input
-	h := &HTTPStreamClient{id: id}
+	h := &HTTPStreamClient{id: id, outputIndex: -1}
 	// grab the Input section of the client configuration
 	cfgInput, ok := c["Input"].(Config)
 	if !ok {
@@ -174,16 +177,19 @@ func NewHTTPStreamClient(id int64, c Config) (*HTTPStreamClient, error) {
 		d, _ := yaml.Marshal(&c)
 		return h, fmt.Errorf("Output section for client was invalid: %v\n", string(d))
 	}
-	code, foundCode := cfgOutput["Code"]
-	contents, foundContents := cfgOutput["Contents"]
-	format, foundFormat = cfgOutput["Format"]
-	if !foundCode || !foundContents || !foundFormat {
-		d, _ := yaml.Marshal(&c)
-		return h, fmt.Errorf("Output section for client was invalid: %v\n", string(d))
+	for _, rawSection := range cfgOutput {
+		section := rawSection.(Config)
+		code, foundCode := section["Code"]
+		contents, foundContents := section["Contents"]
+		format, foundFormat = section["Format"]
+		if !foundCode || !foundContents || !foundFormat {
+			d, _ := yaml.Marshal(&c)
+			return h, fmt.Errorf("Output section for client was invalid: %v\n", string(d))
+		}
+		h.expectedCode = append(h.expectedCode, code.(int))
+		h.expectedContents = append(h.expectedContents, referenceManager.ParseData(contents.(string)))
+		h.expectedFormat = append(h.expectedFormat, format.(string))
 	}
-	h.expectedCode = code.(int)
-	h.expectedContents = referenceManager.ParseData(contents.(string))
-	h.expectedFormat = format.(string)
 	return h, nil
 }
 
@@ -191,36 +197,50 @@ func (hc *HTTPStreamClient) Input() error {
 	var err error
 	client := &http.Client{}
 	go func() {
-		fmt.Printf("starting client: %v\n", hc)
 		hc.response, err = client.Do(hc.req)
-		fmt.Printf("finishing client: %v\n", hc)
 	}()
 	return err
 }
 
 func (hc *HTTPStreamClient) Output() error {
+	hc.outputIndex += 1
 	if hc.response == nil {
 		return fmt.Errorf("Nil response")
 	}
-	if hc.response.StatusCode != hc.expectedCode {
+	if hc.reader == nil {
+		hc.reader = bufio.NewReader(hc.response.Body)
+	}
+
+	if hc.response.StatusCode != hc.expectedCode[hc.outputIndex] {
 		return fmt.Errorf("Status code was %v but expected %v\n", hc.response.StatusCode, hc.expectedCode)
 	}
 	var outputOK = false
-	defer hc.response.Body.Close()
-	reader := bufio.NewReader(hc.response.Body)
-	fmt.Printf("start streaming client output\n")
-	contents, readErr := reader.ReadBytes('\n')
+	var contents []byte
+	var readErr error
+
+	readBytes := make(chan []byte)
+	go func() {
+		contents, readErr = hc.reader.ReadBytes('\n')
+		readBytes <- contents
+	}()
+
+	select {
+	case <-readBytes:
+		hc.reader.ReadBytes('\n') // discard second newline (sMAP delivers them in pairs)
+	case <-time.After(2 * time.Second): // timeout
+	}
+
 	if readErr != nil {
 		return fmt.Errorf("Error when reading HTTP response body (%v)\n", readErr)
 	}
-	switch hc.expectedFormat {
+	switch hc.expectedFormat[hc.outputIndex] {
 	case "string":
-		outputOK = checkString(string(contents), hc.expectedContents)
+		outputOK = checkString(string(contents), hc.expectedContents[hc.outputIndex])
 	case "JSON":
-		outputOK = checkJSON(string(contents), hc.expectedContents)
+		outputOK = checkJSON(string(contents), hc.expectedContents[hc.outputIndex])
 	}
 	if !outputOK {
-		return fmt.Errorf("Contents were [%v] but expected [%v]\n", string(contents), hc.expectedContents)
+		return fmt.Errorf("Contents were [%v] but expected [%v]\n", string(contents), hc.expectedContents[hc.outputIndex])
 	}
 	return nil
 }
