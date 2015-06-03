@@ -84,13 +84,15 @@ func main() {
 		hasError := false
 		for _, e := range errors {
 			if e != nil {
-				color.Red("Error on chain: %v", e)
+				color.Magenta("Error on chain: %v", e)
 				hasError = true
 			}
 		}
 
 		if !hasError {
 			color.Green("Test [%v] passed!\n\n", m["name"].(string))
+		} else {
+			color.Red("Test [%v] FAILED!\n\n", m["name"].(string))
 		}
 
 	}
