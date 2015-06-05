@@ -83,6 +83,11 @@ type Republisher struct {
 	// Pointer to archiver
 	a *Archiver
 
+	// lookup table for UUID subscribers
+	uuidClients map[string][](*RepublishClient)
+	// lock for editing uuidClients
+	uuidClientLock sync.Mutex
+
 	// list of all republish clients (unique)
 	clients [](*RepublishClient)
 
@@ -102,6 +107,7 @@ type Republisher struct {
 func NewRepublisher(a *Archiver) *Republisher {
 	return &Republisher{
 		a:            a,
+		uuidClients:  make(map[string][](*RepublishClient)),
 		clients:      [](*RepublishClient){},
 		queries:      make(map[QueryHash]*Query),
 		queryConcern: make(map[QueryHash][](*RepublishClient)),
@@ -187,6 +193,38 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
 		}
 	}
 	r.Unlock()
+}
+
+// A UUID subscriber is interested in all metadata associated with a given stream. We
+// store a lookup from each uuid to a list of concerned clients. There is nothing to
+// reevaluate here, so we can do normal lookups.
+// TODO: to consider: update operations are expensive -- do we block other clients when
+//  updating subscriptions?
+func (r *Republisher) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey string) {
+	// create new instance of a client
+	client := &RepublishClient{notify: s.GetNotify(), subscriber: s}
+
+	r.uuidClientLock.Lock()
+	for _, uuid := range uuids {
+		r.uuidClients[uuid] = append(r.uuidClients[uuid], client)
+	}
+	r.uuidClientLock.Unlock()
+	log.Info("New UUID subscriber for %v", uuids)
+
+	// wait for client to quit
+	<-client.notify
+
+	// now we remove ourselves from the uuidClients
+	r.uuidClientLock.Lock()
+	for uuid, clientlist := range r.uuidClients {
+		for i, c := range clientlist {
+			if c == client {
+				clientlist = append(clientlist[:i], clientlist[i+1:]...)
+			}
+		}
+		r.uuidClients[uuid] = clientlist
+	}
+	r.uuidClientLock.Unlock()
 }
 
 // Same as MetadataChange, but operates on a known list of keys
@@ -307,5 +345,10 @@ func (r *Republisher) Republish(msg *SmapMessage) {
 				go client.subscriber.Send(towrite)
 			}
 		}
+	}
+
+	// for all clients subscribed to this UUID
+	for _, client := range r.uuidClients[msg.UUID] {
+		go client.subscriber.Send(msg)
 	}
 }
