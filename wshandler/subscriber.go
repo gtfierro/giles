@@ -3,7 +3,6 @@ package wshandler
 import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
-	"github.com/gtfierro/giles/archiver"
 	"net/http"
 	"time"
 )
@@ -30,7 +29,7 @@ func NewWSSubscriber(ws *websocket.Conn, rw http.ResponseWriter) *WSSubscriber {
 	return wss
 }
 
-func (wss *WSSubscriber) Send(msg *archiver.SmapMessage) {
+func (wss *WSSubscriber) Send(msg interface{}) {
 	if msg != nil && !wss.closed {
 		b, _ := json.Marshal(msg)
 		wss.outbound <- b
