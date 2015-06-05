@@ -2,7 +2,6 @@ package httphandler
 
 import (
 	"encoding/json"
-	"github.com/gtfierro/giles/archiver"
 	"net/http"
 	"sync"
 )
@@ -26,11 +25,12 @@ func NewHTTPSubscriber(rw http.ResponseWriter) *HTTPSubscriber {
 }
 
 // called when we receive a new message
-func (hs *HTTPSubscriber) Send(msg *archiver.SmapMessage) {
-	towrite := make(map[string]interface{})
-	towrite[msg.Path] = archiver.SmapReading{Readings: msg.Readings, UUID: msg.UUID}
-	bytes, err := json.Marshal(towrite)
+func (hs *HTTPSubscriber) Send(msg interface{}) {
+	bytes, err := json.Marshal(msg)
+	hs.writeAndFlush(bytes, err)
+}
 
+func (hs *HTTPSubscriber) writeAndFlush(data []byte, err error) {
 	hs.Lock()
 	if hs.closed {
 		return
@@ -40,7 +40,7 @@ func (hs *HTTPSubscriber) Send(msg *archiver.SmapMessage) {
 		hs.rw.WriteHeader(500)
 		hs.rw.Write([]byte(err.Error()))
 	} else {
-		hs.rw.Write(bytes)
+		hs.rw.Write(data)
 		hs.rw.Write([]byte{'\n', '\n'})
 	}
 
@@ -49,6 +49,7 @@ func (hs *HTTPSubscriber) Send(msg *archiver.SmapMessage) {
 	}
 	hs.Unlock()
 }
+
 func (hs *HTTPSubscriber) SendError(e error) {
 	log.Error("HTTP Subscribe Error %v", e)
 	hs.rw.WriteHeader(500)

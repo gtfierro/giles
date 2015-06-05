@@ -36,10 +36,14 @@ var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
 func Handle(a *archiver.Archiver, port int) {
 	r := httprouter.New()
 	r.POST("/add/:key", curryhandler(a, AddReadingHandler))
-	r.POST("/republish", curryhandler(a, RepublishHandler))
 	r.POST("/api/query", curryhandler(a, QueryHandler))
 	r.POST("/api/test", curryhandler(a, Query2Handler))
 	r.GET("/api/tags/uuid/:uuid", curryhandler(a, TagsHandler))
+
+	r.POST("/republish", curryhandler(a, RepublishHandler))
+	r.POST("/republish/data", curryhandler(a, RepublishHandler))
+	r.POST("/republish/uuids", curryhandler(a, UUIDRepublishHandler))
+	r.POST("/republish/query", curryhandler(a, QueryRepublishHandler))
 
 	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+strconv.Itoa(port))
 	if err != nil {
@@ -108,6 +112,33 @@ func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.R
 // Receives POST request which contains metadata query. Subscribes the
 // requester to readings from streams which match that metadata query
 func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	defer req.Body.Close()
+	apikey := unescape(ps.ByName("key"))
+	stringquery, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Error("Error handling republish: %v", err, stringquery)
+	}
+	s := NewHTTPSubscriber(rw)
+	a.HandleSubscriber(s, string(stringquery), apikey)
+}
+
+func UUIDRepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	var uuids []string
+	defer req.Body.Close()
+	decoder := json.NewDecoder(req.Body)
+	decodeErr := decoder.Decode(&uuids)
+	if decodeErr != nil {
+		log.Error("Error decoding list of UUIDs (%v)", decodeErr)
+		return
+	}
+	apikey := unescape(ps.ByName("key"))
+	s := NewHTTPSubscriber(rw)
+	a.HandleUUIDSubscriber(s, uuids, apikey)
+}
+
+// Receives POST request which contains metadata query. Subscribes the
+// requester to readings from streams which match that metadata query
+func QueryRepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	defer req.Body.Close()
 	apikey := unescape(ps.ByName("key"))
 	stringquery, err := ioutil.ReadAll(req.Body)
