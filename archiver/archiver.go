@@ -488,6 +488,10 @@ func (a *Archiver) HandleSubscriber(s Subscriber, query, apikey string) {
 	a.republisher.HandleSubscriber(s, query, apikey)
 }
 
+func (a *Archiver) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey string) {
+	a.republisher.HandleUUIDSubscriber(s, uuids, apikey)
+}
+
 // For all streams that match the provided where clause in where_tags, sets the key-value
 // pairs specified in update_tags.
 func (a *Archiver) SetTags(update_tags, where_tags map[string]interface{}, apikey string) (int, error) {

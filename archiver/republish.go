@@ -47,7 +47,7 @@ type Subscriber interface {
 	// Called by the Republisher when there is a new message to send to the
 	// client. Send should transform the message to the appropriate format
 	// before forwarding to the actual client.
-	Send(*SmapMessage)
+	Send(interface{})
 
 	// Called by Republisher when there is an error with the subscription
 	SendError(error)
@@ -300,9 +300,11 @@ func (r *Republisher) Republish(msg *SmapMessage) {
 	// for all queries that resolve to this UUID
 	if queries, found := r.uuidConcern[msg.UUID]; found {
 		for _, hash := range queries {
+			towrite := make(map[string]interface{})
+			towrite[msg.Path] = SmapReading{Readings: msg.Readings, UUID: msg.UUID}
 			// get the list of subscribers for that query and forward the message
 			for _, client := range r.queryConcern[hash] {
-				go client.subscriber.Send(msg)
+				go client.subscriber.Send(towrite)
 			}
 		}
 	}
