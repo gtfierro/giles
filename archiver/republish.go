@@ -29,18 +29,6 @@ const (
 	DEL
 )
 
-// Given a query string, tokenize and parse the query, also keeping
-// track of what keys are mentioned in the query.
-func (r *Republisher) HandleQuery(querystring string) *Query {
-	q := &Query{}
-	lex := r.a.qp.Parse("select * where " + querystring)
-	q.where = lex.query.WhereBson()
-	q.keys = lex.keys
-	q.hash = QueryHash(strings.Join(lex.tokens, ""))
-	q.m_uuids = make(map[string]UUIDSTATE)
-	return q
-}
-
 // Subscriber is an interface that should be implemented by each protocol
 // adapter that wants to support sMAP republish pub-sub.
 type Subscriber interface {
@@ -71,6 +59,10 @@ type RepublishClient struct {
 
 	// this is how we handle writes back to the client
 	subscriber Subscriber
+
+	// true if this client is only interested in membership of a query (which UUIDs
+	// qualify and which do not)
+	membership bool
 }
 
 // This is a more thought-out version of the republisher that was first
@@ -104,8 +96,8 @@ type Republisher struct {
 	uuidConcern map[string][]QueryHash
 }
 
-func NewRepublisher(a *Archiver) *Republisher {
-	return &Republisher{
+func NewRepublisher(a *Archiver) (r *Republisher) {
+	r = &Republisher{
 		a:            a,
 		uuidClients:  make(map[string][](*RepublishClient)),
 		clients:      [](*RepublishClient){},
@@ -113,6 +105,7 @@ func NewRepublisher(a *Archiver) *Republisher {
 		queryConcern: make(map[QueryHash][](*RepublishClient)),
 		keyConcern:   make(map[string][]QueryHash),
 		uuidConcern:  make(map[string][]QueryHash)}
+	return
 }
 
 // This is the Archiver API call. @s is a Subscriber, an interface that allows
@@ -121,51 +114,15 @@ func NewRepublisher(a *Archiver) *Republisher {
 // Republisher can keep track of necessary state. @query is the query string
 // that describes what the client is subscribing to. This query should be a
 // valid sMAP query
-func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string) {
-	q := r.HandleQuery(query)
-	if prev_q, found := r.queries[q.hash]; found {
-		// this query has already been done
-		q = prev_q
-	} else {
-		// add it to the cache of queries
-		uuids, err := r.a.store.GetUUIDs(q.where)
-		//q.uuids, err = r.a.store.GetUUIDs(q.where)
-		if err != nil {
-			s.SendError(err)
-			return
-		}
-
-		for _, uuid := range uuids {
-			q.m_uuids[uuid] = OLD
-		}
-
-		r.queries[q.hash] = q
-
-		// for each matched UUID, store the query that matched it
-		for uuid, _ := range q.m_uuids {
-			var list []QueryHash
-			var found bool
-			if list, found = r.uuidConcern[uuid]; found {
-				list = append(list, q.hash)
-			} else {
-				list = []QueryHash{q.hash}
-			}
-			r.uuidConcern[uuid] = list
-		}
-
-		// for each key in the query, store the query that mentions it
-		for _, key := range q.keys {
-			if queries, found := r.keyConcern[key]; found {
-				queries = append(queries, q.hash)
-				r.keyConcern[key] = queries
-			} else {
-				r.keyConcern[key] = []QueryHash{q.hash}
-			}
-		}
+func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string, membership bool) {
+	q, err := r.HandleQuery(query)
+	if err != nil {
+		s.SendError(err)
+		return
 	}
 
 	// create new instance of a client
-	client := &RepublishClient{notify: s.GetNotify(), subscriber: s, query: query}
+	client := &RepublishClient{notify: s.GetNotify(), subscriber: s, query: query, membership: membership}
 
 	r.Lock()
 	{ // begin lock
@@ -300,6 +257,7 @@ func (r *Republisher) EvaluateQuery(qh QueryHash) {
 		if _, found := query.m_uuids[uuid]; found {
 			query.m_uuids[uuid] = SAME
 		} else {
+			go r.sendMembershipUpdate(query.hash, uuid, true)
 			query.m_uuids[uuid] = NEW
 		}
 	}
@@ -318,6 +276,7 @@ func (r *Republisher) EvaluateQuery(qh QueryHash) {
 			}
 			r.uuidConcern[uuid] = concerned
 			query.m_uuids[uuid] = DEL
+			go r.sendMembershipUpdate(query.hash, uuid, false)
 			continue
 		}
 		if status == NEW {
@@ -342,7 +301,9 @@ func (r *Republisher) Republish(msg *SmapMessage) {
 			towrite[msg.Path] = SmapReading{Readings: msg.Readings, UUID: msg.UUID}
 			// get the list of subscribers for that query and forward the message
 			for _, client := range r.queryConcern[hash] {
-				go client.subscriber.Send(towrite)
+				if !client.membership {
+					go client.subscriber.Send(towrite)
+				}
 			}
 		}
 	}
@@ -351,4 +312,70 @@ func (r *Republisher) Republish(msg *SmapMessage) {
 	for _, client := range r.uuidClients[msg.UUID] {
 		go client.subscriber.Send(msg)
 	}
+
+}
+
+func (r *Republisher) sendMembershipUpdate(hash QueryHash, uuid string, added bool) {
+	update := &SmapItem{UUID: uuid}
+	if added {
+		update.Data = "added"
+	} else {
+		update.Data = "removed"
+	}
+	for _, client := range r.queryConcern[hash] {
+		if client.membership {
+			go client.subscriber.Send(update)
+		}
+	}
+}
+
+// Given a query string, tokenize and parse the query, also keeping
+// track of what keys are mentioned in the query.
+func (r *Republisher) HandleQuery(querystring string) (*Query, error) {
+	q := &Query{}
+	lex := r.a.qp.Parse("select * where " + querystring)
+	q.where = lex.query.WhereBson()
+	q.keys = lex.keys
+	q.hash = QueryHash(strings.Join(lex.tokens, ""))
+	q.m_uuids = make(map[string]UUIDSTATE)
+	if prev_q, found := r.queries[q.hash]; found {
+		// this query has already been done
+		q = prev_q
+	} else {
+		// add it to the cache of queries
+		uuids, err := r.a.store.GetUUIDs(q.where)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, uuid := range uuids {
+			go r.sendMembershipUpdate(q.hash, uuid, true)
+			q.m_uuids[uuid] = OLD
+		}
+
+		r.queries[q.hash] = q
+
+		// for each matched UUID, store the query that matched it
+		for uuid, _ := range q.m_uuids {
+			var list []QueryHash
+			var found bool
+			if list, found = r.uuidConcern[uuid]; found {
+				list = append(list, q.hash)
+			} else {
+				list = []QueryHash{q.hash}
+			}
+			r.uuidConcern[uuid] = list
+		}
+
+		// for each key in the query, store the query that mentions it
+		for _, key := range q.keys {
+			if queries, found := r.keyConcern[key]; found {
+				queries = append(queries, q.hash)
+				r.keyConcern[key] = queries
+			} else {
+				r.keyConcern[key] = []QueryHash{q.hash}
+			}
+		}
+	}
+	return q, nil
 }

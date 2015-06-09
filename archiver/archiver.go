@@ -489,11 +489,15 @@ func (a *Archiver) TagsUUID(uuid string) (bson.M, error) {
 // will push all subsequent incoming information (data and tags) on those streams
 // to the client associated with the provided http.ResponseWriter.
 func (a *Archiver) HandleSubscriber(s Subscriber, query, apikey string) {
-	a.republisher.HandleSubscriber(s, query, apikey)
+	a.republisher.HandleSubscriber(s, query, apikey, false)
 }
 
 func (a *Archiver) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey string) {
 	a.republisher.HandleUUIDSubscriber(s, uuids, apikey)
+}
+
+func (a *Archiver) HandleQuerySubscriber(s Subscriber, query, apikey string) {
+	a.republisher.HandleSubscriber(s, query, apikey, true)
 }
 
 // For all streams that match the provided where clause in where_tags, sets the key-value
