@@ -124,3 +124,7 @@ type APIKeyManager interface {
 	// Retrieves the owner information for the given key
 	Owner(key string) (map[string]interface{}, error)
 }
+
+type Operator interface {
+	Run(input interface{}) (interface{}, error)
+}

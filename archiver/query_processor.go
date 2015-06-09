@@ -2,19 +2,20 @@ package archiver
 
 import (
 	"fmt"
-	"github.com/gtfierro/giles/internal/tree"
 	"strings"
 )
 
 type QueryProcessor struct {
 	a      *Archiver
-	graphs map[string]tree.Tree
+	graphs map[string]*Node
+	done   chan struct{}
 }
 
 func NewQueryProcessor(a *Archiver) (qp *QueryProcessor) {
 	qp = &QueryProcessor{
 		a:      a,
-		graphs: make(map[string]tree.Tree),
+		graphs: make(map[string]*Node),
+		done:   make(chan struct{}),
 	}
 	return
 }
@@ -37,11 +38,11 @@ func (qp *QueryProcessor) Parse(querystring string) *SQLex {
 	return l
 }
 
-func (qp *QueryProcessor) GetNodeFromOp(op *OpNode, query *query) tree.Node {
+func (qp *QueryProcessor) GetNodeFromOp(op *OpNode, query *query) *Node {
 	var (
 		operator OperationType
 		found    bool
-		node     tree.Node
+		node     *Node
 	)
 	if operator, found = OpLookup[op.Operator]; !found {
 		return nil
@@ -51,9 +52,9 @@ func (qp *QueryProcessor) GetNodeFromOp(op *OpNode, query *query) tree.Node {
 	// Populate extra information in nodes that need it
 	switch operator {
 	case WINDOW:
-		node = NodeLookup[operator](op.Arguments, query.data)
+		node = NodeLookup[operator](qp.done, op.Arguments, query.data)
 	default:
-		node = NodeLookup[operator](op.Arguments)
+		node = NodeLookup[operator](qp.done, op.Arguments)
 	}
 
 	return node
@@ -65,10 +66,10 @@ func (qp *QueryProcessor) GetNodeFromOp(op *OpNode, query *query) tree.Node {
 // This does not actually resolve the types of the nodes, but rather just
 // checks that they are potentially compatible. The actual type resolution
 // is performed when the nodes are evaluated
-func (qp *QueryProcessor) CheckOutToIn(out, in tree.Node) bool {
+func (qp *QueryProcessor) CheckOutToIn(out, in *Node) bool {
 	// check structures exist
-	outStructure, outFound := out.Get("out:structure")
-	inStructure, inFound := in.Get("in:structure")
+	outStructure, outFound := out.Tags["out:structure"]
+	inStructure, inFound := in.Tags["in:structure"]
 	if !inFound || !outFound {
 		log.Error("Both out and in must supply a structure")
 		return false
@@ -81,8 +82,8 @@ func (qp *QueryProcessor) CheckOutToIn(out, in tree.Node) bool {
 	}
 
 	// check datatypes exist
-	outDatatype, outFound := out.Get("out:datatype")
-	inDatatype, inFound := in.Get("in:datatype")
+	outDatatype, outFound := out.Tags["out:datatype"]
+	inDatatype, inFound := in.Tags["in:datatype"]
 	if !outFound || !inFound {
 		log.Error("Both out and in must supply a data type")
 		return false
@@ -97,10 +98,10 @@ func (qp *QueryProcessor) CheckOutToIn(out, in tree.Node) bool {
 	return true
 }
 
-func nodeHasOutput(n tree.Node, structure StructureType, datatype DataType) bool {
+func nodeHasOutput(n *Node, structure StructureType, datatype DataType) bool {
 	return n.HasOutput(uint(structure), uint(datatype))
 }
 
-func nodeHasInput(n tree.Node, structure StructureType, datatype DataType) bool {
+func nodeHasInput(n *Node, structure StructureType, datatype DataType) bool {
 	return n.HasInput(uint(structure), uint(datatype))
 }

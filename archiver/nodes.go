@@ -3,7 +3,6 @@ package archiver
 import (
 	"bytes"
 	"fmt"
-	"github.com/gtfierro/giles/internal/tree"
 	"github.com/gtfierro/msgpack"
 	"gopkg.in/mgo.v2/bson"
 	"io"
@@ -32,7 +31,7 @@ const (
 	EDGE
 )
 
-type NodeConstructor func(...interface{}) tree.Node
+type NodeConstructor func(<-chan struct{}, ...interface{}) *Node
 
 var NodeLookup map[OperationType]NodeConstructor
 var OpLookup map[string]OperationType
@@ -53,39 +52,31 @@ func init() {
 	OpLookup["edge"] = EDGE
 }
 
-/* These nodes implement the node interface in internal/tree */
-
 /** Where Node **/
 // A WhereNode takes a where clause in its constructor.
 type WhereNode struct {
 	where bson.M
 	store MetadataStore
-	tree.BaseNode
 }
 
 // First argument are the k/v tags for this node, second are the arguments to the constructor
 // arg0: BSON where clause, most likely from a parsed query
 // arg1: pointer to a metadata store
-func NewWhereNode(args ...interface{}) (wn *WhereNode) {
-	wn = &WhereNode{
+func NewWhereNode(done <-chan struct{}, args ...interface{}) (n *Node) {
+	wn := &WhereNode{
 		where: args[0].(bson.M),
 		store: args[1].(MetadataStore),
 	}
-	tree.InitBaseNode(&wn.BaseNode)
-	wn.BaseNode.Set("out:structure", LIST)
-	wn.BaseNode.Set("out:datatype", SCALAR|OBJECT)
-	wn.BaseNode.Set("name", "wherenode")
+	n = NewNode(wn, done)
+	n.Tags["out:structure"] = LIST
+	n.Tags["out:datatype"] = SCALAR | OBJECT
+	n.Tags["name"] = "wherenode"
 	return
 }
 
-// TODO: called when metadata changes. Should reevaluate where clause if necessary
-func (wn *WhereNode) Input(args ...interface{}) error {
-	fmt.Println("where node input")
-	return nil
-}
-
 // Evaluates the where clause into a set of uuids
-func (wn *WhereNode) Output() (interface{}, error) {
+func (wn *WhereNode) Run(input interface{}) (interface{}, error) {
+	log.Debug("running where node with %v", wn.where)
 	return wn.store.GetUUIDs(wn.where)
 }
 
@@ -98,32 +89,27 @@ type SelectDataNode struct {
 	a     *Archiver
 	dq    *dataquery
 	uuids []string
-	tree.BaseNode
 }
 
 // arg0: archiver reference
 // arg1: query.y dataquery struct
-func NewSelectDataNode(args ...interface{}) (sn *SelectDataNode) {
-	sn = &SelectDataNode{
+func NewSelectDataNode(done <-chan struct{}, args ...interface{}) (n *Node) {
+	sn := &SelectDataNode{
 		a:  args[0].(*Archiver),
 		dq: args[1].(*dataquery),
 	}
-	tree.InitBaseNode(&sn.BaseNode)
-	sn.BaseNode.Set("in:structure", LIST)
-	sn.BaseNode.Set("in:datatype", SCALAR|OBJECT)
-	sn.BaseNode.Set("out:structure", TIMESERIES)
-	sn.BaseNode.Set("out:datatype", SCALAR|OBJECT)
+	n = NewNode(sn, done)
+	n.Tags["in:structure"] = LIST
+	n.Tags["in:datatype"] = SCALAR | OBJECT
+	n.Tags["out:structure"] = TIMESERIES
+	n.Tags["out:datatype"] = SCALAR | OBJECT
 	return
 }
 
-// arg0: the list of UUIDs to apply the data selector to
-func (sn *SelectDataNode) Input(args ...interface{}) (err error) {
-	sn.uuids = args[0].([]string)
-	return nil
-}
-
-func (sn *SelectDataNode) Output() (interface{}, error) {
+func (sn *SelectDataNode) Run(input interface{}) (interface{}, error) {
 	var err error
+	log.Debug("running select data node with %v", input)
+	sn.uuids = input.([]string)
 	// limit number of streams
 	uuids := sn.uuids
 	if sn.dq.limit.streamlimit > 0 && len(uuids) > 0 {
@@ -165,42 +151,52 @@ type EchoNode struct {
 	w       io.Writer
 	data    *bytes.Buffer
 	mybytes []byte
-	tree.BaseNode
 }
 
-func NewEchoNode(args ...interface{}) tree.Node {
+func NewEchoNode(done <-chan struct{}, args ...interface{}) (n *Node) {
 	en := &EchoNode{
 		w:       args[0].(io.Writer),
 		mybytes: make([]byte, 1024),
 	}
-	tree.InitBaseNode(&en.BaseNode)
-	en.BaseNode.Set("in:structure", LIST|TIMESERIES)
-	en.BaseNode.Set("in:datatype", SCALAR|OBJECT)
-	en.BaseNode.Set("out:structure", LIST|TIMESERIES)
-	en.BaseNode.Set("out:datatype", SCALAR|OBJECT)
-	return en
+	n = NewNode(en, done)
+	n.Tags["in:structure"] = LIST | TIMESERIES
+	n.Tags["in:datatype"] = SCALAR | OBJECT
+	n.Tags["out:structure"] = LIST | TIMESERIES
+	n.Tags["out:datatype"] = SCALAR | OBJECT
+	return
 }
 
 // Takes the first argument and encodes it as msgpack
-func (en *EchoNode) Input(args ...interface{}) (err error) {
-	fmt.Printf("encoding %v\n", args[0])
-	switch args[0].(type) {
+func (en *EchoNode) Run(input interface{}) (interface{}, error) {
+	fmt.Printf("encoding %v\n", input)
+	switch input.(type) {
 	case []SmapNumbersResponse:
-		mpfriendly := transformSmapNumResp(args[0].([]SmapNumbersResponse))
+		mpfriendly := transformSmapNumResp(input.([]SmapNumbersResponse))
 		length := msgpack.Encode(mpfriendly, &en.mybytes)
 		en.data = bytes.NewBuffer(en.mybytes[:length])
 	case []*SmapItem:
-		mpfriendly := transformSmapItem(args[0].([]*SmapItem))
+		mpfriendly := transformSmapItem(input.([]*SmapItem))
 		length := msgpack.Encode(mpfriendly, &en.mybytes)
 		en.data = bytes.NewBuffer(en.mybytes[:length])
 	default:
-		length := msgpack.Encode(args[0], &en.mybytes)
+		length := msgpack.Encode(input, &en.mybytes)
 		en.data = bytes.NewBuffer(en.mybytes[:length])
 	}
-	return nil
+	return en.data.WriteTo(en.w)
 }
 
-func (en *EchoNode) Output() (interface{}, error) {
-	log.Debug("EchoNode writing out %v", en.data.Len())
-	return en.data.WriteTo(en.w)
+// Node to pause a pipeline
+type NopNode struct {
+	Wait chan struct{}
+}
+
+func NewNopNode(done <-chan struct{}, args ...interface{}) (n *Node) {
+	nop := &NopNode{args[0].(chan struct{})}
+	n = NewNode(nop, done)
+	return
+}
+
+func (nop *NopNode) Run(input interface{}) (interface{}, error) {
+	nop.Wait <- struct{}{}
+	return nil, nil
 }

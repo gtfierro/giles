@@ -22,7 +22,6 @@ package archiver
 import (
 	"errors"
 	"fmt"
-	"github.com/gtfierro/giles/internal/tree"
 	"github.com/op/go-logging"
 	"gopkg.in/mgo.v2/bson"
 	"io"
@@ -342,30 +341,35 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 	}
 	log.Debug("query %v", lex.query)
 	// create root node from WHERE clause of tree
-	wn := NewWhereNode(lex.query.WhereBson(), a.store)
-	t := tree.NewTree(wn)
+	done := make(chan struct{})
 	// evalutes where clause
-	// TODO: should this go into the tree.Run?
-	t.Root.Input()
+	wn := NewWhereNode(done, lex.query.WhereBson(), a.store)
+
 	// add the selector node to the tree
-	sn := NewSelectDataNode(a, lex.query.data)
-	t.AddChild(wn, sn)
+	sn := NewSelectDataNode(done, a, lex.query.data)
+	wn.AddChild(sn)
+
 	// run through the operators and build up the tree
 	var (
-		last    tree.Node = sn
-		newNode tree.Node
+		last    *Node = sn
+		newNode *Node
 	)
 	for _, op := range lex.query.operators {
 		newNode = a.qp.GetNodeFromOp(op, lex.query)
 		if !a.qp.CheckOutToIn(last, newNode) {
 			return fmt.Errorf("Node types do not match!")
 		}
-		t.AddChild(last, newNode)
+		last.AddChild(newNode)
 		last = newNode
 	}
-	echoClient := NewEchoNode(w)
-	t.AddChild(last, echoClient)
-	return t.Run()
+	echoClient := NewEchoNode(done, w)
+	last.AddChild(echoClient)
+	wait := make(chan struct{})
+	nop := NewNopNode(done, wait)
+	echoClient.AddChild(nop)
+	wn.In <- struct{}{}
+	<-wait
+	return nil
 }
 
 // A major problem is not knowing data types as they flow through. We really need a more efficient transport
