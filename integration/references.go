@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/go-uuid/uuid"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -49,6 +50,7 @@ func (m *Manager) GetTime(id int) int64 {
 func (m *Manager) ParseData(data string) string {
 	if timeFinder.MatchString(data) {
 		found := timeFinder.FindAllStringSubmatch(data, -1)
+		sort.Sort(TimeMatch(found))
 		for _, match := range found {
 			id, _ := strconv.ParseInt(match[2], 10, 0)
 			if _, found := m.Times[int(id)]; !found {
@@ -81,4 +83,20 @@ func (m *Manager) SleepDuration(unit string) {
 	case "S":
 		time.Sleep(time.Second)
 	}
+}
+
+type TimeMatch [][]string
+
+func (m TimeMatch) Len() int {
+	return len(m)
+}
+
+func (m TimeMatch) Swap(i, j int) {
+	m[i], m[j] = m[j], m[i]
+}
+
+func (m TimeMatch) Less(i, j int) bool {
+	id_i, _ := strconv.ParseInt(m[i][2], 10, 0)
+	id_j, _ := strconv.ParseInt(m[j][2], 10, 0)
+	return id_i < id_j
 }
