@@ -206,7 +206,7 @@ func (hc *HTTPStreamClient) Output() error {
 	}
 
 	if hc.response.StatusCode != hc.expectedCode[hc.outputIndex] {
-		return fmt.Errorf("Status code was %v but expected %v\n", hc.response.StatusCode, hc.expectedCode)
+		return fmt.Errorf("Status code was \n%v but expected \n%v\n", hc.response.StatusCode, hc.expectedCode)
 	}
 	var outputOK = false
 	var contents []byte
@@ -234,7 +234,7 @@ func (hc *HTTPStreamClient) Output() error {
 		outputOK = checkJSON(string(contents), hc.expectedContents[hc.outputIndex])
 	}
 	if !outputOK {
-		return fmt.Errorf("Contents were [%v] but expected [%v]\n", string(contents), hc.expectedContents[hc.outputIndex])
+		return fmt.Errorf("Contents were \n%v but expected \n%v\n", string(contents), hc.expectedContents[hc.outputIndex])
 	}
 	return nil
 }
