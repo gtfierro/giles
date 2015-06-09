@@ -71,7 +71,7 @@ type SmapMessage struct {
 	// Map of the properties
 	Properties bson.M `json:",omitempty"`
 	// Unique identifier for this stream. Should be empty for Collections
-	UUID string
+	UUID string `json:"uuid"`
 	// Path of this stream (thus far)
 	Path string
 }
