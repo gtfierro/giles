@@ -55,6 +55,8 @@ func main() {
 		}
 	}
 
+	totalTests := len(files)
+	passedTests := 0
 	for _, filename := range files {
 		// create new set of references for each file
 		referenceManager = NewManager()
@@ -91,9 +93,18 @@ func main() {
 
 		if !hasError {
 			color.Green("Test [%v] passed!\n\n", m["name"].(string))
+			passedTests += 1
 		} else {
 			color.Red("Test [%v] FAILED!\n\n", m["name"].(string))
 		}
 
+	}
+
+	if passedTests == totalTests {
+		color.Green("Passed %v of %v tests!", passedTests, totalTests)
+	} else if passedTests > 0 {
+		color.Yellow("Passed %v of %v tests!", passedTests, totalTests)
+	} else {
+		color.Red("Passed NOTHING of %v tests!", totalTests)
 	}
 }
