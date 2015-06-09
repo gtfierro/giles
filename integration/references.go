@@ -51,7 +51,9 @@ func (m *Manager) ParseData(data string) string {
 		found := timeFinder.FindAllStringSubmatch(data, -1)
 		for _, match := range found {
 			id, _ := strconv.ParseInt(match[2], 10, 0)
-			time.Sleep(time.Duration(convertTime(1e12, match[1])) * time.Nanosecond)
+			if _, found := m.Times[int(id)]; !found {
+				m.SleepDuration(match[1])
+			}
 			t := convertTime(m.GetTime(int(id)), match[1])
 			ts := fmt.Sprintf("%v", t)
 			data = strings.Replace(data, match[0], ts, 1)
@@ -66,4 +68,17 @@ func (m *Manager) ParseData(data string) string {
 		}
 	}
 	return data
+}
+
+func (m *Manager) SleepDuration(unit string) {
+	switch unit {
+	case "NS":
+		time.Sleep(time.Nanosecond)
+	case "US":
+		time.Sleep(time.Microsecond)
+	case "MS":
+		time.Sleep(time.Millisecond)
+	case "S":
+		time.Sleep(time.Second)
+	}
 }
