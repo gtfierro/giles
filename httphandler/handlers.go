@@ -146,7 +146,7 @@ func QueryRepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *ht
 		log.Error("Error handling republish: %v", err, stringquery)
 	}
 	s := NewHTTPSubscriber(rw)
-	a.HandleSubscriber(s, string(stringquery), apikey)
+	a.HandleQuerySubscriber(s, string(stringquery), apikey)
 }
 
 // Resolves sMAP queries and returns results
