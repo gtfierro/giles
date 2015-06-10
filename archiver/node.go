@@ -26,7 +26,6 @@ func NewNode(operation Operator, done <-chan struct{}) (n *Node) {
 				}
 			case <-done:
 				close(n.In)
-			default:
 			}
 		}
 	}(n)
