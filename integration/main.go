@@ -65,6 +65,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error reading file %v (%v)\n", filename, err)
 		}
+		contents = []byte(referenceManager.ParseData(string(contents)))
 		m := make(Config)
 		err = yaml.Unmarshal(contents, &m)
 		if err != nil {
