@@ -45,7 +45,7 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 	switch format {
 	case "JSON":
 		toMarshal := make(map[string]interface{})
-		datastring := referenceManager.ParseData(cfgInput["Data"].(string))
+		datastring := cfgInput["Data"].(string)
 		dec := json.NewDecoder(bytes.NewReader([]byte(datastring)))
 		dec.UseNumber()
 		encodeErr = dec.Decode(&toMarshal)
@@ -53,7 +53,7 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 			data, encodeErr = json.Marshal(toMarshal)
 		}
 	case "string":
-		datastring := referenceManager.ParseData(cfgInput["Data"].(string))
+		datastring := cfgInput["Data"].(string)
 		data = []byte(strings.TrimSpace(datastring))
 	}
 	if encodeErr != nil {
@@ -77,7 +77,7 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 		return h, fmt.Errorf("Output section for client was invalid: %v\n", string(d))
 	}
 	h.expectedCode = code.(int)
-	h.expectedContents = referenceManager.ParseData(contents.(string))
+	h.expectedContents = contents.(string)
 	h.expectedFormat = format.(string)
 	return h, nil
 }
@@ -152,10 +152,10 @@ func NewHTTPStreamClient(id int64, c Config) (*HTTPStreamClient, error) {
 	var encodeErr error
 	switch format {
 	case "JSON":
-		datastring := referenceManager.ParseData(cfgInput["Data"].(string))
+		datastring := cfgInput["Data"].(string)
 		data = []byte(datastring)
 	case "string":
-		datastring := referenceManager.ParseData(cfgInput["Data"].(string))
+		datastring := cfgInput["Data"].(string)
 		data = []byte(strings.TrimSpace(datastring))
 	}
 	if encodeErr != nil {
@@ -181,7 +181,7 @@ func NewHTTPStreamClient(id int64, c Config) (*HTTPStreamClient, error) {
 			return h, fmt.Errorf("Output section for client was invalid: %v\n", string(d))
 		}
 		h.expectedCode = append(h.expectedCode, code.(int))
-		h.expectedContents = append(h.expectedContents, referenceManager.ParseData(contents.(string)))
+		h.expectedContents = append(h.expectedContents, contents.(string))
 		h.expectedFormat = append(h.expectedFormat, format.(string))
 	}
 	return h, nil
