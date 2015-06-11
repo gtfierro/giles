@@ -30,8 +30,9 @@ const (
 	WINDOW OperationType = iota
 	MIN
 	MAX
-	EDGE
+	MEAN
 	COUNT
+	EDGE
 )
 
 type NodeConstructor func(<-chan struct{}, ...interface{}) *Node
@@ -46,6 +47,7 @@ func init() {
 	NodeLookup[WINDOW] = NewWindowNode
 	NodeLookup[MIN] = NewMinNode
 	NodeLookup[MAX] = NewMaxNode
+	NodeLookup[MEAN] = NewMeanNode
 	NodeLookup[EDGE] = NewEdgeNode
 	NodeLookup[COUNT] = NewCountNode
 
@@ -53,6 +55,7 @@ func init() {
 	OpLookup["window"] = WINDOW
 	OpLookup["min"] = MIN
 	OpLookup["max"] = MAX
+	OpLookup["mean"] = MEAN
 	OpLookup["edge"] = EDGE
 	OpLookup["count"] = COUNT
 }
