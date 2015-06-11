@@ -20,7 +20,11 @@ func NewNode(operation Operator, done <-chan struct{}) (n *Node) {
 		for {
 			select {
 			case input := <-n.In:
-				res, _ := n.Op.Run(input)
+				res, err := n.Op.Run(input)
+				if err != nil {
+					log.Error("NODE ERROR %v", err)
+					continue
+				}
 				for _, c := range n.Children {
 					c.In <- res
 				}

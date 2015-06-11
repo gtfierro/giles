@@ -378,7 +378,6 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 
 func (a *Archiver) StreamingQuery(querystring, apikey string, sendback Subscriber) error {
 	log.Info(querystring)
-	wherestring := strings.Split(querystring, "where")[1]
 	lex := a.qp.Parse(querystring)
 	if lex.error != nil {
 		return fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
@@ -388,7 +387,7 @@ func (a *Archiver) StreamingQuery(querystring, apikey string, sendback Subscribe
 	done := make(chan struct{})
 
 	// test subscribe node
-	sn := NewSubscribeDataNode(done, a, wherestring, apikey, lex.query.data)
+	sn := NewSubscribeDataNode(done, a, querystring, apikey, lex.query.data)
 	// run through the operators and build up the tree
 	var (
 		last    *Node = sn

@@ -6,6 +6,7 @@ import (
 	"github.com/gtfierro/msgpack"
 	"gopkg.in/mgo.v2/bson"
 	"io"
+	"strings"
 )
 
 type StructureType uint
@@ -250,8 +251,9 @@ func NewSubscribeDataNode(done <-chan struct{}, args ...interface{}) (n *Node) {
 		dq:          args[3].(*dataquery),
 		notify:      make(chan bool),
 	}
-	log.Error("sdn subscribe %v", sn.querystring)
-	go sn.a.HandleSubscriber(sn, sn.querystring, sn.apikey)
+	sn.querystring = "select data " + strings.SplitN(sn.querystring, "data", 2)[1]
+	wherestring := strings.SplitN(sn.querystring, "where", 2)[1]
+	go sn.a.HandleSubscriber(sn, wherestring, sn.apikey)
 	n = NewNode(sn, done)
 	n.Tags["in:structure"] = LIST
 	n.Tags["in:datatype"] = SCALAR | OBJECT
@@ -263,8 +265,13 @@ func NewSubscribeDataNode(done <-chan struct{}, args ...interface{}) (n *Node) {
 
 /** implement the Subscriber interface for SubscribeDataNode **/
 func (sn *SubscribeDataNode) Send(msg interface{}) {
-	log.Error("SDN got Send %v\n", msg)
-	sn.node.In <- msg
+	// when we receive a new data point, re-run the data query and send it off
+	response, _ := sn.a.HandleQuery(sn.querystring, sn.apikey)
+	tosend := make([]SmapNumbersResponse, len(response.([]interface{})))
+	for i, snr := range response.([]interface{}) {
+		tosend[i] = snr.(SmapNumbersResponse)
+	}
+	sn.node.In <- tosend
 }
 
 func (sn *SubscribeDataNode) SendError(err error) {
