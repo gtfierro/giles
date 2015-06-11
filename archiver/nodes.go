@@ -31,6 +31,7 @@ const (
 	MIN
 	MAX
 	EDGE
+	COUNT
 )
 
 type NodeConstructor func(<-chan struct{}, ...interface{}) *Node
@@ -46,12 +47,14 @@ func init() {
 	NodeLookup[MIN] = NewMinNode
 	NodeLookup[MAX] = NewMaxNode
 	NodeLookup[EDGE] = NewEdgeNode
+	NodeLookup[COUNT] = NewCountNode
 
 	OpLookup = make(map[string]OperationType)
 	OpLookup["window"] = WINDOW
 	OpLookup["min"] = MIN
 	OpLookup["max"] = MAX
 	OpLookup["edge"] = EDGE
+	OpLookup["count"] = COUNT
 }
 
 /** Where Node **/

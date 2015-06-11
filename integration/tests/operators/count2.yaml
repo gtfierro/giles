@@ -1,0 +1,37 @@
+name: test count with 2 points, 1 stream
+layout: 1:Input -> 1:Output -> Sleep:3s -> 2:Input -> 2:Output
+Client:1:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/add/apikey
+        Format: JSON
+        Data: >
+            {
+                "/nanosecondsensor": {
+                    "Properties": {
+                        "UnitofTime": "ns"
+                    },
+                    "uuid": "$UUID(1)",
+                    "Readings": [[$TIME_NS(1), 0], [$TIME_NS(2), 1]]
+                }
+            }
+    Output:
+        Code: 200
+        Contents: ''
+        Format: string
+Client:2:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/api/test
+        Format: string
+        Data: "apply count() to data in (now, now -10s) where uuid = '$UUID(1)'"
+    Output:
+        Code: 200
+        Format: JSON
+        Contents: >
+            [{
+                "uuid": "$UUID(1)",
+                "Data": 2
+            }]
