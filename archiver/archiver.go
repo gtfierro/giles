@@ -27,6 +27,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -335,6 +336,8 @@ func (a *Archiver) HandleQuery(querystring, apikey string) (interface{}, error) 
 
 func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error {
 	log.Info(querystring)
+	wherestring := strings.Split(querystring, "where")[1]
+	fmt.Printf(wherestring + "\n")
 	lex := a.qp.Parse(querystring)
 	if lex.error != nil {
 		return fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
@@ -342,6 +345,7 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 	log.Debug("query %v", lex.query)
 	// create root node from WHERE clause of tree
 	done := make(chan struct{})
+
 	// evalutes where clause
 	wn := NewWhereNode(done, lex.query.WhereBson(), a.store)
 
@@ -368,6 +372,41 @@ func (a *Archiver) Query2(querystring string, apikey string, w io.Writer) error 
 	nop := NewNopNode(done, wait)
 	echoClient.AddChild(nop)
 	wn.In <- struct{}{}
+	<-wait
+	return nil
+}
+
+func (a *Archiver) StreamingQuery(querystring, apikey string, sendback Subscriber) error {
+	log.Info(querystring)
+	wherestring := strings.Split(querystring, "where")[1]
+	lex := a.qp.Parse(querystring)
+	if lex.error != nil {
+		return fmt.Errorf("Error (%v) in query \"%v\" (error at %v)\n", lex.error.Error(), querystring, lex.lasttoken)
+	}
+	log.Debug("query %v", lex.query)
+	// create root node from WHERE clause of tree
+	done := make(chan struct{})
+
+	// test subscribe node
+	sn := NewSubscribeDataNode(done, a, wherestring, apikey, lex.query.data)
+	// run through the operators and build up the tree
+	var (
+		last    *Node = sn
+		newNode *Node
+	)
+	for _, op := range lex.query.operators {
+		newNode = a.qp.GetNodeFromOp(op, lex.query)
+		if !a.qp.CheckOutToIn(last, newNode) {
+			return fmt.Errorf("Node types do not match!")
+		}
+		last.AddChild(newNode)
+		last = newNode
+	}
+	echoClient := NewStreamingEchoNode(done, sendback)
+	last.AddChild(echoClient)
+	wait := make(chan struct{})
+	//nop := NewNopNode(done, wait)
+	//echoClient.AddChild(nop)
 	<-wait
 	return nil
 }

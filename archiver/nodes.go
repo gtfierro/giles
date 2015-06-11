@@ -86,9 +86,10 @@ type SelectTagsNode struct {
 
 /** Select Data Node **/
 type SelectDataNode struct {
-	a     *Archiver
-	dq    *dataquery
-	uuids []string
+	a      *Archiver
+	dq     *dataquery
+	uuids  []string
+	notify chan bool
 }
 
 // arg0: archiver reference
@@ -185,6 +186,30 @@ func (en *EchoNode) Run(input interface{}) (interface{}, error) {
 	return en.data.WriteTo(en.w)
 }
 
+/** Streaming Echo Node **/
+type StreamingEchoNode struct {
+	send Subscriber
+}
+
+// arg0: send channel
+func NewStreamingEchoNode(done <-chan struct{}, args ...interface{}) (n *Node) {
+	sen := &StreamingEchoNode{
+		send: args[0].(Subscriber),
+	}
+	n = NewNode(sen, done)
+	n.Tags["in:structure"] = LIST | TIMESERIES
+	n.Tags["in:datatype"] = SCALAR | OBJECT
+	n.Tags["out:structure"] = LIST | TIMESERIES
+	n.Tags["out:datatype"] = SCALAR | OBJECT
+	return
+}
+
+func (sen *StreamingEchoNode) Run(input interface{}) (interface{}, error) {
+	log.Debug("stream ehco %v", input)
+	go sen.send.Send(input)
+	return nil, nil
+}
+
 // Node to pause a pipeline
 type NopNode struct {
 	Wait chan struct{}
@@ -199,4 +224,58 @@ func NewNopNode(done <-chan struct{}, args ...interface{}) (n *Node) {
 func (nop *NopNode) Run(input interface{}) (interface{}, error) {
 	nop.Wait <- struct{}{}
 	return nil, nil
+}
+
+// Node to subscribe to data
+
+type SubscribeDataNode struct {
+	a           *Archiver
+	querystring string
+	apikey      string
+	dq          *dataquery
+	uuids       []string
+	notify      chan bool
+	node        *Node
+}
+
+// arg0: archiver reference
+// arg1: querystring
+// arg2: apikey
+// arg3: query.y dataquery struct
+func NewSubscribeDataNode(done <-chan struct{}, args ...interface{}) (n *Node) {
+	sn := &SubscribeDataNode{
+		a:           args[0].(*Archiver),
+		querystring: args[1].(string),
+		apikey:      args[2].(string),
+		dq:          args[3].(*dataquery),
+		notify:      make(chan bool),
+	}
+	log.Error("sdn subscribe %v", sn.querystring)
+	go sn.a.HandleSubscriber(sn, sn.querystring, sn.apikey)
+	n = NewNode(sn, done)
+	n.Tags["in:structure"] = LIST
+	n.Tags["in:datatype"] = SCALAR | OBJECT
+	n.Tags["out:structure"] = TIMESERIES
+	n.Tags["out:datatype"] = SCALAR | OBJECT
+	sn.node = n
+	return
+}
+
+/** implement the Subscriber interface for SubscribeDataNode **/
+func (sn *SubscribeDataNode) Send(msg interface{}) {
+	log.Error("SDN got Send %v\n", msg)
+	sn.node.In <- msg
+}
+
+func (sn *SubscribeDataNode) SendError(err error) {
+	log.Error("SDN got error %v\n", err)
+}
+
+func (sn *SubscribeDataNode) GetNotify() <-chan bool {
+	return sn.notify
+}
+
+func (sn *SubscribeDataNode) Run(input interface{}) (interface{}, error) {
+	log.Error("SDN got Run %v\n", input)
+	return input, nil
 }
