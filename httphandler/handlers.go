@@ -40,6 +40,8 @@ func Handle(a *archiver.Archiver, port int) {
 	r.POST("/api/test", curryhandler(a, Query2Handler))
 	r.GET("/api/tags/uuid/:uuid", curryhandler(a, TagsHandler))
 
+	r.POST("/api/streamingquery", curryhandler(a, StreamingQueryHandler))
+
 	r.POST("/republish", curryhandler(a, RepublishHandler))
 	r.POST("/republish/data", curryhandler(a, RepublishHandler))
 	r.POST("/republish/uuids", curryhandler(a, UUIDRepublishHandler))
@@ -210,6 +212,36 @@ func Query2Handler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Reque
 	}
 	rw.WriteHeader(200)
 	rw.Write(res)
+}
+
+func StreamingQueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	defer req.Body.Close()
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	key := unescape(ps.ByName("key"))
+	stringquery, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Error("Error reading query: %v", err)
+	}
+	s := NewHTTPSubscriber(rw)
+	err = a.StreamingQuery(string(stringquery), key, s)
+	if err != nil {
+		log.Error("Error evaluating query: %v", err)
+		rw.WriteHeader(500)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	//encodedbytes := b.Bytes()
+	//_, decoded := msgpack.Decode(&encodedbytes, 0)
+	//res, err := json.Marshal(decoded)
+	//if err != nil {
+	//	log.Error("Error converting to json: %v", err)
+	//	rw.WriteHeader(500)
+	//	rw.Write([]byte(err.Error()))
+	//	return
+	//}
+	//rw.WriteHeader(200)
+	//rw.Write(res)
 }
 
 /**
