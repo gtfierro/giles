@@ -7,6 +7,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"io"
 	"strings"
+	"time"
 )
 
 type StructureType uint
@@ -284,5 +285,58 @@ func (sn *SubscribeDataNode) GetNotify() <-chan bool {
 
 func (sn *SubscribeDataNode) Run(input interface{}) (interface{}, error) {
 	log.Error("SDN got Run %v\n", input)
+	return input, nil
+}
+
+type ChunkedStreamingDataNode struct {
+	a     *Archiver
+	q     *query
+	uuids []string
+	node  *Node
+}
+
+// arg0: archiver reference
+// arg3: query.y query struct
+func NewChunkedStreamingDataNode(done <-chan struct{}, args ...interface{}) (n *Node) {
+	csn := &ChunkedStreamingDataNode{
+		a: args[0].(*Archiver),
+		q: args[1].(*query),
+	}
+	csn.uuids, _ = csn.a.GetUUIDs(csn.q.WhereBson())
+	go csn.grabChunks()
+	n = NewNode(csn, done)
+	n.Tags["in:structure"] = LIST
+	n.Tags["in:datatype"] = SCALAR | OBJECT
+	n.Tags["out:structure"] = TIMESERIES
+	n.Tags["out:datatype"] = SCALAR | OBJECT
+	csn.node = n
+	return
+}
+
+func (csn *ChunkedStreamingDataNode) grabChunks() {
+	start := csn.q.data.start.UnixNano()
+	end := csn.q.data.end.UnixNano()
+	if start > end {
+		start, end = end, start
+	}
+	diff := getPositiveDifference(start, end)
+	fmt.Printf("Window diff is %v\n", diff)
+	fmt.Printf("uuids %v\n", csn.uuids)
+	for {
+		fmt.Printf("fetch data in %v %v\n", uint64(start), uint64(end))
+		res, err := csn.a.GetData(csn.uuids, uint64(start), uint64(end), UOT_NS, csn.q.data.timeconv)
+		fmt.Printf("got result %v %v\n", res, err)
+		start += diff
+		end += diff
+		tosend := make([]SmapNumbersResponse, len(res.([]interface{})))
+		for i, snr := range res.([]interface{}) {
+			tosend[i] = snr.(SmapNumbersResponse)
+		}
+		csn.node.In <- tosend
+		time.Sleep(time.Duration(diff) * time.Nanosecond)
+	}
+}
+
+func (csn *ChunkedStreamingDataNode) Run(input interface{}) (interface{}, error) {
 	return input, nil
 }

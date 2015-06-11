@@ -88,3 +88,10 @@ func isObjReading(msg *SmapMessage) bool {
 	}
 	return true
 }
+
+func getPositiveDifference(x1, x2 int64) int64 {
+	if x1 > x2 {
+		return x1 - x2
+	}
+	return x2 - x1
+}
