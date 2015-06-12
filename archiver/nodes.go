@@ -6,6 +6,10 @@ import (
 	"github.com/gtfierro/msgpack"
 	"gopkg.in/mgo.v2/bson"
 	"io"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -33,6 +37,7 @@ const (
 	MEAN
 	COUNT
 	EDGE
+	NETWORK
 )
 
 type NodeConstructor func(<-chan struct{}, ...interface{}) *Node
@@ -50,6 +55,7 @@ func init() {
 	NodeLookup[MEAN] = NewMeanNode
 	NodeLookup[EDGE] = NewEdgeNode
 	NodeLookup[COUNT] = NewCountNode
+	NodeLookup[NETWORK] = NewNetworkNode
 
 	OpLookup = make(map[string]OperationType)
 	OpLookup["window"] = WINDOW
@@ -58,6 +64,7 @@ func init() {
 	OpLookup["mean"] = MEAN
 	OpLookup["edge"] = EDGE
 	OpLookup["count"] = COUNT
+	OpLookup["network"] = NETWORK
 }
 
 /** Where Node **/
@@ -345,4 +352,71 @@ func (csn *ChunkedStreamingDataNode) grabChunks() {
 
 func (csn *ChunkedStreamingDataNode) Run(input interface{}) (interface{}, error) {
 	return input, nil
+}
+
+// The Network node takes whatever input, msgpack-encodes it, and sends it to the requested
+// URI. The supported URI forms are:
+//  tcp://ipaddress:port -- packet
+//  udp://ipaddress:port -- packet
+//  http://ipaddress:port/endpoint -- sent as body of POST request
+
+type NetworkNode struct {
+	uri  string
+	url  *url.URL
+	conn net.Conn
+}
+
+// arg0: URI
+func NewNetworkNode(done <-chan struct{}, args ...interface{}) (n *Node) {
+	arguments := args[0].(Dict)
+	nn := &NetworkNode{
+		uri: arguments["uri"].(string),
+	}
+	var err error
+	nn.url, err = url.Parse(nn.uri)
+	if err != nil {
+		log.Panic("Invalid URI %v (%v)", nn.uri, err)
+	}
+
+	n = NewNode(nn, done)
+	n.Tags["out:datatype"] = SCALAR | OBJECT
+	n.Tags["out:structure"] = TIMESERIES | LIST
+	n.Tags["in:datatype"] = SCALAR | OBJECT
+	n.Tags["in:structure"] = TIMESERIES | LIST
+	return
+}
+
+func (nn *NetworkNode) Run(input interface{}) (interface{}, error) {
+	var buf *bytes.Buffer
+	var mybytes = make([]byte, 1024)
+	switch input.(type) {
+	case []SmapNumbersResponse:
+		mpfriendly := transformSmapNumResp(input.([]SmapNumbersResponse))
+		length := msgpack.Encode(mpfriendly, &mybytes)
+		buf = bytes.NewBuffer(mybytes[:length])
+	case []*SmapItem:
+		mpfriendly := transformSmapItem(input.([]*SmapItem))
+		length := msgpack.Encode(mpfriendly, &mybytes)
+		buf = bytes.NewBuffer(mybytes[:length])
+	default:
+		length := msgpack.Encode(input, &mybytes)
+		buf = bytes.NewBuffer(mybytes[:length])
+	}
+
+	switch nn.url.Scheme {
+	case "http":
+		resp, err := http.Post(nn.uri, "application/x-msgpack", buf)
+		if err == nil {
+			var body []byte
+			body, err = ioutil.ReadAll(resp.Body)
+			_, res := msgpack.Decode(&body, 0)
+			return res, err
+		}
+		return nil, err
+	case "tcp":
+	case "udp":
+	default:
+		log.Panic("Unsupported scheme %v", nn.uri)
+	}
+	return nil, nil
 }
