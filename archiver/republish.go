@@ -302,7 +302,7 @@ func (r *Republisher) Republish(msg *SmapMessage) {
 			// get the list of subscribers for that query and forward the message
 			for _, client := range r.queryConcern[hash] {
 				if !client.membership {
-					go client.subscriber.Send(towrite)
+					client.subscriber.Send(towrite)
 				}
 			}
 		}
@@ -310,7 +310,7 @@ func (r *Republisher) Republish(msg *SmapMessage) {
 
 	// for all clients subscribed to this UUID
 	for _, client := range r.uuidClients[msg.UUID] {
-		go client.subscriber.Send(msg)
+		client.subscriber.Send(msg)
 	}
 
 }
@@ -324,7 +324,7 @@ func (r *Republisher) sendMembershipUpdate(hash QueryHash, uuid string, added bo
 	}
 	for _, client := range r.queryConcern[hash] {
 		if client.membership {
-			go client.subscriber.Send(update)
+			client.subscriber.Send(update)
 		}
 	}
 }
