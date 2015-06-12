@@ -11,6 +11,7 @@ type HTTPSubscriber struct {
 	rw      http.ResponseWriter
 	_notify <-chan bool
 	notify  chan bool
+	send    chan interface{}
 	closed  bool
 	sync.RWMutex
 }
@@ -19,15 +20,26 @@ func NewHTTPSubscriber(rw http.ResponseWriter) *HTTPSubscriber {
 	rw.Header().Set("Content-Type", "application/json")
 	_notify := rw.(http.CloseNotifier).CloseNotify()
 	notify := make(chan bool)
-	hs := &HTTPSubscriber{rw: rw, notify: notify, _notify: _notify, closed: false}
+	hs := &HTTPSubscriber{rw: rw,
+		notify:  notify,
+		_notify: _notify,
+		send:    make(chan interface{}, 1000),
+		closed:  false}
 	go hs.watchForClose()
+	go hs.flushSend()
 	return hs
 }
 
 // called when we receive a new message
 func (hs *HTTPSubscriber) Send(msg interface{}) {
-	bytes, err := json.Marshal(msg)
-	hs.writeAndFlush(bytes, err)
+	hs.send <- msg
+}
+
+func (hs *HTTPSubscriber) flushSend() {
+	for msg := range hs.send {
+		bytes, err := json.Marshal(msg)
+		hs.writeAndFlush(bytes, err)
+	}
 }
 
 func (hs *HTTPSubscriber) writeAndFlush(data []byte, err error) {
