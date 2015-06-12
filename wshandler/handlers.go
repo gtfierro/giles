@@ -23,6 +23,7 @@
 package wshandler
 
 import (
+	"encoding/json"
 	"github.com/gorilla/websocket"
 	"github.com/gtfierro/giles/archiver"
 	"github.com/julienschmidt/httprouter"
@@ -36,6 +37,10 @@ import (
 func Handle(a *archiver.Archiver, port int) {
 	r := httprouter.New()
 	r.GET("/republish", curryhandler(a, RepublishHandler))
+	r.GET("/republish/data", curryhandler(a, RepublishHandler))
+	r.GET("/republish/uuids", curryhandler(a, UUIDRepublishHandler))
+	r.GET("/republish/query", curryhandler(a, QueryRepublishHandler))
+
 	go m.start()
 
 	address, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+strconv.Itoa(port))
@@ -65,6 +70,45 @@ func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Re
 	apikey := unescape(ps.ByName("key"))
 	s := NewWSSubscriber(ws, rw)
 	a.HandleSubscriber(s, string(msg), apikey)
+	log.Debug("msgtype: %v, msg: %v, err: %v, apikey: %v", msgtype, msg, err, apikey)
+}
+
+func UUIDRepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	ws, err := upgrader.Upgrade(rw, req, nil)
+	if err != nil {
+		log.Error("Error establishing websocket: %v", err)
+		return
+	}
+	//TODO: check message type
+	msgtype, msg, err := ws.ReadMessage()
+	var uuids []string
+	decoder := json.NewDecoder(req.Body)
+	decodeErr := decoder.Decode(&uuids)
+	if decodeErr != nil {
+		log.Error("Error decoding list of UUIDs (%v)", decodeErr)
+		return
+	}
+	apikey := unescape(ps.ByName("key"))
+	s := NewWSSubscriber(ws, rw)
+	a.HandleUUIDSubscriber(s, uuids, apikey)
+	log.Debug("msgtype: %v, msg: %v, err: %v, apikey: %v", msgtype, msg, err, apikey)
+}
+
+func QueryRepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	ws, err := upgrader.Upgrade(rw, req, nil)
+	if err != nil {
+		log.Error("Error establishing websocket: %v", err)
+		return
+	}
+	//TODO: check message type
+	msgtype, msg, err := ws.ReadMessage()
+	apikey := unescape(ps.ByName("key"))
+	s := NewWSSubscriber(ws, rw)
+	a.HandleQuerySubscriber(s, string(msg), apikey)
 	log.Debug("msgtype: %v, msg: %v, err: %v, apikey: %v", msgtype, msg, err, apikey)
 }
 
