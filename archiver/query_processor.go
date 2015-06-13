@@ -47,7 +47,6 @@ func (qp *QueryProcessor) GetNodeFromOp(op *OpNode, query *query) *Node {
 	if operator, found = OpLookup[op.Operator]; !found {
 		return nil
 	}
-	fmt.Printf("found? %v\n", NodeLookup[operator])
 
 	// Populate extra information in nodes that need it
 	switch operator {

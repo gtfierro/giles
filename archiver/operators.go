@@ -88,6 +88,9 @@ func NewWindowNode(done <-chan struct{}, args ...interface{}) (n *Node) {
 
 	wn.start = uint64(dq.start.UnixNano())
 	wn.end = uint64(dq.end.UnixNano())
+	if wn.end < wn.start {
+		wn.start, wn.end = wn.end, wn.start
+	}
 	wn.fromTimeUnit = dq.timeconv
 
 	// evaluate windowSize
