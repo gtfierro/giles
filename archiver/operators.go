@@ -158,6 +158,18 @@ func (wn *WindowNode) Run(input interface{}) (interface{}, error) {
 			newTime := convertTime(lowerBound, UOT_NS, wn.fromTimeUnit)
 			item.Readings = append(item.Readings, &SmapNumberReading{Time: newTime, Value: opFuncMean(window)})
 		}
+		lastIdx += 1
+		if lastIdx < len(stream.Readings) {
+			lowerBound += wn.window
+			newTime := convertTime(lowerBound, UOT_NS, wn.fromTimeUnit)
+			window := make([][]interface{}, len(stream.Readings[lastIdx:]))
+			for i, val := range stream.Readings[lastIdx:] {
+				time := val.Time
+				time = convertTime(time, wn.fromTimeUnit, UOT_NS)
+				window[i] = []interface{}{time, val.Value}
+			}
+			item.Readings = append(item.Readings, &SmapNumberReading{Time: newTime, Value: opFuncMean(window)})
+		}
 		result[idx] = item
 	}
 
