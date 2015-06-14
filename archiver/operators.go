@@ -58,7 +58,7 @@ func (en *EdgeNode) Run(input interface{}) (interface{}, error) {
 type WindowNode struct {
 	data         []SmapNumbersResponse
 	window       uint64
-	aggFunc      string
+	aggFunc      func([][]interface{}) float64
 	start        uint64
 	end          uint64
 	fromTimeUnit UnitOfTime
@@ -69,19 +69,19 @@ func NewWindowNode(done <-chan struct{}, args ...interface{}) (n *Node) {
 	n = NewNode(wn, done)
 
 	var windowSize interface{}
-	var aggFunc interface{}
 	if args[0] != nil {
 		kv := args[0].(Dict)
+		fmt.Printf("kv %v\n", kv)
 		windowSize = kv["size"]
-		aggFunc = kv["func"]
+		wn.aggFunc = opFuncChooser[kv["func"].(string)]
 	}
 
 	if windowSize == nil {
 		windowSize = "5min"
 	}
 
-	if aggFunc == nil {
-		aggFunc = "mean"
+	if wn.aggFunc == nil {
+		wn.aggFunc = opFuncMean
 	}
 
 	dq := args[1].(*dataquery)
@@ -156,7 +156,7 @@ func (wn *WindowNode) Run(input interface{}) (interface{}, error) {
 			upperBound += min64(wn.window, wn.end)
 			fmt.Printf("got window %v out of total %v\n", len(window), len(stream.Readings))
 			newTime := convertTime(lowerBound, UOT_NS, wn.fromTimeUnit)
-			item.Readings = append(item.Readings, &SmapNumberReading{Time: newTime, Value: opFuncMean(window)})
+			item.Readings = append(item.Readings, &SmapNumberReading{Time: newTime, Value: wn.aggFunc(window)})
 		}
 		lastIdx += 1
 		if lastIdx < len(stream.Readings) {

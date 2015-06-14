@@ -65,6 +65,11 @@ func init() {
 	OpLookup["edge"] = EDGE
 	OpLookup["count"] = COUNT
 	OpLookup["network"] = NETWORK
+
+	opFuncChooser = make(map[string](func([][]interface{}) float64))
+	opFuncChooser["mean"] = opFuncMean
+	opFuncChooser["max"] = opFuncMax
+	opFuncChooser["min"] = opFuncMin
 }
 
 /** Where Node **/
