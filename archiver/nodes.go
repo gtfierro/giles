@@ -366,16 +366,26 @@ func (csn *ChunkedStreamingDataNode) Run(input interface{}) (interface{}, error)
 //  http://ipaddress:port/endpoint -- sent as body of POST request
 
 type NetworkNode struct {
-	uri  string
-	url  *url.URL
-	conn net.Conn
+	uri      string
+	url      *url.URL
+	conn     net.Conn
+	encoding string
 }
 
 // arg0: URI
 func NewNetworkNode(done <-chan struct{}, args ...interface{}) (n *Node) {
+	var (
+		encoding string
+		found    bool
+	)
+
 	arguments := args[0].(Dict)
+	if encoding, found = arguments["encoding"].(string); !found {
+		encoding = "msgpack"
+	}
 	nn := &NetworkNode{
-		uri: arguments["uri"].(string),
+		uri:      arguments["uri"].(string),
+		encoding: encoding,
 	}
 	var err error
 	nn.url, err = url.Parse(nn.uri)
@@ -419,7 +429,9 @@ func (nn *NetworkNode) Run(input interface{}) (interface{}, error) {
 		}
 		return nil, err
 	case "tcp":
+		fallthrough
 	case "udp":
+		fallthrough
 	default:
 		log.Panic("Unsupported scheme %v", nn.uri)
 	}

@@ -19,3 +19,15 @@ to that bucket, and then add the result to the output timeseries
 To do window properly, we need to start our evaluation from the lower end of the time range and end at the
 upper end. However, this information is specifed elsewhere in the AST. how do we make sure that that information
 is correctly passed to the window node?
+
+
+## Streaming 
+
+Need Hamming/Hanning/Gaussian window, and syntax for deciding what to use.
+
+a streaming query MUST have a window, and the syntax wil lbe slightly different.
+
+apply edge() < min()  < etc... < slide WINDOW CLAUSE to data since now where WHERE CLAUSE
+apply edge() < min()  < etc... < chunk WINDOW CLAUSE to data since now where WHERE CLAUSE
+
+a sliding window needs a window operation. chunked window can run on a normal range
