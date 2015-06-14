@@ -31,3 +31,5 @@ apply edge() < min()  < etc... < slide WINDOW CLAUSE to data since now where WHE
 apply edge() < min()  < etc... < chunk WINDOW CLAUSE to data since now where WHERE CLAUSE
 
 a sliding window needs a window operation. chunked window can run on a normal range
+
+link to docker and use that to run processes! docker written in go

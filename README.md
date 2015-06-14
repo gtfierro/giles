@@ -149,3 +149,7 @@ $ ./giles -h
 
 The `go generate` command is for the YACC-based parser in `archiver/query.y`. You should only need
 to run the generation if you changed that file.
+
+TODO: add /uuidsubscribe for metadata updates on specific UUIDs
+TODO: a "generic" sMAP driver service. Code written in language X sends formatted data over a unix domain socket
+to a sMAp daemon that takes care of reliable delivery, etc. Like a generic twisted reactor, only its own process
