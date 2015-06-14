@@ -387,7 +387,8 @@ func (a *Archiver) StreamingQuery(querystring, apikey string, sendback Subscribe
 	done := make(chan struct{})
 
 	// test subscribe node
-	sn := NewSubscribeDataNode(done, a, querystring, apikey, lex.query.data)
+	//sn := NewSubscribeDataNode(done, a, querystring, apikey, lex.query.data)
+	sn := NewChunkedStreamingDataNode(done, a, lex.query)
 	// run through the operators and build up the tree
 	var (
 		last    *Node = sn
@@ -404,8 +405,6 @@ func (a *Archiver) StreamingQuery(querystring, apikey string, sendback Subscribe
 	echoClient := NewStreamingEchoNode(done, sendback)
 	last.AddChild(echoClient)
 	wait := make(chan struct{})
-	//nop := NewNopNode(done, wait)
-	//echoClient.AddChild(nop)
 	<-wait
 	return nil
 }
