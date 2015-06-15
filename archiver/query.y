@@ -44,7 +44,7 @@ Notes here
 %token TIMEUNIT
 
 %type <dict> whereList whereTerm whereClause setList opArgs
-%type <list> selector tagList
+%type <list> selector tagList valueList
 %type <oplist> operatorList
 %type <op> operator
 %type <data> dataClause
@@ -117,6 +117,16 @@ tagList		: lvalue
 				$$ = append(List{$1}, $3...)
 			}
 			;
+
+valueList   : qstring
+            {
+                $$ = List{$1}
+            }
+            | qstring COMMA valueList
+            {
+                $$ = append(List{$1}, $3...)
+            }
+            ;
 
 setList     : lvalue EQ qstring
             {
@@ -319,6 +329,10 @@ whereTerm : lvalue LIKE qstring
 			{
 				$$ = Dict{$2: Dict{"$exists": true}}
 			}
+          | valueList IN lvalue
+            {
+                $$ = Dict{$3: Dict{"$in": $1}}
+            }
 		  ;
 
 qstring   : QSTRING
