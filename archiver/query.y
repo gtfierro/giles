@@ -37,14 +37,14 @@ Notes here
 %token <str> EQ NEQ COMMA ALL LEFTPIPE
 %token <str> LIKE AS
 %token <str> AND OR HAS NOT IN TO
-%token <str> LPAREN RPAREN
+%token <str> LPAREN RPAREN LBRACK RBRACK
 %token NUMBER
 %token SEMICOLON
 %token NEWLINE
 %token TIMEUNIT
 
 %type <dict> whereList whereTerm whereClause setList opArgs
-%type <list> selector tagList valueList
+%type <list> selector tagList valueList valueListBrack
 %type <oplist> operatorList
 %type <op> operator
 %type <data> dataClause
@@ -118,6 +118,11 @@ tagList		: lvalue
 			}
 			;
 
+valueListBrack : LBRACK valueList RBRACK
+                 {
+                  $$ = $2
+                 }
+               ;
 valueList   : qstring
             {
                 $$ = List{$1}
@@ -136,12 +141,21 @@ setList     : lvalue EQ qstring
             {
                 $$ = Dict{$1: $3}
             }
+            | lvalue EQ valueListBrack
+            {
+                $$ = Dict{$1: $3}
+            }
             | lvalue EQ qstring COMMA setList
             {
                 $5[$1] = $3
                 $$ = $5
             }
             | lvalue EQ NUMBER COMMA setList
+            {
+                $5[$1] = $3
+                $$ = $5
+            }
+            | lvalue EQ valueListBrack COMMA setList
             {
                 $5[$1] = $3
                 $$ = $5
@@ -329,7 +343,7 @@ whereTerm : lvalue LIKE qstring
 			{
 				$$ = Dict{$2: Dict{"$exists": true}}
 			}
-          | valueList IN lvalue
+          | valueListBrack IN lvalue
             {
                 $$ = Dict{$3: Dict{"$in": $1}}
             }
@@ -576,6 +590,8 @@ func NewSQLex(s string) *SQLex {
 			{Token: LEFTPIPE, Pattern: "<"},
 			{Token: LPAREN, Pattern: "\\("},
 			{Token: RPAREN, Pattern: "\\)"},
+			{Token: LBRACK, Pattern: "\\["},
+			{Token: RBRACK, Pattern: "\\]"},
 			{Token: SEMICOLON, Pattern: ";"},
 			{Token: NEWLINE, Pattern: "\n"},
 			{Token: LIKE, Pattern: "(like)|~"},

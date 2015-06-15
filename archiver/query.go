@@ -62,10 +62,12 @@ const IN = 57372
 const TO = 57373
 const LPAREN = 57374
 const RPAREN = 57375
-const NUMBER = 57376
-const SEMICOLON = 57377
-const NEWLINE = 57378
-const TIMEUNIT = 57379
+const LBRACK = 57376
+const RBRACK = 57377
+const NUMBER = 57378
+const SEMICOLON = 57379
+const NEWLINE = 57380
+const TIMEUNIT = 57381
 
 var SQToknames = []string{
 	"SELECT",
@@ -98,6 +100,8 @@ var SQToknames = []string{
 	"TO",
 	"LPAREN",
 	"RPAREN",
+	"LBRACK",
+	"RBRACK",
 	"NUMBER",
 	"SEMICOLON",
 	"NEWLINE",
@@ -109,7 +113,7 @@ const SQEofCode = 1
 const SQErrCode = 2
 const SQMaxDepth = 200
 
-//line query.y:418
+//line query.y:432
 const eof = 0
 
 var supported_formats = []string{"1/2/2006",
@@ -273,6 +277,8 @@ func NewSQLex(s string) *SQLex {
 			{Token: LEFTPIPE, Pattern: "<"},
 			{Token: LPAREN, Pattern: "\\("},
 			{Token: RPAREN, Pattern: "\\)"},
+			{Token: LBRACK, Pattern: "\\["},
+			{Token: RBRACK, Pattern: "\\]"},
 			{Token: SEMICOLON, Pattern: ";"},
 			{Token: NEWLINE, Pattern: "\n"},
 			{Token: LIKE, Pattern: "(like)|~"},
@@ -318,105 +324,109 @@ var SQExca = []int{
 	-2, 0,
 }
 
-const SQNprod = 61
+const SQNprod = 64
 const SQPrivate = 57344
 
 var SQTokenNames []string
 var SQStates []string
 
-const SQLast = 153
+const SQLast = 156
 
 var SQAct = []int{
 
-	103, 82, 19, 41, 75, 42, 79, 14, 54, 7,
-	43, 50, 39, 35, 17, 12, 15, 12, 54, 110,
-	43, 22, 24, 25, 43, 49, 18, 52, 122, 30,
-	43, 33, 53, 53, 53, 61, 18, 52, 59, 55,
-	56, 111, 12, 58, 13, 43, 48, 93, 73, 43,
-	64, 65, 31, 69, 72, 53, 40, 36, 85, 47,
-	37, 77, 23, 62, 63, 34, 60, 80, 106, 105,
-	90, 76, 91, 92, 94, 96, 88, 89, 120, 98,
-	46, 44, 70, 95, 53, 104, 107, 97, 74, 45,
-	101, 27, 28, 102, 108, 109, 119, 8, 118, 15,
-	15, 99, 16, 114, 100, 112, 53, 62, 63, 115,
-	26, 87, 113, 67, 68, 121, 86, 78, 66, 71,
-	10, 29, 125, 123, 124, 11, 126, 57, 32, 43,
-	76, 13, 18, 116, 13, 81, 21, 9, 117, 13,
-	83, 84, 2, 11, 4, 3, 5, 1, 18, 51,
-	20, 6, 38,
+	107, 84, 52, 49, 77, 81, 39, 7, 72, 12,
+	15, 12, 17, 53, 19, 54, 35, 25, 116, 22,
+	24, 53, 18, 54, 14, 13, 62, 30, 18, 33,
+	48, 55, 56, 58, 51, 59, 12, 40, 36, 47,
+	46, 37, 51, 42, 54, 73, 54, 70, 54, 34,
+	31, 74, 79, 65, 66, 99, 23, 128, 87, 75,
+	82, 42, 110, 60, 109, 117, 78, 96, 63, 64,
+	94, 95, 97, 126, 102, 93, 45, 41, 98, 43,
+	91, 92, 71, 76, 105, 27, 28, 101, 111, 106,
+	63, 64, 108, 8, 44, 15, 15, 15, 16, 125,
+	68, 69, 103, 73, 26, 67, 118, 120, 119, 115,
+	61, 124, 121, 112, 113, 114, 104, 100, 90, 89,
+	10, 127, 88, 57, 80, 11, 29, 32, 131, 129,
+	130, 13, 132, 54, 18, 78, 122, 9, 13, 83,
+	21, 13, 85, 86, 123, 2, 11, 4, 3, 5,
+	1, 18, 50, 20, 6, 38,
 }
 var SQPact = []int{
 
-	138, -1000, 115, 118, 123, 120, 27, 139, -1000, -1000,
-	118, 80, 100, -1000, 17, 109, 139, 30, 28, 50,
-	66, 48, 24, -1000, 11, -1000, -7, 3, 3, 118,
-	8, -1000, 32, 0, -1000, 81, 28, 28, -1000, 94,
-	118, 52, 98, -1000, 133, 120, 55, -1000, -1000, 3,
-	96, 33, 119, -1000, -1000, 127, 127, -1000, -1000, 95,
-	90, -1000, 28, 28, 81, 37, 112, 13, 112, -1000,
-	118, 112, 139, -1000, -1000, 46, 82, 83, 3, -1000,
-	118, -1000, 60, 35, 34, 60, 118, 118, 81, 81,
-	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -16, -1000, 7,
-	3, 127, 33, -1000, 117, 124, -1000, -1000, -1000, -1000,
-	-1000, 77, 75, 45, 60, -1000, -1000, -6, 114, 114,
-	127, -1000, -1000, -1000, -1000, 60, -1000,
+	141, -1000, 115, 122, 125, 124, 19, 142, -1000, -1000,
+	122, 74, 105, -1000, 13, 108, 142, 12, 9, 48,
+	71, 44, 3, -1000, 2, -1000, -2, 6, 6, 122,
+	-4, -1000, 27, -11, -1000, 64, 9, 9, -1000, 81,
+	122, 52, 116, 136, 124, 50, -1000, -1000, 6, 103,
+	24, 123, -1000, -1000, -1000, 129, 129, -1000, -1000, 101,
+	98, 97, -1000, 9, 9, 64, 42, 116, 31, 116,
+	-1000, 122, 20, 96, 142, -1000, -1000, 41, 83, 95,
+	6, -1000, 122, -1000, 67, 28, 26, 67, 122, 122,
+	122, 64, 64, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
+	116, -19, -1000, 29, 6, 129, 24, -1000, 120, 130,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, 90, 78, 40,
+	67, -1000, -1000, 21, 119, 119, 129, -1000, -1000, -1000,
+	-1000, 67, -1000,
 }
 var SQPgo = []int{
 
-	0, 13, 152, 14, 7, 4, 151, 97, 3, 2,
-	150, 9, 11, 149, 6, 1, 0, 5, 12, 147,
+	0, 16, 155, 12, 24, 4, 154, 93, 8, 77,
+	14, 153, 7, 3, 152, 5, 1, 0, 2, 6,
+	150,
 }
 var SQR1 = []int{
 
-	0, 19, 19, 19, 19, 19, 19, 19, 19, 7,
-	7, 8, 8, 4, 4, 4, 4, 6, 6, 6,
-	6, 11, 11, 11, 11, 12, 12, 13, 13, 13,
-	13, 14, 14, 15, 15, 15, 15, 16, 16, 3,
-	2, 2, 2, 2, 2, 2, 17, 18, 1, 1,
-	1, 1, 1, 9, 9, 10, 10, 5, 5, 5,
-	5,
+	0, 20, 20, 20, 20, 20, 20, 20, 20, 7,
+	7, 9, 8, 8, 4, 4, 4, 4, 4, 4,
+	6, 6, 6, 6, 12, 12, 12, 12, 13, 13,
+	14, 14, 14, 14, 15, 15, 16, 16, 16, 16,
+	17, 17, 3, 2, 2, 2, 2, 2, 2, 18,
+	19, 1, 1, 1, 1, 1, 10, 10, 11, 11,
+	5, 5, 5, 5,
 }
 var SQR2 = []int{
 
 	0, 4, 3, 4, 4, 3, 4, 3, 6, 1,
-	3, 1, 3, 3, 3, 5, 5, 1, 1, 2,
-	1, 9, 7, 5, 5, 1, 2, 2, 1, 1,
-	1, 2, 3, 0, 2, 2, 4, 0, 2, 2,
-	3, 3, 3, 3, 2, 3, 1, 1, 3, 3,
-	2, 3, 1, 1, 3, 3, 4, 3, 3, 5,
-	5,
+	3, 3, 1, 3, 3, 3, 3, 5, 5, 5,
+	1, 1, 2, 1, 9, 7, 5, 5, 1, 2,
+	2, 1, 1, 1, 2, 3, 0, 2, 2, 4,
+	0, 2, 2, 3, 3, 3, 3, 2, 3, 1,
+	1, 3, 3, 2, 3, 1, 1, 3, 3, 4,
+	3, 3, 5, 5,
 }
 var SQChk = []int{
 
-	-1000, -19, 4, 7, 6, 8, -6, -11, -7, 22,
-	5, 10, -18, 16, -4, -18, -7, -3, 9, -9,
-	-10, 16, -3, 35, -3, -18, 30, 11, 12, 21,
-	-3, 35, 19, -3, 35, -1, 29, 32, -2, -18,
-	28, -8, -17, 17, 31, 23, 32, 35, 35, 32,
-	-12, -13, 34, -17, 15, -12, -12, -7, 35, -17,
-	34, 35, 26, 27, -1, -1, 24, 19, 20, -18,
-	30, 21, -11, -9, 33, -5, 16, -12, 21, -14,
-	34, 16, -15, 13, 14, -15, 21, 21, -1, -1,
-	33, -17, -17, 34, -17, -18, -8, -3, 33, 19,
-	21, -12, -18, -16, 25, 34, 34, -16, -4, -4,
-	35, 34, -17, -12, -15, -14, 16, 14, 21, 21,
-	33, -16, 34, -5, -5, -15, -16,
+	-1000, -20, 4, 7, 6, 8, -6, -12, -7, 22,
+	5, 10, -19, 16, -4, -19, -7, -3, 9, -10,
+	-11, 16, -3, 37, -3, -19, 30, 11, 12, 21,
+	-3, 37, 19, -3, 37, -1, 29, 32, -2, -19,
+	28, -9, 34, 31, 23, 32, 37, 37, 32, -13,
+	-14, 36, -18, 15, 17, -13, -13, -7, 37, -18,
+	36, -9, 37, 26, 27, -1, -1, 24, 19, 20,
+	-19, 30, -8, -18, -12, -10, 33, -5, 16, -13,
+	21, -15, 36, 16, -16, 13, 14, -16, 21, 21,
+	21, -1, -1, 33, -18, -18, 36, -18, -19, 35,
+	21, -3, 33, 19, 21, -13, -19, -17, 25, 36,
+	36, -17, -4, -4, -4, -8, 37, 36, -18, -13,
+	-16, -15, 16, 14, 21, 21, 33, -17, 36, -5,
+	-5, -16, -17,
 }
 var SQDef = []int{
 
-	0, -2, 0, 0, 0, 0, 0, 0, 17, 18,
-	20, 0, 9, 47, 0, 0, 0, 0, 0, 0,
-	53, 0, 0, 2, 0, 19, 0, 0, 0, 0,
-	0, 5, 0, 0, 7, 39, 0, 0, 52, 0,
-	0, 0, 11, 46, 0, 0, 0, 1, 3, 0,
-	0, 25, 28, 29, 30, 33, 33, 10, 4, 13,
-	14, 6, 0, 0, 50, 0, 0, 0, 0, 44,
-	0, 0, 0, 54, 55, 0, 0, 0, 0, 26,
-	0, 27, 37, 0, 0, 37, 0, 0, 48, 49,
-	51, 40, 41, 42, 43, 45, 12, 0, 56, 0,
-	0, 33, 31, 23, 0, 34, 35, 24, 15, 16,
-	8, 57, 58, 0, 37, 32, 38, 0, 0, 0,
-	33, 22, 36, 59, 60, 37, 21,
+	0, -2, 0, 0, 0, 0, 0, 0, 20, 21,
+	23, 0, 9, 50, 0, 0, 0, 0, 0, 0,
+	56, 0, 0, 2, 0, 22, 0, 0, 0, 0,
+	0, 5, 0, 0, 7, 42, 0, 0, 55, 0,
+	0, 0, 0, 0, 0, 0, 1, 3, 0, 0,
+	28, 31, 32, 33, 49, 36, 36, 10, 4, 14,
+	15, 16, 6, 0, 0, 53, 0, 0, 0, 0,
+	47, 0, 0, 12, 0, 57, 58, 0, 0, 0,
+	0, 29, 0, 30, 40, 0, 0, 40, 0, 0,
+	0, 51, 52, 54, 43, 44, 45, 46, 48, 11,
+	0, 0, 59, 0, 0, 36, 34, 26, 0, 37,
+	38, 27, 17, 18, 19, 13, 8, 60, 61, 0,
+	40, 35, 41, 0, 0, 0, 36, 25, 39, 62,
+	63, 40, 24,
 }
 var SQTok1 = []int{
 
@@ -427,7 +437,7 @@ var SQTok2 = []int{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
 	22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-	32, 33, 34, 35, 36, 37,
+	32, 33, 34, 35, 36, 37, 38, 39,
 }
 var SQTok3 = []int{
 	0,
@@ -726,89 +736,105 @@ SQdefault:
 	case 11:
 		//line query.y:122
 		{
-			SQVAL.list = List{SQS[SQpt-0].str}
+			SQVAL.list = SQS[SQpt-1].list
 		}
 	case 12:
-		//line query.y:126
+		//line query.y:127
+		{
+			SQVAL.list = List{SQS[SQpt-0].str}
+		}
+	case 13:
+		//line query.y:131
 		{
 			SQVAL.list = append(List{SQS[SQpt-2].str}, SQS[SQpt-0].list...)
 		}
-	case 13:
-		//line query.y:132
-		{
-			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
-		}
 	case 14:
-		//line query.y:136
+		//line query.y:137
 		{
 			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
 		}
 	case 15:
-		//line query.y:140
+		//line query.y:141
 		{
-			SQS[SQpt-0].dict[SQS[SQpt-4].str] = SQS[SQpt-2].str
-			SQVAL.dict = SQS[SQpt-0].dict
+			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
 		}
 	case 16:
 		//line query.y:145
 		{
+			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].list}
+		}
+	case 17:
+		//line query.y:149
+		{
 			SQS[SQpt-0].dict[SQS[SQpt-4].str] = SQS[SQpt-2].str
 			SQVAL.dict = SQS[SQpt-0].dict
 		}
-	case 17:
-		//line query.y:152
+	case 18:
+		//line query.y:154
+		{
+			SQS[SQpt-0].dict[SQS[SQpt-4].str] = SQS[SQpt-2].str
+			SQVAL.dict = SQS[SQpt-0].dict
+		}
+	case 19:
+		//line query.y:159
+		{
+			SQS[SQpt-0].dict[SQS[SQpt-4].str] = SQS[SQpt-2].list
+			SQVAL.dict = SQS[SQpt-0].dict
+		}
+	case 20:
+		//line query.y:166
 		{
 			SQVAL.list = SQS[SQpt-0].list
 		}
-	case 18:
-		//line query.y:156
+	case 21:
+		//line query.y:170
 		{
 			SQVAL.list = List{}
 		}
-	case 19:
-		//line query.y:160
+	case 22:
+		//line query.y:174
 		{
 			SQlex.(*SQLex).query.distinct = true
 			SQVAL.list = List{SQS[SQpt-0].str}
 		}
-	case 20:
-		//line query.y:165
+	case 23:
+		//line query.y:179
 		{
 			SQlex.(*SQLex).query.distinct = true
 			SQVAL.list = List{}
 		}
-	case 21:
-		//line query.y:172
+	case 24:
+		//line query.y:186
 		{
 			SQVAL.data = &dataquery{dtype: IN_TYPE, start: SQS[SQpt-5].time, end: SQS[SQpt-3].time, limit: SQS[SQpt-1].limit, timeconv: SQS[SQpt-0].timeconv}
-		}
-	case 22:
-		//line query.y:176
-		{
-			SQVAL.data = &dataquery{dtype: IN_TYPE, start: SQS[SQpt-4].time, end: SQS[SQpt-2].time, limit: SQS[SQpt-1].limit, timeconv: SQS[SQpt-0].timeconv}
-		}
-	case 23:
-		//line query.y:180
-		{
-			SQVAL.data = &dataquery{dtype: BEFORE_TYPE, start: SQS[SQpt-2].time, limit: SQS[SQpt-1].limit, timeconv: SQS[SQpt-0].timeconv}
-		}
-	case 24:
-		//line query.y:184
-		{
-			SQVAL.data = &dataquery{dtype: AFTER_TYPE, start: SQS[SQpt-2].time, limit: SQS[SQpt-1].limit, timeconv: SQS[SQpt-0].timeconv}
 		}
 	case 25:
 		//line query.y:190
 		{
-			SQVAL.time = SQS[SQpt-0].time
+			SQVAL.data = &dataquery{dtype: IN_TYPE, start: SQS[SQpt-4].time, end: SQS[SQpt-2].time, limit: SQS[SQpt-1].limit, timeconv: SQS[SQpt-0].timeconv}
 		}
 	case 26:
 		//line query.y:194
 		{
-			SQVAL.time = SQS[SQpt-1].time.Add(SQS[SQpt-0].timediff)
+			SQVAL.data = &dataquery{dtype: BEFORE_TYPE, start: SQS[SQpt-2].time, limit: SQS[SQpt-1].limit, timeconv: SQS[SQpt-0].timeconv}
 		}
 	case 27:
-		//line query.y:200
+		//line query.y:198
+		{
+			SQVAL.data = &dataquery{dtype: AFTER_TYPE, start: SQS[SQpt-2].time, limit: SQS[SQpt-1].limit, timeconv: SQS[SQpt-0].timeconv}
+		}
+	case 28:
+		//line query.y:204
+		{
+			SQVAL.time = SQS[SQpt-0].time
+		}
+	case 29:
+		//line query.y:208
+		{
+			SQVAL.time = SQS[SQpt-1].time.Add(SQS[SQpt-0].timediff)
+		}
+	case 30:
+		//line query.y:214
 		{
 			foundtime, err := parseAbsTime(SQS[SQpt-1].str, SQS[SQpt-0].str)
 			if err != nil {
@@ -816,8 +842,8 @@ SQdefault:
 			}
 			SQVAL.time = foundtime
 		}
-	case 28:
-		//line query.y:208
+	case 31:
+		//line query.y:222
 		{
 			num, err := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
 			if err != nil {
@@ -825,8 +851,8 @@ SQdefault:
 			}
 			SQVAL.time = _time.Unix(num, 0)
 		}
-	case 29:
-		//line query.y:216
+	case 32:
+		//line query.y:230
 		{
 			found := false
 			for _, format := range supported_formats {
@@ -842,13 +868,13 @@ SQdefault:
 				SQlex.(*SQLex).Error(fmt.Sprintf("No time format matching \"%v\" found", SQS[SQpt-0].str))
 			}
 		}
-	case 30:
-		//line query.y:232
+	case 33:
+		//line query.y:246
 		{
 			SQVAL.time = _time.Now()
 		}
-	case 31:
-		//line query.y:238
+	case 34:
+		//line query.y:252
 		{
 			var err error
 			SQVAL.timediff, err = parseReltime(SQS[SQpt-1].str, SQS[SQpt-0].str)
@@ -856,8 +882,8 @@ SQdefault:
 				SQlex.(*SQLex).Error(fmt.Sprintf("Error parsing relative time \"%v %v\" (%v)", SQS[SQpt-1].str, SQS[SQpt-0].str, err.Error()))
 			}
 		}
-	case 32:
-		//line query.y:246
+	case 35:
+		//line query.y:260
 		{
 			newDuration, err := parseReltime(SQS[SQpt-2].str, SQS[SQpt-1].str)
 			if err != nil {
@@ -865,13 +891,13 @@ SQdefault:
 			}
 			SQVAL.timediff = addDurations(newDuration, SQS[SQpt-0].timediff)
 		}
-	case 33:
-		//line query.y:256
+	case 36:
+		//line query.y:270
 		{
 			SQVAL.limit = datalimit{limit: -1, streamlimit: -1}
 		}
-	case 34:
-		//line query.y:260
+	case 37:
+		//line query.y:274
 		{
 			num, err := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
 			if err != nil {
@@ -879,8 +905,8 @@ SQdefault:
 			}
 			SQVAL.limit = datalimit{limit: num, streamlimit: -1}
 		}
-	case 35:
-		//line query.y:268
+	case 38:
+		//line query.y:282
 		{
 			num, err := strconv.ParseInt(SQS[SQpt-0].str, 10, 64)
 			if err != nil {
@@ -888,8 +914,8 @@ SQdefault:
 			}
 			SQVAL.limit = datalimit{limit: -1, streamlimit: num}
 		}
-	case 36:
-		//line query.y:276
+	case 39:
+		//line query.y:290
 		{
 			limit_num, err := strconv.ParseInt(SQS[SQpt-2].str, 10, 64)
 			if err != nil {
@@ -901,13 +927,13 @@ SQdefault:
 			}
 			SQVAL.limit = datalimit{limit: limit_num, streamlimit: slimit_num}
 		}
-	case 37:
-		//line query.y:290
+	case 40:
+		//line query.y:304
 		{
 			SQVAL.timeconv = UOT_MS
 		}
-	case 38:
-		//line query.y:294
+	case 41:
+		//line query.y:308
 		{
 			uot, err := parseUOT(SQS[SQpt-0].str)
 			if err != nil {
@@ -915,65 +941,65 @@ SQdefault:
 			}
 			SQVAL.timeconv = uot
 		}
-	case 39:
-		//line query.y:306
+	case 42:
+		//line query.y:320
 		{
 			SQVAL.dict = SQS[SQpt-0].dict
 		}
-	case 40:
-		//line query.y:313
+	case 43:
+		//line query.y:327
 		{
 			SQVAL.dict = Dict{SQS[SQpt-2].str: Dict{"$regex": SQS[SQpt-0].str}}
 		}
-	case 41:
-		//line query.y:317
-		{
-			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
-		}
-	case 42:
-		//line query.y:321
-		{
-			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
-		}
-	case 43:
-		//line query.y:325
-		{
-			SQVAL.dict = Dict{SQS[SQpt-2].str: Dict{"$neq": SQS[SQpt-0].str}}
-		}
 	case 44:
-		//line query.y:329
+		//line query.y:331
 		{
-			SQVAL.dict = Dict{SQS[SQpt-0].str: Dict{"$exists": true}}
+			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
 		}
 	case 45:
-		//line query.y:333
+		//line query.y:335
 		{
-			SQVAL.dict = Dict{SQS[SQpt-0].str: Dict{"$in": SQS[SQpt-2].list}}
+			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
 		}
 	case 46:
 		//line query.y:339
 		{
-			SQVAL.str = SQS[SQpt-0].str[1 : len(SQS[SQpt-0].str)-1]
+			SQVAL.dict = Dict{SQS[SQpt-2].str: Dict{"$neq": SQS[SQpt-0].str}}
 		}
 	case 47:
-		//line query.y:345
+		//line query.y:343
+		{
+			SQVAL.dict = Dict{SQS[SQpt-0].str: Dict{"$exists": true}}
+		}
+	case 48:
+		//line query.y:347
+		{
+			SQVAL.dict = Dict{SQS[SQpt-0].str: Dict{"$in": SQS[SQpt-2].list}}
+		}
+	case 49:
+		//line query.y:353
+		{
+			SQVAL.str = SQS[SQpt-0].str[1 : len(SQS[SQpt-0].str)-1]
+		}
+	case 50:
+		//line query.y:359
 		{
 
 			SQlex.(*SQLex)._keys[SQS[SQpt-0].str] = struct{}{}
 			SQVAL.str = cleantagstring(SQS[SQpt-0].str)
 		}
-	case 48:
-		//line query.y:353
+	case 51:
+		//line query.y:367
 		{
 			SQVAL.dict = Dict{"$and": []Dict{SQS[SQpt-2].dict, SQS[SQpt-0].dict}}
 		}
-	case 49:
-		//line query.y:357
+	case 52:
+		//line query.y:371
 		{
 			SQVAL.dict = Dict{"$or": []Dict{SQS[SQpt-2].dict, SQS[SQpt-0].dict}}
 		}
-	case 50:
-		//line query.y:361
+	case 53:
+		//line query.y:375
 		{
 			tmp := make(Dict)
 			for k, v := range SQS[SQpt-0].dict {
@@ -981,55 +1007,55 @@ SQdefault:
 			}
 			SQVAL.dict = tmp
 		}
-	case 51:
-		//line query.y:369
-		{
-			SQVAL.dict = SQS[SQpt-1].dict
-		}
-	case 52:
-		//line query.y:373
-		{
-			SQVAL.dict = SQS[SQpt-0].dict
-		}
-	case 53:
-		//line query.y:379
-		{
-			SQVAL.oplist = []*OpNode{SQS[SQpt-0].op}
-		}
 	case 54:
 		//line query.y:383
 		{
-			SQVAL.oplist = append(SQS[SQpt-0].oplist, SQS[SQpt-2].op)
+			SQVAL.dict = SQS[SQpt-1].dict
 		}
 	case 55:
-		//line query.y:389
+		//line query.y:387
 		{
-			SQVAL.op = &OpNode{Operator: SQS[SQpt-2].str}
+			SQVAL.dict = SQS[SQpt-0].dict
 		}
 	case 56:
 		//line query.y:393
 		{
-			SQVAL.op = &OpNode{Operator: SQS[SQpt-3].str, Arguments: SQS[SQpt-1].dict}
+			SQVAL.oplist = []*OpNode{SQS[SQpt-0].op}
 		}
 	case 57:
-		//line query.y:399
+		//line query.y:397
+		{
+			SQVAL.oplist = append(SQS[SQpt-0].oplist, SQS[SQpt-2].op)
+		}
+	case 58:
+		//line query.y:403
+		{
+			SQVAL.op = &OpNode{Operator: SQS[SQpt-2].str}
+		}
+	case 59:
+		//line query.y:407
+		{
+			SQVAL.op = &OpNode{Operator: SQS[SQpt-3].str, Arguments: SQS[SQpt-1].dict}
+		}
+	case 60:
+		//line query.y:413
 		{
 			fmt.Printf("op args %v %v\n", SQS[SQpt-2].str, SQS[SQpt-0].str)
 			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
 		}
-	case 58:
-		//line query.y:404
+	case 61:
+		//line query.y:418
 		{
 			SQVAL.dict = Dict{SQS[SQpt-2].str: SQS[SQpt-0].str}
 		}
-	case 59:
-		//line query.y:408
+	case 62:
+		//line query.y:422
 		{
 			SQS[SQpt-0].dict[SQS[SQpt-4].str] = SQS[SQpt-2].str
 			SQVAL.dict = SQS[SQpt-0].dict
 		}
-	case 60:
-		//line query.y:413
+	case 63:
+		//line query.y:427
 		{
 			SQS[SQpt-0].dict[SQS[SQpt-4].str] = SQS[SQpt-2].str
 			SQVAL.dict = SQS[SQpt-0].dict
