@@ -190,6 +190,7 @@ The `where-clause` construction is used in nearly all sMAP queries, not just `se
 | `and`    | Logical AND of two queries (on either side) | `where-clause and where-clause` | `has Metadata/System and Properties/UnitofTime = "s"` |
 | `or`     | Logical OR of two queries | | |
 | `not`    | Inverts a where clause | `not where-clause` | `not Properties/UnitofMeasure = "volts"` |
+| `in`     | Matches set intersection on lists of tags | `[list,of,tags] in tagname` | `["zone","temp"] in Metadata/HaystackTags` | 
 
 
 ### Data Query
