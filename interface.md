@@ -492,7 +492,7 @@ Illustrated here are the JSON-versions of sMAP objects, though translations of t
             "ReadingType": "double",        // If a "numeric" stream, designates the class of number permitted
             "UnitofMeasure": "Watt",        // Units of measure for the stream
             "UnitofTime": "ms",             // Units of time used in the timestamp
-            "StreamType": "numeric",        // Describes type of data in Readings: "numeric" or "object"
+            "StreamType": "numeric"         // Describes type of data in Readings: "numeric" or "object"
         },
         "Readings": [                       // This is an array of (timestamp, value) tuples. Timestamps should be
             [                               //  consistent with Properties/UnitofTime
@@ -614,7 +614,7 @@ Here is an example of a stream that pushes arrays
             "ReadingType": "double",
             "UnitofMeasure": "Watt",
             "UnitofTime": "ms",
-            "StreamType": "object",         // This denotes this timeseries as an object-stream
+            "StreamType": "object"          // This denotes this timeseries as an object-stream
         },
         "Readings": [
             [
