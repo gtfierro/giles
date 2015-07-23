@@ -347,6 +347,10 @@ whereTerm : lvalue LIKE qstring
             {
                 $$ = Dict{$3: Dict{"$in": $1}}
             }
+          | valueListBrack NOT IN lvalue
+            {
+                $$ = Dict{$3: Dict{"$not": Dict{"$in": $1}}}
+            }
 		  ;
 
 qstring   : QSTRING

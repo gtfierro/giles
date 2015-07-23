@@ -1,5 +1,11 @@
 ## TODO
 
+### Regular queries
+"select distinct Metadata/XYZ". What if XYZ has a value like [1,2,3]? 
+
+
+### Streaming queries
+
 Streaming functionality:
 * 2 window types
 * need syntax for the subscription
