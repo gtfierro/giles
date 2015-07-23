@@ -1,6 +1,7 @@
 package archiver
 
 import (
+	golog "log"
 	"strings"
 	"time"
 )
@@ -94,4 +95,10 @@ func getPositiveDifference(x1, x2 int64) int64 {
 		return x1 - x2
 	}
 	return x2 - x1
+}
+
+// good trick from http://blog.stathat.com/2012/10/10/time_any_function_in_go.html
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	golog.Printf("%s took %s", name, elapsed)
 }

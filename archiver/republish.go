@@ -4,6 +4,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"strings"
 	"sync"
+	"time"
 )
 
 type QueryHash string
@@ -202,6 +203,9 @@ func (r *Republisher) MetadataChangeKeys(keys []string) {
 //TODO: store up queries and do r.EvaluateQuery once each at end. With this current scheme,
 //      we can have  multiple queries be re-evaluated twice
 func (r *Republisher) MetadataChange(msg *SmapMessage) {
+	if msg.Metadata != nil || msg.Properties != nil || msg.Actuator != nil {
+		defer timeTrack(time.Now(), "metadata change")
+	}
 	if msg.Metadata != nil {
 		for key, _ := range msg.Metadata {
 			key = "Metadata." + key
