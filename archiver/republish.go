@@ -85,7 +85,8 @@ type Republisher struct {
 	clients [](*RepublishClient)
 
 	// stores hash -> query object
-	queries map[QueryHash]*Query
+	queries   map[QueryHash]*Query
+	queryLock sync.RWMutex
 
 	// query -> list of clients
 	queryConcern map[QueryHash][](*RepublishClient)
@@ -206,11 +207,13 @@ func (r *Republisher) MetadataChange(msg *SmapMessage) {
 	if msg.Metadata != nil || msg.Properties != nil || msg.Actuator != nil {
 		defer timeTrack(time.Now(), "metadata change")
 	}
+	reevals := make(map[QueryHash]struct{})
 	if msg.Metadata != nil {
 		for key, _ := range msg.Metadata {
 			key = "Metadata." + key
 			for _, query := range r.keyConcern[key] {
-				r.EvaluateQuery(query)
+				reevals[query] = struct{}{}
+				//r.EvaluateQuery(query)
 			}
 		}
 	}
@@ -218,7 +221,8 @@ func (r *Republisher) MetadataChange(msg *SmapMessage) {
 		for key, _ := range msg.Properties {
 			key = "Properties." + key
 			for _, query := range r.keyConcern[key] {
-				r.EvaluateQuery(query)
+				reevals[query] = struct{}{}
+				//r.EvaluateQuery(query)
 			}
 		}
 	}
@@ -226,9 +230,13 @@ func (r *Republisher) MetadataChange(msg *SmapMessage) {
 		for key, _ := range msg.Actuator {
 			key = "Actuator." + key
 			for _, query := range r.keyConcern[key] {
-				r.EvaluateQuery(query)
+				reevals[query] = struct{}{}
+				//r.EvaluateQuery(query)
 			}
 		}
+	}
+	for query, _ := range reevals {
+		r.EvaluateQuery(query)
 	}
 }
 
@@ -244,7 +252,10 @@ func (r *Republisher) EvaluateQuery(qh QueryHash) {
 	var query *Query
 	var found bool
 	var err error
-	if query, found = r.queries[qh]; !found {
+	r.queryLock.RLock()
+	query, found = r.queries[qh]
+	r.queryLock.RUnlock()
+	if !found {
 		return
 	}
 
@@ -267,7 +278,9 @@ func (r *Republisher) EvaluateQuery(qh QueryHash) {
 	}
 
 	// store our query by its hash
+	r.queryLock.Lock()
 	r.queries[query.hash] = query
+	r.queryLock.Unlock()
 
 	for uuid, status := range query.m_uuids {
 		if status == OLD {
@@ -342,7 +355,10 @@ func (r *Republisher) HandleQuery(querystring string) (*Query, error) {
 	q.keys = lex.keys
 	q.hash = QueryHash(strings.Join(lex.tokens, ""))
 	q.m_uuids = make(map[string]UUIDSTATE)
-	if prev_q, found := r.queries[q.hash]; found {
+	r.queryLock.RLock()
+	prev_q, found := r.queries[q.hash]
+	r.queryLock.RUnlock()
+	if found {
 		// this query has already been done
 		q = prev_q
 	} else {
@@ -357,7 +373,9 @@ func (r *Republisher) HandleQuery(querystring string) (*Query, error) {
 			q.m_uuids[uuid] = OLD
 		}
 
+		r.queryLock.Lock()
 		r.queries[q.hash] = q
+		r.queryLock.Unlock()
 
 		// for each matched UUID, store the query that matched it
 		for uuid, _ := range q.m_uuids {
