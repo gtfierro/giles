@@ -1,1 +1,1 @@
-twistd --pidfile lightocc.pid -n smap lightocc.ini
+twistd --pidfile zc_occ.pid -n smap zc_occ.ini

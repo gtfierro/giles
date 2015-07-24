@@ -7,7 +7,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 from twisted.internet.task import deferLater
 
 
-num_floors = 5
+num_floors = 10
 num_zones_per_floor = 20
 
 class Fast(driver.SmapDriver):
@@ -48,7 +48,7 @@ class Fast(driver.SmapDriver):
 
     def start(self):
         periodicSequentialCall(self.addts).start(self.rate)
-        periodicSequentialCall(self.read).start(self.rate)
+        periodicSequentialCall(self.read_all).start(self.rate)
 
 
     def read(self):
@@ -59,8 +59,10 @@ class Fast(driver.SmapDriver):
             self.stop()
             reactor.stop()
             sys.exit(0)
-        #for x in self.timeseries[:self.index]:
-        #    try:
-        #        self.add(x['path'], 1)
-        #    except Exception as e:
-        #        print e
+
+    def read_all(self):
+        for x in self.timeseries[:self.index]:
+            try:
+                self.add(x['path'], 1)
+            except Exception as e:
+                print e

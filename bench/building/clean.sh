@@ -5,3 +5,5 @@ rm -rf 304fddb4-317b-11e5-9fd0-54ee75428b3a
 rm -rf 304fddb4-317b-11e5-9fd0-54ee75428b3a-reports
 rm -rf fb509a9a-3184-11e5-9fd0-54ee75428b3a
 rm -rf fb509a9a-3184-11e5-9fd0-54ee75428b3a-reports
+rm -rf e18cea52-317d-11e5-9fd0-54ee75428b3a
+rm -rf e18cea52-317d-11e5-9fd0-54ee75428b3a-reports

@@ -14,12 +14,13 @@ class ZC(driver.SmapDriver):
         self.archiver_url = opts.get('archiver','http://localhost:8079')
         self.repubclients = {}
 
-        # one for each floor
+        # one for each zone
         for floor in range(1, num_floors):
-            query = "Metadata/Floor = '{floor}' and Metadata/Sensor/Measure = 'Temperature'".format(floor=floor)
-            rc = RepublishClient(self.archiver_url, self.cb, restrict=query)
-            self.repubclients['floor{0}'.format(floor)] = rc
-
+            print floor
+            for zone in range(1, num_zones_per_floor):
+                query = "Metadata/Zone = '{zone}' and Metadata/Sensor/Measure = 'Occupancy'".format(zone=str(floor*1000+zone*10))
+                rc = RepublishClient(self.archiver_url, self.cb, restrict=query)
+                self.repubclients['zone{0}'.format(floor*1000+zone*10)] = rc
         print 'DONE'
 
     def cb(self, *args):
