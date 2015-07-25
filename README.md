@@ -153,3 +153,8 @@ to run the generation if you changed that file.
 TODO: add /uuidsubscribe for metadata updates on specific UUIDs
 TODO: a "generic" sMAP driver service. Code written in language X sends formatted data over a unix domain socket
 to a sMAp daemon that takes care of reliable delivery, etc. Like a generic twisted reactor, only its own process
+
+## Other Projects
+
+A realtime dashboard that renders views based on queries. Health of streams, avg report rate, last value, click-though
+to plots, etc.
