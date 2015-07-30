@@ -23,8 +23,6 @@ These are the required packages on the system for the rest of the instructions t
 
 ### Apt Packages
 
-**[[In Progress]]**
-
 If you do not have `apt-get` on your system, you can try [`brew`](http://brew.sh/) for Mac OS X or `yum` for RPM systems.
 If you are on Windoze, you are on your own.
 
@@ -77,6 +75,11 @@ be installed "locally".
 $ sudo npm install -g bower react-tools
 ```
 
+#### Meteor
+
+`curl https://install.meteor.com/ | sh`
+
+
 ## <a name="MongoDB"></a>MongoDB
 
 Mongo will have been installed by the above aptitude command. For deployments, it is recommended to use the
@@ -101,6 +104,17 @@ Be aware that if this crashes, you will need to manually restart.
 $ go get -u -a github.com/SoftwareDefinedBuildings/quasar/qserver
 $ go install -a github.com/SoftwareDefinedBuildings/quasar/qserver
 $ curl -O https://raw.githubusercontent.com/SoftwareDefinedBuildings/quasar/master/quasar.conf
+$ qserver -makedb
+```
+
+```ini
+# /etc/supervisor/conf.d/quasar.conf
+[program:quasar]
+command=/home/gabe/go/bin/qserver
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/quasar.err.log
+stdout_logfile=/var/log/quasar.out.log
 ```
 
 
@@ -112,7 +126,51 @@ $ go install -a github.com/gtfierro/giles
 $ curl -O https://raw.githubusercontent.com/gtfierro/giles/master/giles.cfg
 ```
 
-## <a name="Plotter"></a>uPMU Plotter
+```ini
+# /etc/supervisor/conf.d/giles.conf
+[program:giles]
+command=/home/gabe/go/bin/giles
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/giles.err.log
+stdout_logfile=/var/log/giles.out.log
+```
+
+## <A Name="Plotter"></a>uPMU Plotter
+
+```bash
+$ git clone https://github.com/SoftwareDefinedBuildings/upmu-plotter.git
+```
+
+Edit `upmuplot/settings.json` and `upmuplot/client/home.js`
+
+```ini
+# /etc/supervisor/conf.d/plotter.conf
+[program:plotter]
+command=/usr/local/bin/meteor --settings settings.json
+directory=/srv/plotter/upmuplot
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/plotter.err.log
+stdout_logfile=/var/log/plotter.out.log
+```
 
 ## <a name="Deckard"></a>Deckard
+
+```bash
+$ npm install
+$ bower install
+$ jsx react_src public/build
+```
+
+```ini
+# /etc/supervisor/conf.d/deckard.conf
+[program:deckard]
+command=/usr/bin/npm start
+directory=/srv/deckard
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/deckard.err.log
+stdout_logfile=/var/log/deckard.out.log
+```
 
