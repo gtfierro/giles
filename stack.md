@@ -7,7 +7,6 @@ The current iteration of the "sMAP stack" has changed since the original concept
 
 * Timeseries Database: [Berkeley Tree Database (BtrDB)](https://github.com/SoftwareDefinedBuildings/quasar)
 * Metadata Database: [MongoDB](https://www.mongodb.org/)
-    * also used by BtrDB
 * Archiver: [Giles](https://github.com/gtfierro/giles)
 * Plotter: [uPMU Plotter](https://github.com/SoftwareDefinedBuildings/upmu-plotter)
 * Status Dashboard: [Deckard](https://github.com/gtfierro/deckard)
@@ -36,8 +35,9 @@ If you are on Windoze, you are on your own.
 * nodejs (see below)
 * supervisor
 * mercurial
+* curl
 
-`sudo apt-get install -y librados-dev git mongodb nodejs npm supervisor mercurial`
+`sudo apt-get install -y librados-dev git mongodb nodejs npm supervisor mercurial curl`
 
 
 ### Others
@@ -96,4 +96,23 @@ $ mongod --dbpath mongodb_data
 Be aware that if this crashes, you will need to manually restart.
 
 ## <a name="BtrDB"></a>BtrDB
+
+```bash
+$ go get -u -a github.com/SoftwareDefinedBuildings/quasar/qserver
+$ go install -a github.com/SoftwareDefinedBuildings/quasar/qserver
+$ curl -O https://raw.githubusercontent.com/SoftwareDefinedBuildings/quasar/master/quasar.conf
+```
+
+
+## <a name="Giles"></a>Giles
+
+```bash
+$ go get -u -a github.com/gtfierro/giles
+$ go install -a github.com/gtfierro/giles
+$ curl -O https://raw.githubusercontent.com/gtfierro/giles/master/giles.cfg
+```
+
+## <a name="Plotter"></a>uPMU Plotter
+
+## <a name="Deckard"></a>Deckard
 
