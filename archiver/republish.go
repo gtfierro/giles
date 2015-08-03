@@ -10,13 +10,14 @@ type QueryHash string
 
 // hashable (Type A in a map) version of a query
 type Query struct {
-	// list of keys associated with this query
+	// list of keys in the Where clause
 	keys []string
 	// parsed where clause
 	where bson.M
+	// a unique representation of this query
 	// used to compare two different query objects
 	hash QueryHash
-	// UUIDs that match this query
+	// Track state transitions for the UUIDs that match this query
 	m_uuids map[string]UUIDSTATE
 }
 
@@ -84,16 +85,19 @@ type Republisher struct {
 	clients [](*RepublishClient)
 
 	// stores hash -> query object
-	queries map[QueryHash]*Query
+	queries     map[QueryHash]*Query
+	queriesLock sync.RWMutex
 
 	// query -> list of clients
 	queryConcern map[QueryHash][](*RepublishClient)
 
 	// key -> list of queries
-	keyConcern map[string][]QueryHash
+	keyConcern     map[string][]QueryHash
+	keyConcernLock sync.RWMutex
 
 	// uuid -> queries concerning uuid
-	uuidConcern map[string][]QueryHash
+	uuidConcern     map[string][]QueryHash
+	uuidConcernLock sync.RWMutex
 }
 
 func NewRepublisher(a *Archiver) (r *Republisher) {
@@ -333,6 +337,7 @@ func (r *Republisher) sendMembershipUpdate(hash QueryHash, uuid string, added bo
 // track of what keys are mentioned in the query.
 func (r *Republisher) HandleQuery(querystring string) (*Query, error) {
 	q := &Query{}
+	// make this a syntactically valid query so we can parse
 	lex := r.a.qp.Parse("select * where " + querystring)
 	q.where = lex.query.WhereBson()
 	q.keys = lex.keys
@@ -357,14 +362,12 @@ func (r *Republisher) HandleQuery(querystring string) (*Query, error) {
 
 		// for each matched UUID, store the query that matched it
 		for uuid, _ := range q.m_uuids {
-			var list []QueryHash
-			var found bool
-			if list, found = r.uuidConcern[uuid]; found {
+			if list, found := r.uuidConcern[uuid]; found {
 				list = append(list, q.hash)
+				r.uuidConcern[uuid] = list
 			} else {
-				list = []QueryHash{q.hash}
+				r.uuidConcern[uuid] = []QueryHash{q.hash}
 			}
-			r.uuidConcern[uuid] = list
 		}
 
 		// for each key in the query, store the query that mentions it
