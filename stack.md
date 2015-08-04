@@ -36,9 +36,10 @@ If you are on Windoze, you are on your own.
 * mercurial
 * curl
 * python-dev
+* python-pip
 * build-essential
 
-`sudo apt-get install python-dev build-essential librados-dev git mongodb nodejs nodejs-legacy npm supervisor mercurial curl`
+`sudo apt-get install python-dev python-pip build-essential librados-dev git mongodb nodejs nodejs-legacy npm supervisor mercurial curl`
 
 
 ### Others
