@@ -30,12 +30,15 @@ If you are on Windoze, you are on your own.
 * librados-dev
 * mongodb
 * npm
-* nodejs (see below)
+* nodejs
+* nodejs-legacy
 * supervisor
 * mercurial
 * curl
+* python-dev
+* build-essential
 
-`sudo apt-get install -y librados-dev git mongodb nodejs npm supervisor mercurial curl`
+`sudo apt-get install python-dev build-essential librados-dev git mongodb nodejs nodejs-legacy npm supervisor mercurial curl`
 
 
 ### Others
@@ -62,8 +65,6 @@ export PATH=$PATH:$GOPATH/bin
 ```
 
 #### NodeJS
-
-You will need to symlink the `nodejs` binary to `/usr/bin/node`, e.g. with ```sudo ln -s `which nodejs` /usr/bin/node```.
 
 Once `nodejs` and `npm` are installed, you will need to install both
 [bower](http://bower.io/) and
