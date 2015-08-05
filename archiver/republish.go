@@ -12,6 +12,10 @@ type QueryHash string
 type Query struct {
 	// list of keys associated with this query
 	keys []string
+	// type of query
+	querytype queryType
+	// list of desired tags
+	target []string
 	// parsed where clause
 	where bson.M
 	// used to compare two different query objects
@@ -52,7 +56,7 @@ type Subscriber interface {
 // This is the type used within the Republisher to track the subscribers
 type RepublishClient struct {
 	// query made by this client
-	query string
+	query *Query
 
 	// a bool is sent on this channel when the client wants to be closed
 	notify <-chan bool
@@ -63,6 +67,16 @@ type RepublishClient struct {
 	// true if this client is only interested in membership of a query (which UUIDs
 	// qualify and which do not)
 	membership bool
+}
+
+//TODO: use a new UUID type instead of stream
+func (rc *RepublishClient) RemoveStream(uuid string) {
+}
+
+func (rc *RepublishClient) NewStream(msg *SmapMessage) {
+}
+
+func (rc *RepublishClient) DiffStream(msg *SmapMessage) {
 }
 
 // This is a more thought-out version of the republisher that was first
@@ -84,16 +98,19 @@ type Republisher struct {
 	clients [](*RepublishClient)
 
 	// stores hash -> query object
-	queries map[QueryHash]*Query
+	queries     map[QueryHash]*Query
+	queriesLock sync.RWMutex
 
 	// query -> list of clients
 	queryConcern map[QueryHash][](*RepublishClient)
 
 	// key -> list of queries
-	keyConcern map[string][]QueryHash
+	keyConcern     map[string][]QueryHash
+	keyConcernLock sync.RWMutex
 
 	// uuid -> queries concerning uuid
-	uuidConcern map[string][]QueryHash
+	uuidConcern     map[string][]QueryHash
+	uuidConcernLock sync.RWMutex
 }
 
 func NewRepublisher(a *Archiver) (r *Republisher) {
@@ -122,7 +139,7 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string, membe
 	}
 
 	// create new instance of a client
-	client := &RepublishClient{notify: s.GetNotify(), subscriber: s, query: query, membership: membership}
+	client := &RepublishClient{notify: s.GetNotify(), subscriber: s, query: q, membership: membership}
 
 	r.Lock()
 	{ // begin lock
@@ -150,6 +167,11 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string, membe
 		}
 	}
 	r.Unlock()
+}
+
+// A Metadata subscriber wants notifications on changes on the set of streams that match
+// the where-clause provided by the `query` parameter
+func (r *Republisher) HandleMetadataSubscriber(s Subscriber, query, apikey string) {
 }
 
 // A UUID subscriber is interested in all metadata associated with a given stream. We

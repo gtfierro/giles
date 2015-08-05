@@ -55,3 +55,21 @@ Specified with a where clause.
     }
     ```
 
+### Query Subscription
+
+Specified with a full query
+
+Every time the results of the query change, deliver the results of the query.
+
+How can we efficiently tell if the results of the query change?
+When a metadata comes in w/ a concerned key, we would re-run the query.
+Compare the new results against the old results. Maybe hash old results?
+
+
+### Self Discussion
+
+What would it look like if I wanted to subscribe to the set of all HVACZones on the 4th floor?
+
+select distinct Metadata/HVACZone where Metadata/Location/Floor = 4;
+
+That's a one-time query.

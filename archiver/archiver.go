@@ -217,6 +217,8 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 
 	// if any of these are NOT nil, then we signal the republisher
 	// that some metadata may have changed
+	a.republisher.RepublishReadings(readings)
+
 	for _, rdg := range readings {
 		if rdg.Metadata != nil ||
 			rdg.Properties != nil ||
@@ -286,7 +288,8 @@ func (a *Archiver) HandleQuery(querystring, apikey string) (interface{}, error) 
 		} else { // RemoveDocs
 			res, err = a.store.RemoveDocs(apikey, lex.query.WhereBson())
 		}
-		a.republisher.MetadataChangeKeys(lex.keys)
+		//a.republisher.MetadataChangeKeys(lex.keys)
+		a.republisher.RepublishKeyChanges(lex.keys)
 		log.Info("results %v", res)
 		if err != nil {
 			return res, err
@@ -296,7 +299,8 @@ func (a *Archiver) HandleQuery(querystring, apikey string) (interface{}, error) 
 		if err != nil {
 			return res, err
 		}
-		a.republisher.MetadataChangeKeys(lex.keys)
+		//a.republisher.MetadataChangeKeys(lex.keys)
+		a.republisher.RepublishKeyChanges(lex.keys)
 	case DATA_TYPE:
 		// grab reference to the data query
 		dq := lex.query.data
@@ -529,12 +533,20 @@ func (a *Archiver) HandleSubscriber(s Subscriber, query, apikey string) {
 	a.republisher.HandleSubscriber(s, query, apikey, false)
 }
 
+func (a *Archiver) HandleSubscriber2(s Subscriber, query, apikey string) {
+	a.republisher.HandleSubscriber2(s, query, apikey)
+}
+
 func (a *Archiver) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey string) {
 	a.republisher.HandleUUIDSubscriber(s, uuids, apikey)
 }
 
 func (a *Archiver) HandleQuerySubscriber(s Subscriber, query, apikey string) {
 	a.republisher.HandleSubscriber(s, query, apikey, true)
+}
+
+func (a *Archiver) HandleMetadataSubscriber(s Subscriber, query, apikey string) {
+	a.republisher.HandleMetadataSubscriber(s, query, apikey)
 }
 
 // For all streams that match the provided where clause in where_tags, sets the key-value
