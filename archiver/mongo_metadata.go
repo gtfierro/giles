@@ -318,10 +318,13 @@ Only the timeseries will have UUIDs attached. When we receive a message like thi
 to compress all of the prefix-path kv pairs into each of the timeseries, and then save those
 timeseries to the metadata collection
 */
-func (ms *MongoStore) SaveTags(messages map[string]*SmapMessage) error {
+//TODO: when we perform the inheritance, we should return the normalized map to the archiver,
+//      either by copying it back or by creating a new one.
+func (ms *MongoStore) SaveTags(messages *map[string]*SmapMessage) error {
 	var err error
-	for path, msg := range messages {
+	for path, msg := range *messages {
 		if msg.UUID == "" || (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil) {
+			delete(*messages, path)
 			continue
 		}
 		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
@@ -341,17 +344,25 @@ func (ms *MongoStore) SaveTags(messages map[string]*SmapMessage) error {
 			}
 		}
 		for _, prefix := range getPrefixes(path) { // accumulate all metadata for this timeseries
-			if messages[prefix] == nil {
+			if (*messages)[prefix] == nil {
 				continue
 			}
-			if messages[prefix].Metadata != nil {
-				for k, v := range messages[prefix].Metadata {
+			if (*messages)[prefix].Metadata != nil {
+				for k, v := range (*messages)[prefix].Metadata {
 					toWrite["Metadata."+k] = v
+					if msg.Metadata == nil {
+						msg.Metadata = bson.M{}
+					}
+					msg.Metadata[k] = v
 				}
 			}
-			if messages[prefix].Properties != nil {
-				for k, v := range messages[prefix].Properties {
+			if (*messages)[prefix].Properties != nil {
+				for k, v := range (*messages)[prefix].Properties {
 					toWrite["Properties."+k] = v
+					if msg.Properties == nil {
+						msg.Properties = bson.M{}
+					}
+					msg.Properties[k] = v
 				}
 			}
 		}

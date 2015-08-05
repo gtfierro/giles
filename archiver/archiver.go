@@ -210,7 +210,7 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 	//	return tsMdErr
 	//}
 
-	tsMdErr = a.store.SaveTags(readings)
+	tsMdErr = a.store.SaveTags(&readings)
 	if tsMdErr != nil {
 		return tsMdErr
 	}

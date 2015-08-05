@@ -10,15 +10,27 @@ type QueryChangeSet struct {
 	New map[string]*SmapMessage
 	// list of streams that no longer match this query
 	Del map[string]struct{}
-	// streams that match the query, but have experienced changes in metadata
-	Diff map[string]*SmapMessage
 }
 
 func NewQueryChangeSet() *QueryChangeSet {
 	return &QueryChangeSet{
-		New:  make(map[string]*SmapMessage),
-		Del:  make(map[string]struct{}),
-		Diff: make(map[string]*SmapMessage),
+		New: make(map[string]*SmapMessage),
+		Del: make(map[string]struct{}),
+	}
+}
+
+func (cs *QueryChangeSet) NewStream(uuid string, msg *SmapMessage) {
+	cs.New[uuid] = msg
+}
+
+func (cs *QueryChangeSet) DelStream(uuid string) {
+	cs.Del[uuid] = struct{}{}
+}
+
+func (cs *QueryChangeSet) AddMsg(msg *SmapMessage) {
+	if _, found := cs.New[msg.UUID]; found {
+		fmt.Println("add message!")
+		cs.New[msg.UUID] = msg
 	}
 }
 
@@ -154,11 +166,14 @@ func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string) {
 // republisher.keyconcern for each key mentioned in msg.{Metadata, Properties, Actuator}
 func (r *Republisher) ChangeSubscriptions(readings map[string]*SmapMessage) []QueryHash {
 	var (
-		reeval  = make(map[QueryHash]struct{})
-		changed = []QueryHash{}
+		reeval    map[QueryHash]struct{}
+		changed   = []QueryHash{}
+		changeset = NewQueryChangeSet()
 	)
 	r.keyConcernLock.RLock()
 	for _, msg := range readings {
+		reeval = make(map[QueryHash]struct{})
+
 		if msg.Metadata != nil {
 			for key, _ := range msg.Metadata {
 				for _, query := range r.keyConcern["Metadata."+key] {
@@ -186,15 +201,24 @@ func (r *Republisher) ChangeSubscriptions(readings map[string]*SmapMessage) []Qu
 				}
 			}
 		}
+
+		// reevaluate the queries
+		for queryhash, _ := range reeval {
+			if r.ReevaluateQuery(queryhash, changeset) {
+				fmt.Println("changeset add", msg, msg.UUID)
+				changeset.AddMsg(msg)
+				changed = append(changed, queryhash)
+			}
+		}
 	}
 	r.keyConcernLock.RUnlock()
 
-	// reevaluate the queries
-	for queryhash, _ := range reeval {
-		fmt.Println("examine", queryhash)
-		if r.ReevaluateQuery(queryhash) {
-			changed = append(changed, queryhash)
-		}
+	for uuid, newmsg := range changeset.New {
+		fmt.Println("NEW", uuid, newmsg)
+	}
+
+	for uuid, _ := range changeset.Del {
+		fmt.Println("Del", uuid)
 	}
 
 	return changed
@@ -202,7 +226,7 @@ func (r *Republisher) ChangeSubscriptions(readings map[string]*SmapMessage) []Qu
 
 // reevaluate the query corresponding to the given QueryHash. Return true
 // if the results of the query changed (streams add or remove)
-func (r *Republisher) ReevaluateQuery(qh QueryHash) bool {
+func (r *Republisher) ReevaluateQuery(qh QueryHash, cs *QueryChangeSet) bool {
 	var (
 		query   *Query
 		found   bool
@@ -232,6 +256,7 @@ func (r *Republisher) ReevaluateQuery(qh QueryHash) bool {
 		} else {
 			//TODO: notify each repub client that this UUID is new
 			query.m_uuids[uuid] = NEW
+			cs.NewStream(uuid, nil)
 			changed = true
 		}
 	}
@@ -253,6 +278,7 @@ func (r *Republisher) ReevaluateQuery(qh QueryHash) bool {
 			r.uuidConcern[uuid] = concerned
 			changed = true
 			query.m_uuids[uuid] = DEL
+			cs.DelStream(uuid)
 			continue // do not mark as old
 		} else if status == NEW {
 			r.uuidConcern[uuid] = append(r.uuidConcern[uuid], query.hash)
@@ -282,8 +308,9 @@ func (r *Republisher) ReevaluateQuery(qh QueryHash) bool {
 // calculate the subscription changes and notify subscribers
 func (r *Republisher) RepublishKeyChanges(keys []string) []QueryHash {
 	var (
-		reeval  = make(map[QueryHash]struct{})
-		changed = []QueryHash{}
+		reeval    = make(map[QueryHash]struct{})
+		changed   = []QueryHash{}
+		changeset = NewQueryChangeSet()
 	)
 
 	// create the set of affected queries
@@ -299,9 +326,17 @@ func (r *Republisher) RepublishKeyChanges(keys []string) []QueryHash {
 	// of which actually changed
 	for queryhash, _ := range reeval {
 		fmt.Println("examine", queryhash)
-		if r.ReevaluateQuery(queryhash) {
+		if r.ReevaluateQuery(queryhash, changeset) {
 			changed = append(changed, queryhash)
 		}
+	}
+
+	for uuid, newmsg := range changeset.New {
+		fmt.Println("NEW", uuid, newmsg)
+	}
+
+	for uuid, _ := range changeset.Del {
+		fmt.Println("Del", uuid)
 	}
 
 	for _, query := range changed {
