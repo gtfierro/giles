@@ -22,7 +22,7 @@ import (
 This should not do any fancy sMAP-related work; that's a job for the store. Here we just return the
 object-versions of all the data.
 */
-func handleJSON(r io.Reader) (map[string]*archiver.SmapMessage, error) {
+func HandleJSON(r io.Reader) (map[string]*archiver.SmapMessage, error) {
 	/*
 	 * we receive a bunch of top-level keys that we don't know, so we unmarshal them into a
 	 * map, and then parse each of the internal objects individually
