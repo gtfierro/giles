@@ -323,8 +323,13 @@ timeseries to the metadata collection
 func (ms *MongoStore) SaveTags(messages *map[string]*SmapMessage) error {
 	var err error
 	for path, msg := range *messages {
-		if msg.UUID == "" || (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil) {
-			delete(*messages, path)
+		//TODO if uuid in cache, then skip if metadata/props,act is nul. ELSE if this is the
+		// first time we see the UUID, we commit it
+		canskip := (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil)
+		if _, found := ms.uuidcache.Get(msg.UUID); found && canskip {
+			continue
+		} else if msg.UUID == "" || canskip {
+			//delete(*messages, path)
 			continue
 		}
 		toWrite := bson.M{"Path": path, "uuid": msg.UUID}

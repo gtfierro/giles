@@ -10,12 +10,25 @@ type QueryChangeSet struct {
 	New map[string]*SmapMessage
 	// list of streams that no longer match this query
 	Del map[string]struct{}
+	// list of current data that matches query
 }
 
 func NewQueryChangeSet() *QueryChangeSet {
 	return &QueryChangeSet{
 		New: make(map[string]*SmapMessage),
 		Del: make(map[string]struct{}),
+	}
+}
+
+func (qs *QueryChangeSet) Debug() {
+	fmt.Println("QueryChangeSet")
+	fmt.Println("  NEW")
+	for uuid, msg := range qs.New {
+		fmt.Println("	> ", uuid, msg)
+	}
+	fmt.Println("  DEL")
+	for uuid, _ := range qs.Del {
+		fmt.Println("	> ", uuid)
 	}
 }
 
@@ -27,12 +40,19 @@ func (cs *QueryChangeSet) DelStream(uuid string) {
 	cs.Del[uuid] = struct{}{}
 }
 
-func (cs *QueryChangeSet) AddMsg(msg *SmapMessage) {
+func (cs *QueryChangeSet) AddNew(msg *SmapMessage) {
 	if _, found := cs.New[msg.UUID]; found {
-		fmt.Println("add message!")
 		cs.New[msg.UUID] = msg
 	}
 }
+
+func (cs *QueryChangeSet) IsEmpty() bool {
+	return len(cs.New) == 0 && len(cs.Del) == 0
+}
+
+//func (cs *QueryChangeSet) AddData(msg *SmapMessage) {
+//	cs.Data = append(cs.Data, msg)
+//}
 
 func (r *Republisher) HandleQuery2(query string) (*Query, error) {
 	var (
@@ -105,8 +125,7 @@ func (r *Republisher) HandleQuery2(query string) (*Query, error) {
 		r.keyConcernLock.Lock()
 		for _, key := range q.keys {
 			if queries, found := r.keyConcern[key]; found {
-				queries = append(queries, q.hash)
-				r.keyConcern[key] = queries
+				r.keyConcern[key] = append(queries, q.hash)
 			} else {
 				r.keyConcern[key] = []QueryHash{q.hash}
 			}
@@ -120,6 +139,7 @@ func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string) {
 	// create or get reference to the parsed query
 	q, err := r.HandleQuery2(query)
 	if err != nil {
+		log.Fatal(err)
 		s.SendError(err)
 		return
 	}
@@ -131,8 +151,7 @@ func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string) {
 	r.Lock()
 	{ // begin lock
 		if clients, found := r.queryConcern[q.hash]; found {
-			clients = append(clients, client)
-			r.queryConcern[q.hash] = clients
+			r.queryConcern[q.hash] = append(clients, client)
 		} else {
 			r.queryConcern[q.hash] = [](*RepublishClient){client}
 		}
@@ -141,7 +160,7 @@ func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string) {
 	} // end lock
 	r.Unlock()
 
-	log.Info("New subscriber for query \"%v\" with keys %v", query, q.keys)
+	log.Info("New subscriber for REPUBLISH 2 query \"%v\" with keys %v", query, q.keys)
 
 	// wait for client to quit
 	<-client.notify
@@ -164,21 +183,17 @@ func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string) {
 // For each of the clients for the changed queries, we send the updates.
 // We look up which clients to send to based on what their where-clause is (looking at
 // republisher.keyconcern for each key mentioned in msg.{Metadata, Properties, Actuator}
-func (r *Republisher) ChangeSubscriptions(readings map[string]*SmapMessage) []QueryHash {
+func (r *Republisher) ChangeSubscriptions(readings map[string]*SmapMessage) map[QueryHash]*QueryChangeSet {
 	var (
-		reeval    map[QueryHash]struct{}
-		changed   = []QueryHash{}
-		changeset = NewQueryChangeSet()
+		reeval = make(map[QueryHash]*QueryChangeSet)
 	)
 	r.keyConcernLock.RLock()
 	for _, msg := range readings {
-		reeval = make(map[QueryHash]struct{})
-
 		if msg.Metadata != nil {
 			for key, _ := range msg.Metadata {
 				for _, query := range r.keyConcern["Metadata."+key] {
 					if _, found := reeval[query]; !found {
-						reeval[query] = struct{}{}
+						reeval[query] = NewQueryChangeSet()
 					}
 				}
 			}
@@ -187,7 +202,7 @@ func (r *Republisher) ChangeSubscriptions(readings map[string]*SmapMessage) []Qu
 			for key, _ := range msg.Properties {
 				for _, query := range r.keyConcern["Properties."+key] {
 					if _, found := reeval[query]; !found {
-						reeval[query] = struct{}{}
+						reeval[query] = NewQueryChangeSet()
 					}
 				}
 			}
@@ -196,32 +211,22 @@ func (r *Republisher) ChangeSubscriptions(readings map[string]*SmapMessage) []Qu
 			for key, _ := range msg.Actuator {
 				for _, query := range r.keyConcern["Actuator."+key] {
 					if _, found := reeval[query]; !found {
-						reeval[query] = struct{}{}
+						reeval[query] = NewQueryChangeSet()
 					}
 				}
 			}
 		}
 
 		// reevaluate the queries
-		for queryhash, _ := range reeval {
+		for queryhash, changeset := range reeval {
 			if r.ReevaluateQuery(queryhash, changeset) {
-				fmt.Println("changeset add", msg, msg.UUID)
-				changeset.AddMsg(msg)
-				changed = append(changed, queryhash)
+				changeset.AddNew(msg)
 			}
 		}
 	}
 	r.keyConcernLock.RUnlock()
 
-	for uuid, newmsg := range changeset.New {
-		fmt.Println("NEW", uuid, newmsg)
-	}
-
-	for uuid, _ := range changeset.Del {
-		fmt.Println("Del", uuid)
-	}
-
-	return changed
+	return reeval
 }
 
 // reevaluate the query corresponding to the given QueryHash. Return true
@@ -254,7 +259,6 @@ func (r *Republisher) ReevaluateQuery(qh QueryHash, cs *QueryChangeSet) bool {
 		if _, found := query.m_uuids[uuid]; found {
 			query.m_uuids[uuid] = SAME
 		} else {
-			//TODO: notify each repub client that this UUID is new
 			query.m_uuids[uuid] = NEW
 			cs.NewStream(uuid, nil)
 			changed = true
@@ -306,73 +310,61 @@ func (r *Republisher) ReevaluateQuery(qh QueryHash, cs *QueryChangeSet) bool {
 
 // When a metadata change comes in from somewhere other than a smap message, we
 // calculate the subscription changes and notify subscribers
-func (r *Republisher) RepublishKeyChanges(keys []string) []QueryHash {
+func (r *Republisher) RepublishKeyChanges(keys []string) map[QueryHash]*QueryChangeSet {
 	var (
-		reeval    = make(map[QueryHash]struct{})
-		changed   = []QueryHash{}
-		changeset = NewQueryChangeSet()
+		reeval = make(map[QueryHash]*QueryChangeSet)
 	)
 
 	// create the set of affected queries
 	for _, key := range keys {
 		for _, query := range r.keyConcern[key] {
 			if _, found := reeval[query]; !found {
-				reeval[query] = struct{}{}
+				reeval[query] = NewQueryChangeSet()
 			}
 		}
 	}
 
-	// reevaluate each of the affected queries, and keep track
-	// of which actually changed
-	for queryhash, _ := range reeval {
-		fmt.Println("examine", queryhash)
-		if r.ReevaluateQuery(queryhash, changeset) {
-			changed = append(changed, queryhash)
-		}
-	}
+	//for queryhash, changeset := range reeval {
+	//	fmt.Println("queryhash", queryhash)
+	//	changeset.Debug()
+	//}
+	//TODO: notify each relevant subscriber of a changed query
 
-	for uuid, newmsg := range changeset.New {
-		fmt.Println("NEW", uuid, newmsg)
-	}
-
-	for uuid, _ := range changeset.Del {
-		fmt.Println("Del", uuid)
-	}
-
-	for _, query := range changed {
-		fmt.Println("changed", query)
-	}
-
-	// notify each relevant subscriber of a changed query
-
-	return changed
+	return reeval
 }
 
 // We receive a new message from a client, and want to send it out to the subscribers.
 // A subscriber is interested in 1 of 3 things: * (all metadata), data before now (most recent
 // data point) or a list of metadata tags.
 func (r *Republisher) RepublishReadings(readings map[string]*SmapMessage) {
-	//var (
-	//	queries []QueryHash
-	//	found	bool
-	//)
 	// get list of queries affected by these readings
 	affected_queries := r.ChangeSubscriptions(readings)
 
-	for _, query := range affected_queries {
-		fmt.Println("changed", query)
+	// now, for each query, we have the set of changes that happend
+	// as a result. We look up the subscribers for each query, hand them
+	// the change set?
+	for queryhash, changeset := range affected_queries {
+		//fmt.Println("delivering", changeset, queryhash)
+		if changeset.IsEmpty() {
+			continue
+		}
+		for _, client := range r.queryConcern[queryhash] {
+			//fmt.Println(">>> client",client, "wants",client.query.target,client.query.querytype)
+			client.subscriber.Send(changeset)
+		}
 	}
 
-	// find all queries that match this UUID
-	//r.uuidConcernLock.RLock()
-	//queries, found = r.uuidConcern[msg.UUID]
-	//r.uuidConcernLock.RUnlock()
-
-	//if !found {
-	//	return
-	//}
-
-	//for _, _  = range queries {
-	//}
-
+	for _, msg := range readings {
+		//fmt.Println("repub", msg)
+		if queries, found := r.uuidConcern[msg.UUID]; found {
+			//fmt.Println("found queries for",len(queries))
+			for _, hash := range queries {
+				// get the list of subscribers for that query and forward the message
+				//fmt.Println("subscribers", len(r.queryConcern[hash]))
+				for _, client := range r.queryConcern[hash] {
+					client.subscriber.Send(msg)
+				}
+			}
+		}
+	}
 }
