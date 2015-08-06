@@ -54,6 +54,7 @@ type Archiver struct {
 	objstore             ObjectStore
 	qp                   *QueryProcessor
 	republisher          *Republisher
+	republisher2         *Republisher
 	incomingcounter      *counter
 	pendingwritescounter *counter
 	coalescer            *TransactionCoalescer
@@ -176,6 +177,7 @@ func NewArchiver(c *Config) (a *Archiver) {
 	// Configure republisher
 	republisher := NewRepublisher(a)
 	a.republisher = republisher
+	a.republisher2 = NewRepublisher(a)
 	return
 }
 
@@ -217,15 +219,8 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 
 	// if any of these are NOT nil, then we signal the republisher
 	// that some metadata may have changed
-	a.republisher.RepublishReadings(readings)
+	a.republisher2.RepublishReadings(readings)
 
-	for _, rdg := range readings {
-		if rdg.Metadata != nil ||
-			rdg.Properties != nil ||
-			rdg.Actuator != nil {
-			a.republisher.MetadataChange(rdg)
-		}
-	}
 	for _, msg := range readings {
 		a.republisher.Republish(msg)
 		a.incomingcounter.Mark()
@@ -534,7 +529,7 @@ func (a *Archiver) HandleSubscriber(s Subscriber, query, apikey string) {
 }
 
 func (a *Archiver) HandleSubscriber2(s Subscriber, query, apikey string) {
-	a.republisher.HandleSubscriber2(s, query, apikey)
+	a.republisher2.HandleSubscriber2(s, query, apikey)
 }
 
 func (a *Archiver) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey string) {
