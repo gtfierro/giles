@@ -2,7 +2,6 @@ package archiver
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gtfierro/msgpack"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -74,15 +73,11 @@ func (ms *MongoObjectStore) AddObject(msg *SmapMessage) (bool, error) {
 	bytes := ms.bufpool.Get().([]byte)
 	defer ms.bufpool.Put(bytes)
 	for _, rdg := range msg.Readings {
-		length := msgpack.Encode(rdg[1], &bytes)
+		length := msgpack.Encode(rdg.GetValue(), &bytes)
 		if length == 1000 {
 			return false, errors.New("Encoded value was larger than 1000 bytes!")
 		}
-		if time, ok := rdg[0].(uint64); ok {
-			time_ns = convertTime(time, uot, UOT_NS)
-		} else {
-			return false, fmt.Errorf("Invalid timestamp %v", rdg[0])
-		}
+		time_ns = convertTime(rdg.GetTime(), uot, UOT_NS)
 		err := ms.objects.Insert(bson.M{"uuid": msg.UUID, "timestamp": time_ns, "object": bytes[:length]})
 		if err != nil {
 			return false, err

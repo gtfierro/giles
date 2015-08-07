@@ -256,17 +256,6 @@ func StreamingQueryHandler(a *archiver.Archiver, rw http.ResponseWriter, req *ht
 		rw.Write([]byte(err.Error()))
 		return
 	}
-	//encodedbytes := b.Bytes()
-	//_, decoded := msgpack.Decode(&encodedbytes, 0)
-	//res, err := json.Marshal(decoded)
-	//if err != nil {
-	//	log.Error("Error converting to json: %v", err)
-	//	rw.WriteHeader(500)
-	//	rw.Write([]byte(err.Error()))
-	//	return
-	//}
-	//rw.WriteHeader(200)
-	//rw.Write(res)
 }
 
 /**
@@ -292,83 +281,6 @@ func TagsHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request
 	rw.WriteHeader(200)
 	rw.Write(res)
 }
-
-//func DataHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request) {
-//	var starttime, endtime uint64
-//	var limit int64
-//	var startstr, endstr, timeunitstr, limitstr []string
-//	var querytimeunit string
-//	var response []SmapResponse
-//	var err error
-//	var found bool
-//
-//	unitmultiplier := map[string]uint64{"ns": 1000000000, "us": 1000000, "ms": 1000, "s": 1}
-//
-//	// extract URL query parameters into the req.Form map
-//	req.ParseForm()
-//	vars := mux.Vars(req)
-//	uuid := vars["uuid"]
-//	method := vars["method"]
-//
-//	streamtimeunit := a.store.GetUnitofTime(uuid)
-//	// get the unit of time for the query
-//	if timeunitstr, found = req.Form["unit"]; !found {
-//		querytimeunit = "ms"
-//	} else {
-//		querytimeunit = timeunitstr[0]
-//	}
-//
-//	// get the limit on the time series
-//	if limitstr, found = req.Form["limit"]; !found {
-//		limit = -1
-//	} else {
-//		limit, _ = strconv.ParseInt(limitstr[0], 10, 32)
-//	}
-//
-//	// parse out start and end times, or default to
-//	if startstr, found = req.Form["starttime"]; found {
-//		starttime, _ = strconv.ParseUint(startstr[0], 10, 64)
-//		starttime /= unitmultiplier[querytimeunit]
-//	} else {
-//		starttime = uint64(time.Now().Unix()) - 3600*24
-//	}
-//	starttime *= unitmultiplier[streamtimeunit]
-//
-//	if endstr, found = req.Form["endtime"]; found {
-//		endtime, _ = strconv.ParseUint(endstr[0], 10, 64)
-//		endtime /= unitmultiplier[querytimeunit]
-//	} else {
-//		endtime = uint64(time.Now().Unix())
-//	}
-//	endtime *= unitmultiplier[streamtimeunit]
-//
-//	rw.Header().Set("Content-Type", "application/json")
-//	log.Debug("method: %v, limit %v, start: %v, end: %v", method, limit, starttime, endtime)
-//	switch method {
-//	case "data":
-//		response, err = a.GetData([]string{uuid}, starttime, endtime)
-//	case "prev":
-//		response, err = a.PrevData([]string{uuid}, starttime, int32(limit))
-//	case "next":
-//		response, err = a.NextData([]string{uuid}, starttime, int32(limit))
-//	}
-//	if err != nil {
-//		log.Error("Error fetching data: %v", err)
-//		rw.WriteHeader(500)
-//		rw.Write([]byte(err.Error()))
-//		return
-//	}
-//	log.Debug("response %v", response)
-//	res, err := json.Marshal(response)
-//	if err != nil {
-//		log.Error("Error fetching data: %v", err)
-//		rw.WriteHeader(500)
-//		rw.Write([]byte(err.Error()))
-//		return
-//	}
-//	rw.WriteHeader(200)
-//	rw.Write(res)
-//}
 
 func unescape(s string) string {
 	return strings.Replace(s, "%3D", "=", -1)

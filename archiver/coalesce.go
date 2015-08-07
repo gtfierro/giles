@@ -18,7 +18,7 @@ type StreamBuf struct {
 	incoming   chan *SmapMessage
 	uuid       string
 	unitOfTime UnitOfTime
-	readings   [][]interface{}
+	readings   []*SmapNumberReading
 	txc        *TransactionCoalescer
 	closed     atomic.Value
 	timeout    <-chan time.Time
@@ -28,7 +28,7 @@ type StreamBuf struct {
 	sync.Mutex
 }
 
-func NewStreamBuf(uuid string, uot UnitOfTime, readings [][]interface{}, txc *TransactionCoalescer) *StreamBuf {
+func NewStreamBuf(uuid string, uot UnitOfTime, readings []*SmapNumberReading, txc *TransactionCoalescer) *StreamBuf {
 	sb := &StreamBuf{uuid: uuid, unitOfTime: uot,
 		incoming: make(chan *SmapMessage, COALESCE_MAX),
 		num:      0,
@@ -65,12 +65,11 @@ func (sb *StreamBuf) add(sm *SmapMessage) bool {
 	sb.Lock()
 	// if we are short some readings, append the space to the end
 	if diff := (len(sm.Readings) + sb.idx) - COALESCE_MAX; diff > 0 {
-		log.Debug("extending by %v", diff)
-		sb.readings = append(sb.readings, make([][]interface{}, diff)...)
+		sb.readings = append(sb.readings, make([]*SmapNumberReading, diff)...)
 	}
 	// copy over all the readings
 	for idx, rdg := range sm.Readings {
-		sb.readings[sb.idx+idx] = rdg
+		sb.readings[sb.idx+idx] = rdg.(*SmapNumberReading)
 	}
 	// advance our pointer
 	sb.idx += len(sm.Readings)
@@ -107,7 +106,7 @@ func NewTransactionCoalescer(tsdb *TSDB, store *MetadataStore) *TransactionCoale
 	txc.streamLocks.Store(make(StreamLockMap))
 	txc.bufpool = sync.Pool{
 		New: func() interface{} {
-			return make([][]interface{}, COALESCE_MAX)
+			return make([]*SmapNumberReading, COALESCE_MAX)
 		},
 	}
 	return txc
@@ -139,7 +138,7 @@ func (txc *TransactionCoalescer) AddSmapMessage(sm *SmapMessage) {
 		}
 	}
 	uot := (*txc.store).GetUnitOfTime(sm.UUID)
-	sb = NewStreamBuf(sm.UUID, uot, txc.bufpool.Get().([][]interface{}), txc)
+	sb = NewStreamBuf(sm.UUID, uot, txc.bufpool.Get().([]*SmapNumberReading), txc)
 	newStreams := make(StreamMap, len(streams)+1)
 	for k, v := range streams {
 		newStreams[k] = v
