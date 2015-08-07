@@ -183,7 +183,7 @@ func AddReadings(a *archiver.Archiver, md map[string]interface{}) {
 	ret := map[string]*archiver.SmapMessage{}
 	sm := &archiver.SmapMessage{Path: md["Path"].(string),
 		UUID:     md["uuid"].(string),
-		Readings: make([][]interface{}, 0, len(md["Readings"].([]interface{}))),
+		Readings: make([]archiver.Reading, 0, len(md["Readings"].([]interface{}))),
 	}
 	for _, rdg := range md["Readings"].([]interface{}) {
 		var timestamp uint64
@@ -193,9 +193,9 @@ func AddReadings(a *archiver.Archiver, md map[string]interface{}) {
 			timestamp = uint64(rdg.([]interface{})[0].(int64))
 		}
 		if reading, ok := rdg.([]interface{})[1].(int64); ok {
-			sm.Readings = append(sm.Readings, []interface{}{timestamp, float64(reading)})
+			sm.Readings = append(sm.Readings, &archiver.SmapNumberReading{timestamp, float64(reading)})
 		} else if freading, ok := rdg.([]interface{})[1].(float64); ok {
-			sm.Readings = append(sm.Readings, []interface{}{timestamp, freading})
+			sm.Readings = append(sm.Readings, &archiver.SmapNumberReading{timestamp, freading})
 		}
 	}
 	ret[sm.Path] = sm

@@ -87,9 +87,9 @@ func (quasar *QuasarDB) Add(sb *StreamBuf) bool {
 	rl := qsr.NewRecordList(qr.seg, sb.idx)
 	rla := rl.ToArray()
 	for i, val := range sb.readings[:sb.idx] {
-		time := convertTime(val[0].(uint64), sb.unitOfTime, UOT_NS)
+		time := convertTime(val.GetTime(), sb.unitOfTime, UOT_NS)
 		rla[i].SetTime(int64(time))
-		if num, ok := val[1].(float64); ok {
+		if num, ok := val.GetValue().(float64); ok {
 			rla[i].SetValue(num)
 		} else {
 			log.Error("Bad number in buffer %v %v", sb.uuid, val)

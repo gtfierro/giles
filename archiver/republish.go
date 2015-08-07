@@ -302,7 +302,7 @@ func (r *Republisher) Republish(msg *SmapMessage) {
 	if queries, found := r.uuidConcern[msg.UUID]; found {
 		for _, hash := range queries {
 			towrite := make(map[string]interface{})
-			towrite[msg.Path] = SmapReading{Readings: msg.Readings, UUID: msg.UUID}
+			towrite[msg.Path] = msg.ToSmapReading()
 			// get the list of subscribers for that query and forward the message
 			for _, client := range r.queryConcern[hash] {
 				if !client.membership {

@@ -128,3 +128,9 @@ type APIKeyManager interface {
 type Operator interface {
 	Run(input interface{}) (interface{}, error)
 }
+
+type Reading interface {
+	GetTime() uint64
+	GetValue() interface{}
+	IsObject() bool
+}
