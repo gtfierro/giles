@@ -96,7 +96,7 @@ func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.Response
 func AddReadingHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	defer req.Body.Close()
 	apikey := ps.ByName("key")
-	messages, err := HandleJSON(req.Body)
+	messages, err := handleJSON(req.Body)
 	if err != nil {
 		log.Error("Error handling JSON: %v", err)
 		rw.WriteHeader(500)
