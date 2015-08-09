@@ -2,7 +2,9 @@ package archiver
 
 import (
 	"encoding/json"
+	"fmt"
 	"gopkg.in/mgo.v2/bson"
+	"sort"
 	"strconv"
 )
 
@@ -155,6 +157,14 @@ func (sm *SmapMessage) ToSmapReading() *SmapReading {
 	return rdg
 }
 
+func (sm *SmapMessage) IsTimeseries() bool {
+	return sm.UUID != ""
+}
+
+func (sm *SmapMessage) HasMetadata() bool {
+	return sm.Metadata != nil || sm.Properties != nil || sm.Actuator != nil
+}
+
 type IncomingSmapMessage struct {
 	// Readings for this message
 	Readings [][]json.RawMessage
@@ -186,6 +196,64 @@ func (sm *SmapMessage) ToJson() []byte {
 }
 
 type TieredSmapMessage map[string]*SmapMessage
+
+// This performs the metadata inheritance for the paths and messages inside
+// this collection of SmapMessages. Inheritance starts from the root path "/"
+// can progresses towards the leaves.
+// First, get a list of all of the potential timeseries (any path that contains a UUID)
+// Then, for each of the prefixes for the path of that timeserie (util.getPrefixes), grab
+// the paths from the TieredSmapMessage that match the prefixes. Sort these in "decreasing" order
+// and apply to the metadata.
+// Finally, delete all non-timeseries paths
+func (tsm *TieredSmapMessage) CollapseToTimeseries() {
+	var (
+		prefixMsg *SmapMessage
+		found     bool
+	)
+	for path, msg := range *tsm {
+		if !msg.IsTimeseries() {
+			continue
+		}
+		prefixes := getPrefixes(path)
+		sort.Sort(sort.Reverse(sort.StringSlice(prefixes)))
+		for _, prefix := range prefixes {
+			// if we don't find the prefix OR it exists but doesn't have metadata, we skip
+			if prefixMsg, found = (*tsm)[prefix]; !found || (prefixMsg != nil && !prefixMsg.HasMetadata()) {
+				continue
+			}
+			// otherwise, we apply keys from paths higher up if our timeseries doesn't already have the key
+			// (this is reverse inheritance)
+			if prefixMsg.Metadata != nil && len(prefixMsg.Metadata) > 0 {
+				for k, v := range prefixMsg.Metadata {
+					if _, hasKey := msg.Metadata[k]; !hasKey {
+						msg.Metadata[k] = v
+					}
+				}
+			}
+			if prefixMsg.Properties != nil && len(prefixMsg.Properties) > 0 {
+				for k, v := range prefixMsg.Properties {
+					if _, hasKey := msg.Properties[k]; !hasKey {
+						msg.Properties[k] = v
+					}
+				}
+			}
+			if prefixMsg.Actuator != nil && len(prefixMsg.Actuator) > 0 {
+				for k, v := range prefixMsg.Actuator {
+					if _, hasKey := msg.Actuator[k]; !hasKey {
+						msg.Actuator[k] = v
+					}
+				}
+			}
+			(*tsm)[path] = msg
+		}
+	}
+	// when done, delete all non timeseries paths
+	for path, msg := range *tsm {
+		if !msg.IsTimeseries() {
+			delete(*tsm, path)
+		}
+	}
+}
 
 // unit of time indicators
 type UnitOfTime uint

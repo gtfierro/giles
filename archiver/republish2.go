@@ -7,9 +7,9 @@ import (
 
 type QueryChangeSet struct {
 	// new messages (streams) that match this query
-	New map[string]*SmapMessage
+	New map[string]*SmapMessage `json:",omitempty"`
 	// list of streams that no longer match this query
-	Del map[string]struct{}
+	Del map[string]struct{} `json:",omitempty"`
 	// list of current data that matches query
 }
 
@@ -359,6 +359,9 @@ func (r *Republisher) RepublishReadings(readings map[string]*SmapMessage) {
 		if queries, found := r.uuidConcern[msg.UUID]; found {
 			//fmt.Println("found queries for",len(queries))
 			for _, hash := range queries {
+				if changeset, found := affected_queries[hash]; found && !changeset.IsEmpty() {
+					continue
+				}
 				// get the list of subscribers for that query and forward the message
 				//fmt.Println("subscribers", len(r.queryConcern[hash]))
 				for _, client := range r.queryConcern[hash] {

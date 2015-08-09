@@ -322,14 +322,13 @@ timeseries to the metadata collection
 //      either by copying it back or by creating a new one.
 func (ms *MongoStore) SaveTags(messages *map[string]*SmapMessage) error {
 	var err error
+	tsm := TieredSmapMessage(*messages)
+	tsm.CollapseToTimeseries()
 	for path, msg := range *messages {
 		//TODO if uuid in cache, then skip if metadata/props,act is nul. ELSE if this is the
 		// first time we see the UUID, we commit it
 		canskip := (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil)
-		if _, found := ms.uuidcache.Get(msg.UUID); found && canskip {
-			continue
-		} else if msg.UUID == "" || canskip {
-			//delete(*messages, path)
+		if msg.UUID == "" || canskip {
 			continue
 		}
 		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
@@ -373,6 +372,11 @@ func (ms *MongoStore) SaveTags(messages *map[string]*SmapMessage) error {
 		}
 		if len(toWrite) > 0 {
 			_, err = ms.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
+		}
+		if msg.UUID == "" {
+			log.Debug("deleting %v from ", path, *messages)
+			delete(*messages, path)
+			log.Debug("now is %v", *messages)
 		}
 	}
 	return err
