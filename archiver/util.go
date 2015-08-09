@@ -1,6 +1,8 @@
 package archiver
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -80,4 +82,9 @@ func getPositiveDifference(x1, x2 int64) int64 {
 		return x1 - x2
 	}
 	return x2 - x1
+}
+
+func prettyPrintJSON(x interface{}) {
+	bytes, _ := json.MarshalIndent(x, "", "  ")
+	fmt.Println(string(bytes))
 }
