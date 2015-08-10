@@ -96,7 +96,7 @@ func NewArchiver(c *Config) (a *Archiver) {
 		if err != nil {
 			log.Fatal("Error parsing Mongo address: %v", err)
 		}
-		mongostore := NewMongoStore(mongoaddr)
+		mongostore := NewMongoStore(mongoaddr, *c.Mongo.UpdateInterval)
 		if mongostore == nil {
 			log.Fatal("Error connection to MongoDB instance")
 		}

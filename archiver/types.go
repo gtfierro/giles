@@ -2,7 +2,6 @@ package archiver
 
 import (
 	"encoding/json"
-	"fmt"
 	"gopkg.in/mgo.v2/bson"
 	"sort"
 	"strconv"
@@ -218,7 +217,8 @@ func (tsm *TieredSmapMessage) CollapseToTimeseries() {
 		sort.Sort(sort.Reverse(sort.StringSlice(prefixes)))
 		for _, prefix := range prefixes {
 			// if we don't find the prefix OR it exists but doesn't have metadata, we skip
-			if prefixMsg, found = (*tsm)[prefix]; !found || (prefixMsg != nil && !prefixMsg.HasMetadata()) {
+			prefixMsg, found = (*tsm)[prefix]
+			if !found || prefixMsg == nil || (prefixMsg != nil && !prefixMsg.HasMetadata()) {
 				continue
 			}
 			// otherwise, we apply keys from paths higher up if our timeseries doesn't already have the key
@@ -226,6 +226,9 @@ func (tsm *TieredSmapMessage) CollapseToTimeseries() {
 			if prefixMsg.Metadata != nil && len(prefixMsg.Metadata) > 0 {
 				for k, v := range prefixMsg.Metadata {
 					if _, hasKey := msg.Metadata[k]; !hasKey {
+						if msg.Metadata == nil {
+							msg.Metadata = make(bson.M)
+						}
 						msg.Metadata[k] = v
 					}
 				}
@@ -233,6 +236,9 @@ func (tsm *TieredSmapMessage) CollapseToTimeseries() {
 			if prefixMsg.Properties != nil && len(prefixMsg.Properties) > 0 {
 				for k, v := range prefixMsg.Properties {
 					if _, hasKey := msg.Properties[k]; !hasKey {
+						if msg.Properties == nil {
+							msg.Properties = make(bson.M)
+						}
 						msg.Properties[k] = v
 					}
 				}
@@ -240,6 +246,9 @@ func (tsm *TieredSmapMessage) CollapseToTimeseries() {
 			if prefixMsg.Actuator != nil && len(prefixMsg.Actuator) > 0 {
 				for k, v := range prefixMsg.Actuator {
 					if _, hasKey := msg.Actuator[k]; !hasKey {
+						if msg.Actuator == nil {
+							msg.Actuator = make(bson.M)
+						}
 						msg.Actuator[k] = v
 					}
 				}
@@ -253,6 +262,31 @@ func (tsm *TieredSmapMessage) CollapseToTimeseries() {
 			delete(*tsm, path)
 		}
 	}
+}
+
+func (tsm *TieredSmapMessage) ToBson() []bson.M {
+	var (
+		ret = make([]bson.M, len(*tsm))
+		idx = 0
+	)
+	for _, msg := range *tsm {
+		msgBson := bson.M{
+			"uuid": msg.UUID,
+			"Path": msg.Path,
+		}
+		if msg.Metadata != nil && len(msg.Metadata) > 0 {
+			msgBson["Metadata"] = msg.Metadata
+		}
+		if msg.Properties != nil && len(msg.Properties) > 0 {
+			msgBson["Properties"] = msg.Properties
+		}
+		if msg.Actuator != nil && len(msg.Actuator) > 0 {
+			msgBson["Actuator"] = msg.Actuator
+		}
+		ret[idx] = msgBson
+		idx += 1
+	}
+	return ret
 }
 
 // unit of time indicators

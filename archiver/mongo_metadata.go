@@ -10,6 +10,7 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // default select clause to ignore internal variables
@@ -32,6 +33,14 @@ type MongoStore struct {
 	uotcache       *Cache
 	streamtype     *Cache
 	enforceKeys    bool
+	// update internal cache of UUIDs at periodic interval
+	updateTicker   *time.Ticker
+	updateInterval time.Duration
+	// list of timeseries we have committed. Only send upserts to mongo
+	// via SaveTags if a) we have metadata or b) we don't have the uuid
+	// in this lookup
+	UUIDS     map[string]struct{}
+	CacheLock sync.RWMutex
 }
 
 type rdbStreamId struct {
@@ -39,7 +48,7 @@ type rdbStreamId struct {
 	UUID     string
 }
 
-func NewMongoStore(address *net.TCPAddr) *MongoStore {
+func NewMongoStore(address *net.TCPAddr, interval int) *MongoStore {
 	log.Notice("Connecting to MongoDB at %v...", address.String())
 	session, err := mgo.Dial(address.String())
 	if err != nil {
@@ -110,24 +119,49 @@ func NewMongoStore(address *net.TCPAddr) *MongoStore {
 	if maxstreamid != nil {
 		maxsid = maxstreamid.StreamId + 1
 	}
-	return &MongoStore{session: session,
-		db:           db,
-		streams:      streams,
-		metadata:     metadata,
-		pathmetadata: pathmetadata,
-		apikeys:      apikeys,
-		maxsid:       &maxsid,
-		uuidcache:    NewCache(1000),
-		apikcache:    NewCache(1000),
-		uotcache:     NewCache(1000),
-		streamtype:   NewCache(1000),
-		enforceKeys:  true}
+
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	ms := &MongoStore{session: session,
+		db:             db,
+		streams:        streams,
+		metadata:       metadata,
+		pathmetadata:   pathmetadata,
+		apikeys:        apikeys,
+		maxsid:         &maxsid,
+		uuidcache:      NewCache(1000),
+		apikcache:      NewCache(1000),
+		uotcache:       NewCache(1000),
+		streamtype:     NewCache(1000),
+		updateTicker:   ticker,
+		updateInterval: time.Duration(interval),
+		UUIDS:          make(map[string]struct{}),
+		enforceKeys:    true}
+	ms.StartUpdateCacheLoop()
+	return ms
 }
 
 /* MetadataStore interface implementation*/
 
 func (ms *MongoStore) EnforceKeys(enforce bool) {
 	ms.enforceKeys = enforce
+}
+
+func (ms *MongoStore) StartUpdateCacheLoop() {
+	var uuids []string
+	session := ms.session.Copy()
+	metadata := ms.metadata.With(session)
+	go func() {
+		for _ = range ms.updateTicker.C {
+			ms.CacheLock.Lock()
+			metadata.Find(nil).Distinct("uuid", &uuids)
+			for _, uuid := range uuids {
+				if _, found := ms.UUIDS[uuid]; !found {
+					ms.UUIDS[uuid] = struct{}{}
+				}
+			}
+			ms.CacheLock.Unlock()
+		}
+	}()
 }
 
 func (ms *MongoStore) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
@@ -312,73 +346,21 @@ func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) e
 	return queryErr
 }
 
-/*
-The incoming messages will be in the form of {pathname: metadata/properties/etc}.
-Only the timeseries will have UUIDs attached. When we receive a message like this, we need
-to compress all of the prefix-path kv pairs into each of the timeseries, and then save those
-timeseries to the metadata collection
-*/
-//TODO: when we perform the inheritance, we should return the normalized map to the archiver,
-//      either by copying it back or by creating a new one.
+// The incoming messages will be in the form of {pathname: metadata/properties/etc}.
+// Only the timeseries will have UUIDs attached. When we receive a message like this, we need
+// to compress all of the prefix-path kv pairs into each of the timeseries, and then save those
+// timeseries to the metadata collection
 func (ms *MongoStore) SaveTags(messages *map[string]*SmapMessage) error {
 	var err error
 	tsm := TieredSmapMessage(*messages)
 	tsm.CollapseToTimeseries()
-	for path, msg := range *messages {
-		//TODO if uuid in cache, then skip if metadata/props,act is nul. ELSE if this is the
-		// first time we see the UUID, we commit it
-		canskip := (msg.Metadata == nil && msg.Properties == nil && msg.Actuator == nil)
-		if msg.UUID == "" || canskip {
-			continue
-		}
-		toWrite := bson.M{"Path": path, "uuid": msg.UUID}
-		if msg.Metadata != nil && len(msg.Metadata) > 0 {
-			for k, v := range msg.Metadata {
-				toWrite["Metadata."+k] = v
-			}
-		}
-		if msg.Properties != nil && len(msg.Properties) > 0 {
-			for k, v := range msg.Properties {
-				toWrite["Properties."+k] = v
-			}
-		}
-		if msg.Actuator != nil && len(msg.Actuator) > 0 {
-			for k, v := range msg.Actuator {
-				toWrite["Actuator."+k] = v
-			}
-		}
-		for _, prefix := range getPrefixes(path) { // accumulate all metadata for this timeseries
-			if (*messages)[prefix] == nil {
-				continue
-			}
-			if (*messages)[prefix].Metadata != nil {
-				for k, v := range (*messages)[prefix].Metadata {
-					toWrite["Metadata."+k] = v
-					if msg.Metadata == nil {
-						msg.Metadata = bson.M{}
-					}
-					msg.Metadata[k] = v
-				}
-			}
-			if (*messages)[prefix].Properties != nil {
-				for k, v := range (*messages)[prefix].Properties {
-					toWrite["Properties."+k] = v
-					if msg.Properties == nil {
-						msg.Properties = bson.M{}
-					}
-					msg.Properties[k] = v
-				}
-			}
-		}
-		if len(toWrite) > 0 {
-			_, err = ms.metadata.Upsert(bson.M{"uuid": msg.UUID}, bson.M{"$set": toWrite})
-		}
-		if msg.UUID == "" {
-			log.Debug("deleting %v from ", path, *messages)
-			delete(*messages, path)
-			log.Debug("now is %v", *messages)
+	ms.CacheLock.RLock()
+	for _, bsonMsg := range tsm.ToBson() {
+		if _, found := ms.UUIDS[bsonMsg["uuid"].(string)]; !found || len(bsonMsg) > 2 {
+			_, err = ms.metadata.Upsert(bson.M{"uuid": bsonMsg["uuid"]}, bson.M{"$set": bsonMsg})
 		}
 	}
+	ms.CacheLock.RUnlock()
 	return err
 }
 
