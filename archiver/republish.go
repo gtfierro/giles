@@ -25,6 +25,24 @@ type Query struct {
 	m_uuids map[string]UUIDSTATE
 }
 
+func (q Query) Match(cs *QueryChangeSet) *QueryChangeSet {
+	var ret = NewQueryChangeSet()
+	//TODO: better Readings support. This just does "data before now"
+	if q.querytype == DATA_TYPE {
+		for uuid, msg := range cs.New {
+			msg.Metadata = nil
+			msg.Properties = nil
+			msg.Actuator = nil
+			ret.NewStream(uuid, msg)
+		}
+	} else if q.querytype == SELECT_TYPE {
+		if len(q.target) == 0 {
+			return cs
+		}
+	}
+	return ret
+}
+
 type UUIDSTATE uint
 
 const (

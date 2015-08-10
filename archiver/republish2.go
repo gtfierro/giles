@@ -361,7 +361,10 @@ func (r *Republisher) RepublishReadings(readings map[string]*SmapMessage) {
 		}
 		for _, client := range r.queryConcern[queryhash] {
 			//fmt.Println(">>> client",client, "wants",client.query.target,client.query.querytype)
-			client.subscriber.Send(changeset)
+			//TODO: transform the changeset to match the "select" of the query
+			query := r.queries[queryhash]
+			tosend := query.Match(changeset)
+			client.subscriber.Send(tosend)
 		}
 	}
 
