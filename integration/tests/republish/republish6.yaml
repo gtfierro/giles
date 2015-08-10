@@ -4,23 +4,23 @@ Client:1:
     Interface: HTTP Stream
     Input:
         Method: POST
-        URI: http://localhost:8079/republish
+        URI: http://localhost:8079/republish2
         Format: string
         Data: >
-            Metadata/tag = "$UUID(3)"
+            select * where Metadata/tag = "$UUID(3)"
     Output:
         1:
             Code: 200
-            Contents: '{"/sensor0": {"uuid": "$UUID(1)", "Readings": [[$TIME_MS(1), 0]]}}'
+            Contents: '{"New": {"$UUID(1)": {"Path": "/sensor0", "Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(3)"}, "Readings": [[$TIME_MS(1), 0]],"uuid": "$UUID(1)"}}}'
             Format: JSON
         2:
             Code: 200
-            Contents: '{"/sensor1": {"uuid": "$UUID(2)", "Readings": [[$TIME_MS(2), 1]]}}'
+            Contents: '{"New": {"$UUID(2)": {"Path": "/sensor1", "Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(3)"}, "Readings": [[$TIME_MS(2), 1]],"uuid": "$UUID(2)"}}}'
             Format: JSON
         3:
             Code: 200
-            Contents: ''
-            Format: string
+            Contents: '{"Del": ["$UUID(2)"]}'
+            Format: JSON
 
 Client:2:
     Interface: HTTP
