@@ -1,6 +1,7 @@
 package archiver
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -9,14 +10,15 @@ type QueryChangeSet struct {
 	// new messages (streams) that match this query
 	New map[string]*SmapMessage `json:",omitempty"`
 	// list of streams that no longer match this query
-	Del map[string]struct{} `json:",omitempty"`
+	del map[string]struct{} `json:"-"`
+	Del []string            `json:",omitempty"`
 	// list of current data that matches query
 }
 
 func NewQueryChangeSet() *QueryChangeSet {
 	return &QueryChangeSet{
 		New: make(map[string]*SmapMessage),
-		Del: make(map[string]struct{}),
+		del: make(map[string]struct{}),
 	}
 }
 
@@ -37,7 +39,16 @@ func (cs *QueryChangeSet) NewStream(uuid string, msg *SmapMessage) {
 }
 
 func (cs *QueryChangeSet) DelStream(uuid string) {
-	cs.Del[uuid] = struct{}{}
+	cs.del[uuid] = struct{}{}
+}
+
+func (cs *QueryChangeSet) MarshalJSON() ([]byte, error) {
+	cs.Del = make([]string, len(cs.del))
+	idx := 0
+	for uuid, _ := range cs.del {
+		cs.Del[idx] = uuid
+	}
+	return json.Marshal(*cs)
 }
 
 func (cs *QueryChangeSet) AddNew(msg *SmapMessage) {
@@ -47,7 +58,7 @@ func (cs *QueryChangeSet) AddNew(msg *SmapMessage) {
 }
 
 func (cs *QueryChangeSet) IsEmpty() bool {
-	return len(cs.New) == 0 && len(cs.Del) == 0
+	return len(cs.New) == 0 && len(cs.del) == 0
 }
 
 //func (cs *QueryChangeSet) AddData(msg *SmapMessage) {

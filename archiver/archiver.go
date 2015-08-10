@@ -201,16 +201,6 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 			return errors.New("Unauthorized api key " + apikey)
 		}
 	}
-	// save metadata
-	//pathMdErr = a.store.SavePathMetadata(readings)
-	//if pathMdErr != nil {
-	//	return pathMdErr
-	//}
-
-	//tsMdErr = a.store.SaveTimeseriesMetadata(readings)
-	//if tsMdErr != nil {
-	//	return tsMdErr
-	//}
 
 	tsMdErr = a.store.SaveTags(&readings)
 	if tsMdErr != nil {
