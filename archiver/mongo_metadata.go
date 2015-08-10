@@ -27,7 +27,7 @@ type MongoStore struct {
 	apikeylock     sync.Mutex
 	maxsid         *uint32
 	streamlock     sync.Mutex
-	streamtypelock sync.Mutex
+	streamtypelock sync.RWMutex
 	uuidcache      *Cache
 	apikcache      *Cache
 	uotcache       *Cache
@@ -36,6 +36,8 @@ type MongoStore struct {
 	// update internal cache of UUIDs at periodic interval
 	updateTicker   *time.Ticker
 	updateInterval time.Duration
+	// for forcing an early update
+	updateTrigger chan bool
 	// list of timeseries we have committed. Only send upserts to mongo
 	// via SaveTags if a) we have metadata or b) we don't have the uuid
 	// in this lookup
@@ -133,6 +135,7 @@ func NewMongoStore(address *net.TCPAddr, interval int) *MongoStore {
 		uotcache:       NewCache(1000),
 		streamtype:     NewCache(1000),
 		updateTicker:   ticker,
+		updateTrigger:  make(chan bool, 100),
 		updateInterval: time.Duration(interval),
 		UUIDS:          make(map[string]struct{}),
 		enforceKeys:    true}
@@ -151,15 +154,28 @@ func (ms *MongoStore) StartUpdateCacheLoop() {
 	session := ms.session.Copy()
 	metadata := ms.metadata.With(session)
 	go func() {
-		for _ = range ms.updateTicker.C {
-			ms.CacheLock.Lock()
-			metadata.Find(nil).Distinct("uuid", &uuids)
-			for _, uuid := range uuids {
-				if _, found := ms.UUIDS[uuid]; !found {
-					ms.UUIDS[uuid] = struct{}{}
+		for {
+			select {
+			case <-ms.updateTrigger:
+				// both cases are the same
+				ms.CacheLock.Lock()
+				metadata.Find(nil).Distinct("uuid", &uuids)
+				for _, uuid := range uuids {
+					if _, found := ms.UUIDS[uuid]; !found {
+						ms.UUIDS[uuid] = struct{}{}
+					}
 				}
+				ms.CacheLock.Unlock()
+			case <-ms.updateTicker.C:
+				ms.CacheLock.Lock()
+				metadata.Find(nil).Distinct("uuid", &uuids)
+				for _, uuid := range uuids {
+					if _, found := ms.UUIDS[uuid]; !found {
+						ms.UUIDS[uuid] = struct{}{}
+					}
+				}
+				ms.CacheLock.Unlock()
 			}
-			ms.CacheLock.Unlock()
 		}
 	}()
 }
@@ -351,16 +367,23 @@ func (ms *MongoStore) SaveTimeseriesMetadata(messages map[string]*SmapMessage) e
 // to compress all of the prefix-path kv pairs into each of the timeseries, and then save those
 // timeseries to the metadata collection
 func (ms *MongoStore) SaveTags(messages *map[string]*SmapMessage) error {
-	var err error
+	var (
+		err       error
+		updateAny = false
+	)
 	tsm := TieredSmapMessage(*messages)
 	tsm.CollapseToTimeseries()
 	ms.CacheLock.RLock()
 	for _, bsonMsg := range tsm.ToBson() {
 		if _, found := ms.UUIDS[bsonMsg["uuid"].(string)]; !found || len(bsonMsg) > 2 {
+			updateAny = true
 			_, err = ms.metadata.Upsert(bson.M{"uuid": bsonMsg["uuid"]}, bson.M{"$set": bsonMsg})
 		}
 	}
 	ms.CacheLock.RUnlock()
+	if updateAny {
+		ms.updateTrigger <- true
+	}
 	return err
 }
 
@@ -517,11 +540,13 @@ func (ms *MongoStore) GetUnitOfTime(uuid string) UnitOfTime {
 }
 
 func (ms *MongoStore) GetStreamType(uuid string) StreamType {
-	ms.streamtypelock.Lock()
+	ms.streamtypelock.RLock()
 	if st, found := ms.streamtype.Get(uuid); found {
-		ms.streamtypelock.Unlock()
+		ms.streamtypelock.RUnlock()
 		return st.(StreamType)
 	}
+	ms.streamtypelock.RUnlock()
+	ms.streamtypelock.Lock()
 	var res bson.M
 	err := ms.metadata.Find(bson.M{"uuid": uuid}).Select(bson.M{"Properties.StreamType": 1}).One(&res)
 	if err != nil {
