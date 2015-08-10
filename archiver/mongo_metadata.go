@@ -135,7 +135,7 @@ func NewMongoStore(address *net.TCPAddr, interval int) *MongoStore {
 		uotcache:       NewCache(1000),
 		streamtype:     NewCache(1000),
 		updateTicker:   ticker,
-		updateTrigger:  make(chan bool, 100),
+		updateTrigger:  make(chan bool, 1000),
 		updateInterval: time.Duration(interval),
 		UUIDS:          make(map[string]struct{}),
 		enforceKeys:    true}
