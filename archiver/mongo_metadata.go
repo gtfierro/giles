@@ -177,6 +177,13 @@ func (ms *MongoStore) StartUpdateCacheLoop() {
 	}()
 }
 
+func (ms *MongoStore) Find(findClause, selectClause bson.M) (interface{}, error) {
+	var result []interface{}
+	staged := ms.metadata.Find(findClause).Select(selectClause)
+	err := staged.All(&result)
+	return result, err
+}
+
 func (ms *MongoStore) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
 	for _, msg := range messages {
 		if msg.UUID == "" {

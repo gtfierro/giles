@@ -97,6 +97,9 @@ type MetadataStore interface {
 
 	// Returns the stream type for the stream identified by the given UUID
 	GetStreamType(uuid string) StreamType
+
+	// General purpose metadata Find
+	Find(findclause, selectClause bson.M) (interface{}, error)
 }
 
 type APIKeyManager interface {
