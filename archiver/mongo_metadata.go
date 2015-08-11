@@ -149,7 +149,8 @@ func (ms *MongoStore) EnforceKeys(enforce bool) {
 	ms.enforceKeys = enforce
 }
 
-func (ms *MongoStore) updateCache() {
+func (ms *MongoStore) updateCache(metadata *mgo.Collection) {
+	var uuids []string
 	ms.CacheLock.Lock()
 	metadata.Find(nil).Distinct("uuid", &uuids)
 	for _, uuid := range uuids {
@@ -161,7 +162,6 @@ func (ms *MongoStore) updateCache() {
 }
 
 func (ms *MongoStore) StartUpdateCacheLoop() {
-	var uuids []string
 	session := ms.session.Copy()
 	metadata := ms.metadata.With(session)
 	go func() {
@@ -169,9 +169,9 @@ func (ms *MongoStore) StartUpdateCacheLoop() {
 			select {
 			case <-ms.updateTrigger:
 				//TODO: rate-limit this?
-				ms.updateCache()
+				ms.updateCache(metadata)
 			case <-ms.updateTicker.C:
-				ms.updateCache()
+				ms.updateCache(metadata)
 			}
 		}
 	}()
