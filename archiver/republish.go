@@ -1,6 +1,7 @@
 package archiver
 
 import (
+	"fmt"
 	"gopkg.in/mgo.v2/bson"
 	"strings"
 	"sync"
@@ -18,11 +19,12 @@ type Query struct {
 	target []string
 	// parsed where clause
 	where bson.M
-	// a unique representation of this query
-	// used to compare two different query objects
+	// a unique representation of this query used to compare two different query objects
 	hash QueryHash
 	// Track state transitions for the UUIDs that match this query
 	m_uuids map[string]UUIDSTATE
+	// reference to the AST
+	lex *SQLex
 }
 
 func (q Query) Match(cs *QueryChangeSet) *QueryChangeSet {
@@ -39,8 +41,29 @@ func (q Query) Match(cs *QueryChangeSet) *QueryChangeSet {
 		if len(q.target) == 0 {
 			return cs
 		}
+		//TODO: handle select clause
+		fmt.Println("SELECT ME", q.target)
 	}
 	return ret
+}
+
+func (q Query) MatchSelectClause(msg *SmapMessage) (ret *SmapMessage) {
+	ret = msg
+	if q.querytype == DATA_TYPE {
+		ret.Metadata = nil
+		ret.Properties = nil
+		ret.Actuator = nil
+		return
+	} else if q.querytype == SELECT_TYPE {
+		if len(q.target) == 0 { // select *
+			return
+		} else {
+			//re run the query and deliver the result
+			fmt.Println("SELECT ME", q.target)
+			return
+		}
+	}
+	return
 }
 
 type UUIDSTATE uint
@@ -86,16 +109,6 @@ type RepublishClient struct {
 	// true if this client is only interested in membership of a query (which UUIDs
 	// qualify and which do not)
 	membership bool
-}
-
-//TODO: use a new UUID type instead of stream
-func (rc *RepublishClient) RemoveStream(uuid string) {
-}
-
-func (rc *RepublishClient) NewStream(msg *SmapMessage) {
-}
-
-func (rc *RepublishClient) DiffStream(msg *SmapMessage) {
 }
 
 // This is a more thought-out version of the republisher that was first

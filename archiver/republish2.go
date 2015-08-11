@@ -3,6 +3,7 @@ package archiver
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/mgo.v2/bson"
 	"strings"
 )
 
@@ -61,9 +62,49 @@ func (cs *QueryChangeSet) IsEmpty() bool {
 	return len(cs.New) == 0 && len(cs.del) == 0
 }
 
-//func (cs *QueryChangeSet) AddData(msg *SmapMessage) {
-//	cs.Data = append(cs.Data, msg)
-//}
+func (r *Republisher) matchSelectClause(q *Query, msg *SmapMessage) (ret interface{}) {
+	ret = msg
+	if q.querytype == DATA_TYPE {
+		ret.(*SmapMessage).Metadata = nil
+		ret.(*SmapMessage).Properties = nil
+		ret.(*SmapMessage).Actuator = nil
+		return
+	} else if q.querytype == SELECT_TYPE {
+		if len(q.target) == 0 { // select *
+			return
+		} else {
+			ret, _ = r.reevaluateSelect(q)
+			return
+		}
+	}
+	return
+}
+
+// this method reevaluates the select clause of the given query, but
+// uses the pre-known set of UUIDs to avoid re-evaluating the where clause
+// as well
+func (r *Republisher) reevaluateSelect(q *Query) (result interface{}, err error) {
+	// grab list of matched UUIDs and format it for the query
+	matchedUUIDs := make([]string, len(q.m_uuids))
+	idx := 0
+	for uuid, _ := range q.m_uuids {
+		matchedUUIDs[idx] = uuid
+	}
+	findClause := bson.M{"uuid": bson.M{"$in": matchedUUIDs}}
+	selectClause := q.lex.query.ContentsBson()
+	doExclude := true
+	for _, include := range selectClause {
+		if include == 1 {
+			doExclude = false
+			break
+		}
+	}
+	selectClause["_id"] = 0 // always exclude this
+	if doExclude {
+		selectClause["_api"] = 0
+	}
+	return r.a.store.Find(findClause, selectClause)
+}
 
 func (r *Republisher) HandleQuery2(query string) (*Query, error) {
 	var (
@@ -103,6 +144,7 @@ func (r *Republisher) HandleQuery2(query string) (*Query, error) {
 		q.keys = lex.keys
 		q.target = lex.query.Contents
 		q.querytype = lex.query.qtype
+		q.lex = lex
 
 		// resolve the query where clause to a set of UUIDs
 		uuids, err := r.a.store.GetUUIDs(q.where)
@@ -362,9 +404,12 @@ func (r *Republisher) RepublishReadings(readings map[string]*SmapMessage) {
 		for _, client := range r.queryConcern[queryhash] {
 			//fmt.Println(">>> client",client, "wants",client.query.target,client.query.querytype)
 			//TODO: transform the changeset to match the "select" of the query
-			query := r.queries[queryhash]
-			tosend := query.Match(changeset)
-			client.subscriber.Send(tosend)
+			//query := r.queries[queryhash]
+			//tosend := query.Match(changeset)
+			fmt.Println("changeset")
+			prettyPrintJSON(changeset)
+			fmt.Println()
+			client.subscriber.Send(changeset)
 		}
 	}
 
@@ -372,14 +417,19 @@ func (r *Republisher) RepublishReadings(readings map[string]*SmapMessage) {
 		//fmt.Println("repub", msg)
 		if queries, found := r.uuidConcern[msg.UUID]; found {
 			//fmt.Println("found queries for",len(queries))
-			for _, hash := range queries {
-				if changeset, found := affected_queries[hash]; found && !changeset.IsEmpty() {
+			for _, queryhash := range queries {
+				if changeset, found := affected_queries[queryhash]; found && !changeset.IsEmpty() {
 					continue
 				}
+				query := r.queries[queryhash]
 				// get the list of subscribers for that query and forward the message
-				//fmt.Println("subscribers", len(r.queryConcern[hash]))
-				for _, client := range r.queryConcern[hash] {
-					client.subscriber.Send(msg)
+				//fmt.Println("subscribers", len(r.queryConcern[queryhash]))
+				for _, client := range r.queryConcern[queryhash] {
+					fmt.Println("Send")
+					//prettyPrintJSON(msg)
+					prettyPrintJSON(query.MatchSelectClause(msg))
+					fmt.Println()
+					client.subscriber.Send(r.matchSelectClause(query, msg))
 				}
 			}
 		}
