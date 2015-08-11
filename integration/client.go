@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type HTTPClient struct {
 	expectedContents string
 	expectedFormat   string
 	response         *http.Response
+	sync.Mutex
 }
 
 func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
@@ -84,12 +86,16 @@ func NewHTTPClient(id int64, c Config) (*HTTPClient, error) {
 
 func (hc *HTTPClient) Input() error {
 	var err error
+	hc.Lock()
+	defer hc.Unlock()
 	client := &http.Client{}
 	hc.response, err = client.Do(hc.req)
 	return err
 }
 
 func (hc *HTTPClient) Output() error {
+	hc.Lock()
+	defer hc.Unlock()
 	if hc.response == nil {
 		return fmt.Errorf("Nil response")
 	}
@@ -128,6 +134,7 @@ type HTTPStreamClient struct {
 	response         *http.Response
 	reader           *bufio.Reader
 	outputIndex      int
+	sync.Mutex
 }
 
 func NewHTTPStreamClient(id int64, c Config) (*HTTPStreamClient, error) {
@@ -188,6 +195,8 @@ func NewHTTPStreamClient(id int64, c Config) (*HTTPStreamClient, error) {
 }
 
 func (hc *HTTPStreamClient) Input() error {
+	hc.Lock()
+	defer hc.Unlock()
 	var err error
 	client := &http.Client{}
 	go func() {
@@ -197,7 +206,10 @@ func (hc *HTTPStreamClient) Input() error {
 }
 
 func (hc *HTTPStreamClient) Output() error {
+	hc.Lock()
+	defer hc.Unlock()
 	hc.outputIndex += 1
+	time.Sleep(200 * time.Millisecond)
 	if hc.response == nil {
 		return fmt.Errorf("Nil response")
 	}
@@ -212,17 +224,20 @@ func (hc *HTTPStreamClient) Output() error {
 	var contents []byte
 	var readErr error
 
-	readBytes := make(chan []byte)
-	go func() {
-		contents, readErr = hc.reader.ReadBytes('\n')
-		readBytes <- contents
-	}()
-
-	select {
-	case <-readBytes:
-		hc.reader.ReadBytes('\n') // discard second newline (sMAP delivers them in pairs)
-	case <-time.After(2 * time.Second): // timeout
+	contents, readErr = hc.reader.ReadBytes('\n')
+	if readErr != nil {
+		fmt.Println("Error when reading HTTP response body (%v)\n", readErr)
 	}
+	_, readErr = hc.reader.ReadBytes('\n')
+
+	//fmt.Println("contents so far", string(contents))
+	//select {
+	//case <-readBytes:
+	//	//hc.reader.ReadBytes('\n') // discard second newline (sMAP delivers them in pairs)
+	//    fmt.Println("contents so far", string(contents))
+	//case <-time.After(2 * time.Second): // timeout
+	//    fmt.Println("timeout")
+	//}
 
 	if readErr != nil {
 		return fmt.Errorf("Error when reading HTTP response body (%v)\n", readErr)
