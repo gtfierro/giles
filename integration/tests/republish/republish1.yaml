@@ -1,5 +1,5 @@
 name: Test republish single add with all metadata
-layout: 1:Input -> Sleep:100ms -> 2:Input -> 2:Output -> Sleep:100ms -> 1:Output
+layout: 1:Input -> Sleep:200ms -> 2:Input -> 2:Output -> Sleep:200ms -> 1:Output
 Client:1:
     Interface: HTTP Stream
     Input:

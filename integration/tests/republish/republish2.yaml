@@ -1,5 +1,5 @@
 name: Test republish single add on data
-layout: 1:Input -> Sleep:100ms -> 2:Input -> 2:Output -> Sleep:100ms -> 1:Output
+layout: 1:Input -> Sleep:200ms -> 2:Input -> 2:Output -> Sleep:200ms -> 1:Output
 Client:1:
     Interface: HTTP Stream
     Input:
@@ -12,7 +12,7 @@ Client:1:
         1:
             Code: 200
             Contents: >
-                {"New": {"$UUID(2)": {"Path": "/sensor0", "uuid": "$UUID(2)", "Readings": [[$TIME_MS(1),0]]}}}
+                {"New": {"$UUID(2)": {"Path": "/sensor0", "Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(2)"}}}
             Format: JSON
 
 Client:2:
