@@ -15,7 +15,8 @@ import (
 // connections as well, which is nice.
 
 type TSDBConn struct {
-	conn net.Conn
+	conn   net.Conn
+	closed bool
 }
 
 func (c *TSDBConn) Read(b []byte) (int, error) {
@@ -27,7 +28,12 @@ func (c *TSDBConn) Write(b []byte) (int, error) {
 }
 
 func (c *TSDBConn) Close() error {
+	c.closed = true
 	return c.conn.Close()
+}
+
+func (c *TSDBConn) IsClosed() bool {
+	return c.closed
 }
 
 type ConnectionPool struct {
@@ -55,6 +61,10 @@ func (pool *ConnectionPool) Get() *TSDBConn {
 }
 
 func (pool *ConnectionPool) Put(c *TSDBConn) {
+	if c.IsClosed() {
+		atomic.AddInt64(&pool.count, -1)
+		return
+	}
 	select {
 	case pool.pool <- c:
 	default:

@@ -60,7 +60,7 @@ func (quasar *QuasarDB) getConnection() *TSDBConn {
 		return nil
 	}
 	conn.SetKeepAlive(true)
-	return &TSDBConn{conn}
+	return &TSDBConn{conn, false}
 }
 
 func (quasar *QuasarDB) GetConnection() (net.Conn, error) {
@@ -112,6 +112,7 @@ func (quasar *QuasarDB) receive(conn *TSDBConn, limit int32) (SmapNumbersRespons
 	var sr = SmapNumbersResponse{}
 	seg, err := capn.ReadFromStream(conn, nil)
 	if err != nil {
+		conn.Close()
 		log.Error("Error receiving data from Quasar %v", err)
 		return sr, err
 	}
