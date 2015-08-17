@@ -29,6 +29,8 @@ but for aapplicatons that change over time, we want to be able to:
     * select * where CLAUSE: every time a captured stream changes, you get the entire message
     * select tag1, tag2 where CLAUSE: every time a captured stream changes one of the captured tags, it will report
       that tag
+    * select distinct tag1 where CLAUSE: every time the where clause is affected AND the message includes the distinct tags, reevaluate
+      the query and deliver the results
     * select data before now where CLAUSE: this is like the normal republish
     * select data in (range1, range2) where CLAUSE: probably going to need the node-type stuff? we can punt on this for now
 

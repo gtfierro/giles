@@ -275,13 +275,22 @@ func (tsm *TieredSmapMessage) ToBson() []bson.M {
 			"Path": msg.Path,
 		}
 		if msg.Metadata != nil && len(msg.Metadata) > 0 {
-			msgBson["Metadata"] = msg.Metadata
+			for k, v := range msg.Metadata {
+				msgBson["Metadata."+k] = v
+			}
+			//msgBson["Metadata"] = msg.Metadata
 		}
 		if msg.Properties != nil && len(msg.Properties) > 0 {
-			msgBson["Properties"] = msg.Properties
+			//msgBson["Properties"] = msg.Properties
+			for k, v := range msg.Properties {
+				msgBson["Properties."+k] = v
+			}
 		}
 		if msg.Actuator != nil && len(msg.Actuator) > 0 {
-			msgBson["Actuator"] = msg.Actuator
+			//msgBson["Actuator"] = msg.Actuator
+			for k, v := range msg.Actuator {
+				msgBson["Actuator."+k] = v
+			}
 		}
 		ret[idx] = msgBson
 		idx += 1

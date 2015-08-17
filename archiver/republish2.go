@@ -389,9 +389,9 @@ func (r *Republisher) RepublishKeyChanges(keys []string) map[QueryHash]*QueryCha
 // We receive a new message from a client, and want to send it out to the subscribers.
 // A subscriber is interested in 1 of 3 things: * (all metadata), data before now (most recent
 // data point) or a list of metadata tags.
-func (r *Republisher) RepublishReadings(readings map[string]*SmapMessage) {
-	// get list of queries affected by these readings
-	affected_queries := r.ChangeSubscriptions(readings)
+func (r *Republisher) RepublishReadings(messages map[string]*SmapMessage) {
+	// get list of queries affected by these messages
+	affected_queries := r.ChangeSubscriptions(messages)
 
 	// now, for each query, we have the set of changes that happend
 	// as a result. We look up the subscribers for each query, hand them
@@ -405,7 +405,7 @@ func (r *Republisher) RepublishReadings(readings map[string]*SmapMessage) {
 		}
 	}
 
-	for _, msg := range readings {
+	for _, msg := range messages {
 		if queries, found := r.uuidConcern[msg.UUID]; found {
 			for _, queryhash := range queries {
 				if changeset, found := affected_queries[queryhash]; found && !changeset.IsEmpty() {
