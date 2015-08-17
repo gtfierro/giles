@@ -72,8 +72,7 @@ func (r *Republisher) matchSelectClause(q *Query, msg *SmapMessage) (ret interfa
 	} else if q.querytype == SELECT_TYPE {
 		if len(q.target) == 0 { // select *
 			return
-			//TODO: only reevaluate if the message contains a concerned select
-		} else if !q.lex.query.distinct {
+		} else {
 			ret, _ = r.reevaluateSelect(q)
 			return
 		}
