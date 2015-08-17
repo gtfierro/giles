@@ -72,7 +72,8 @@ func (r *Republisher) matchSelectClause(q *Query, msg *SmapMessage) (ret interfa
 	} else if q.querytype == SELECT_TYPE {
 		if len(q.target) == 0 { // select *
 			return
-		} else {
+			//TODO: only reevaluate if the message contains a concerned select
+		} else if !q.lex.query.distinct {
 			ret, _ = r.reevaluateSelect(q)
 			return
 		}
@@ -416,12 +417,11 @@ func (r *Republisher) RepublishReadings(messages map[string]*SmapMessage) {
 				}
 				query := r.queries[queryhash]
 				// get the list of subscribers for that query and forward the message
-				//fmt.Println("subscribers", len(r.queryConcern[queryhash]))
+				if !msg.HasKeysFrom(query.target) {
+					continue
+				}
 				for _, client := range r.queryConcern[queryhash] {
-					fmt.Println("Send")
-					//prettyPrintJSON(msg)
-					prettyPrintJSON(query.MatchSelectClause(msg))
-					fmt.Println()
+					prettyPrintJSON(r.matchSelectClause(query, msg))
 					client.subscriber.Send(r.matchSelectClause(query, msg))
 				}
 			}

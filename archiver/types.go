@@ -2,9 +2,11 @@ package archiver
 
 import (
 	"encoding/json"
+	"fmt"
 	"gopkg.in/mgo.v2/bson"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // Struct representing data readings to and from sMAP
@@ -162,6 +164,95 @@ func (sm *SmapMessage) IsTimeseries() bool {
 
 func (sm *SmapMessage) HasMetadata() bool {
 	return sm.Metadata != nil || sm.Properties != nil || sm.Actuator != nil
+}
+
+// Key names like uuid, Metadata.Key, Properties.Key, etc. Fetches the corresponding
+// value from the
+func (sm *SmapMessage) GetKey(key string) interface{} {
+	// try a quick match on top-level keys
+	switch key {
+	case "uuid":
+		return sm.UUID
+	case "Path":
+		return sm.Path
+	case "Metadata":
+		return sm.Metadata
+	case "Properties":
+		return sm.Properties
+	case "Actuator":
+		return sm.Actuator
+	}
+
+	// handle nested keys
+	var keyPos = strings.Index(key, ".")
+	if keyPos == -1 {
+		return nil
+	}
+	var nestedKey = key[keyPos+1:]
+	var section = key[:keyPos]
+	fmt.Println("nested key", nestedKey, "sectioN", section)
+	switch section {
+	case "Metadata":
+		return sm.Metadata[nestedKey]
+	case "Properties":
+		return sm.Properties[nestedKey]
+	case "Actuator":
+		return sm.Actuator[nestedKey]
+	}
+	return nil
+}
+
+func (sm *SmapMessage) GetValuesFor(q *Query) {
+	for _, key := range q.target {
+		sm.GetKey(key)
+	}
+}
+
+// Returns true if the current message contains keys mentioned in the provided list
+func (sm *SmapMessage) HasKeysFrom(keys []string) bool {
+	var (
+		keyPos    int
+		nestedKey string
+		section   string
+		found     bool = false
+	)
+	if len(keys) == 0 { // the select * case
+		return true
+	}
+	for _, key := range keys {
+		// try quick match on top-level keys
+		switch key {
+		case "uuid":
+			return len(sm.UUID) > 0
+		case "Path":
+			return len(sm.Path) > 0
+		case "Metadata":
+			return sm.Metadata != nil && len(sm.Metadata) > 0
+		case "Properties":
+			return sm.Properties != nil && len(sm.Properties) > 0
+		case "Actuator":
+			return sm.Actuator != nil && len(sm.Actuator) > 0
+		}
+
+		keyPos = strings.Index(key, ".")
+		if keyPos == -1 { // not a nested key, so false
+			return false
+		}
+		nestedKey = key[keyPos+1:]
+		section = key[:keyPos]
+		switch section {
+		case "Metadata":
+			_, found = sm.Metadata[nestedKey]
+		case "Properties":
+			_, found = sm.Properties[nestedKey]
+		case "Actuator":
+			_, found = sm.Actuator[nestedKey]
+		}
+		if found {
+			return found
+		}
+	}
+	return false
 }
 
 type IncomingSmapMessage struct {
