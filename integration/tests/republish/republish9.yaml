@@ -7,28 +7,28 @@ Client:1:
         URI: http://localhost:8079/republish2
         Format: string
         Data: >
-            select uuid, Metadata/tag, Metadata/othertag where has Metadata/tag and has Metadata/othertag and Metadata/testid = "$UUID(1)"
+            select uuid, Metadata/tag, Metadata/nested/othertag where has Metadata/tag and has Metadata/nested/othertag and Metadata/testid = "$UUID(1)"
     Output:
         1:
             Code: 200
             Contents: >
-                {"New":{"$UUID(2)":{"Path":"/sensor0","Properties": {"UnitofTime": "ms"}, "Metadata": {"testid": "$UUID(1)", "tag": "abc", "othertag": "def"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(2)"}}}
+                {"New":{"$UUID(2)":{"Path":"/sensor0","Properties": {"UnitofTime": "ms"}, "Metadata": {"testid": "$UUID(1)", "tag": "abc", "nested": {"othertag": "def"}}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(2)"}}}
             Format: JSON
         2:
             Code: 200
             Format: JSON
             Contents: >
-                [{"Metadata": {"tag": "ghi", "othertag": "def"}, "uuid": "$UUID(2)"}]
+                [{"Metadata": {"tag": "ghi", "nested": {"othertag": "def"}}, "uuid": "$UUID(2)"}]
         3:
             Code: 200
             Contents: >
-                {"New":{"$UUID(3)":{"Path":"/sensor1","Properties": {"UnitofTime": "ms"}, "Metadata": {"testid": "$UUID(1)", "tag": "123", "othertag": "456"}, "Readings": [[$TIME_MS(3),2]],"uuid": "$UUID(3)"}}}
+                {"New":{"$UUID(3)":{"Path":"/sensor1","Properties": {"UnitofTime": "ms"}, "Metadata": {"testid": "$UUID(1)", "tag": "123", "nested": {"othertag": "456"}}, "Readings": [[$TIME_MS(3),2]],"uuid": "$UUID(3)"}}}
             Format: JSON
         4:
             Code: 200
             Format: JSON
             Contents: >
-                [{"Metadata": {"tag": "ghi", "othertag": "def"}, "uuid": "$UUID(2)"}, {"Metadata": {"tag": "ghi", "othertag": "456"}, "uuid": "$UUID(3)"}]
+                [{"Metadata": {"tag": "ghi", "nested": {"othertag": "def"}}, "uuid": "$UUID(2)"}, {"Metadata": {"tag": "ghi", "nested": {"othertag": "456"}}, "uuid": "$UUID(3)"}]
 
 Client:2:
     Interface: HTTP
@@ -37,7 +37,7 @@ Client:2:
         URI: http://localhost:8079/add/apikey
         Format: string
         Data:  >
-            {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"testid": "$UUID(1)", "tag": "abc", "othertag": "def"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(2)"}}
+            {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"testid": "$UUID(1)", "tag": "abc", "nested": {"othertag": "def"}}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(2)"}}
     Output:
         Code: 200
         Contents: ""
@@ -63,7 +63,7 @@ Client:4:
         URI: http://localhost:8079/add/apikey
         Format: string
         Data:  >
-            {"/sensor1": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"testid": "$UUID(1)", "tag": "123", "othertag": "456"}, "Readings": [[$TIME_MS(3),2]],"uuid": "$UUID(3)"}}
+            {"/sensor1": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"testid": "$UUID(1)", "tag": "123", "nested": {"othertag": "456"}}, "Readings": [[$TIME_MS(3),2]],"uuid": "$UUID(3)"}}
     Output:
         Code: 200
         Contents: ""
