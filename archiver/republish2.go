@@ -397,26 +397,16 @@ func (r *Republisher) RepublishReadings(readings map[string]*SmapMessage) {
 	// as a result. We look up the subscribers for each query, hand them
 	// the change set?
 	for queryhash, changeset := range affected_queries {
-		//fmt.Println("delivering", changeset, queryhash)
 		if changeset.IsEmpty() {
 			continue
 		}
 		for _, client := range r.queryConcern[queryhash] {
-			//fmt.Println(">>> client",client, "wants",client.query.target,client.query.querytype)
-			//TODO: transform the changeset to match the "select" of the query
-			//query := r.queries[queryhash]
-			//tosend := query.Match(changeset)
-			fmt.Println("changeset")
-			prettyPrintJSON(changeset)
-			fmt.Println()
 			client.subscriber.Send(changeset)
 		}
 	}
 
 	for _, msg := range readings {
-		//fmt.Println("repub", msg)
 		if queries, found := r.uuidConcern[msg.UUID]; found {
-			//fmt.Println("found queries for",len(queries))
 			for _, queryhash := range queries {
 				if changeset, found := affected_queries[queryhash]; found && !changeset.IsEmpty() {
 					continue
