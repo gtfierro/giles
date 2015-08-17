@@ -3,7 +3,7 @@ package archiver
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/mgo.v2/bson"
+	//"gopkg.in/mgo.v2/bson"
 	"strings"
 )
 
@@ -89,8 +89,10 @@ func (r *Republisher) reevaluateSelect(q *Query) (result interface{}, err error)
 	idx := 0
 	for uuid, _ := range q.m_uuids {
 		matchedUUIDs[idx] = uuid
+		idx += 1
 	}
-	findClause := bson.M{"uuid": bson.M{"$in": matchedUUIDs}}
+	log.Debug("matchedUUIDs %v", matchedUUIDs)
+	//findClause := bson.M{"uuid": bson.M{"$in": matchedUUIDs}}
 	selectClause := q.lex.query.ContentsBson()
 	doExclude := true
 	for _, include := range selectClause {
@@ -103,7 +105,8 @@ func (r *Republisher) reevaluateSelect(q *Query) (result interface{}, err error)
 	if doExclude {
 		selectClause["_api"] = 0
 	}
-	return r.a.store.Find(findClause, selectClause)
+	log.Debug("run query %v %v", q.where, selectClause)
+	return r.a.store.Find(q.where, selectClause)
 }
 
 func (r *Republisher) HandleQuery2(query string) (*Query, error) {
