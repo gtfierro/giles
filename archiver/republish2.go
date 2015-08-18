@@ -3,7 +3,7 @@ package archiver
 import (
 	"encoding/json"
 	"fmt"
-	//"gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2/bson"
 	"strings"
 )
 
@@ -27,11 +27,11 @@ func (qs *QueryChangeSet) Debug() {
 	fmt.Println("QueryChangeSet")
 	fmt.Println("  NEW")
 	for uuid, msg := range qs.New {
-		fmt.Println("	> ", uuid, msg)
+		fmt.Println("   > ", uuid, msg)
 	}
 	fmt.Println("  DEL")
 	for uuid, _ := range qs.Del {
-		fmt.Println("	> ", uuid)
+		fmt.Println("   > ", uuid)
 	}
 }
 
@@ -91,22 +91,30 @@ func (r *Republisher) reevaluateSelect(q *Query) (result interface{}, err error)
 		matchedUUIDs[idx] = uuid
 		idx += 1
 	}
-	log.Debug("matchedUUIDs %v", matchedUUIDs)
-	//findClause := bson.M{"uuid": bson.M{"$in": matchedUUIDs}}
+	findClause := bson.M{"uuid": bson.M{"$in": matchedUUIDs}}
 	selectClause := q.lex.query.ContentsBson()
-	doExclude := true
-	for _, include := range selectClause {
-		if include == 1 {
-			doExclude = false
-			break
+	if q.distinct {
+		distinctKey := ""
+		for key, _ := range selectClause {
+			distinctKey = key
+			break // just 1 key
 		}
+		return r.a.store.FindDistinct(findClause, distinctKey)
+	} else {
+		doExclude := true
+		for _, include := range selectClause {
+			if include == 1 {
+				doExclude = false
+				break
+			}
+		}
+		selectClause["_id"] = 0 // always exclude this
+		if doExclude {
+			selectClause["_api"] = 0
+		}
+		//log.Debug("run query %v %v", q.where, selectClause)
+		return r.a.store.Find(findClause, selectClause)
 	}
-	selectClause["_id"] = 0 // always exclude this
-	if doExclude {
-		selectClause["_api"] = 0
-	}
-	log.Debug("run query %v %v", q.where, selectClause)
-	return r.a.store.Find(q.where, selectClause)
 }
 
 func (r *Republisher) HandleQuery2(query string) (*Query, error) {
@@ -147,6 +155,7 @@ func (r *Republisher) HandleQuery2(query string) (*Query, error) {
 		q.keys = lex.keys
 		q.target = lex.query.Contents
 		q.querytype = lex.query.qtype
+		q.distinct = lex.query.distinct
 		q.lex = lex
 
 		// resolve the query where clause to a set of UUIDs
@@ -381,8 +390,8 @@ func (r *Republisher) RepublishKeyChanges(keys []string) map[QueryHash]*QueryCha
 	}
 
 	//for queryhash, changeset := range reeval {
-	//	fmt.Println("queryhash", queryhash)
-	//	changeset.Debug()
+	//  fmt.Println("queryhash", queryhash)
+	//  changeset.Debug()
 	//}
 	//TODO: notify each relevant subscriber of a changed query
 

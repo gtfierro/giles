@@ -23,6 +23,8 @@ type Query struct {
 	hash QueryHash
 	// Track state transitions for the UUIDs that match this query
 	m_uuids map[string]UUIDSTATE
+	// whether this is a DISTINCT query
+	distinct bool
 	// reference to the AST
 	lex *SQLex
 }

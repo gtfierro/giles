@@ -184,6 +184,12 @@ func (ms *MongoStore) Find(findClause, selectClause bson.M) (interface{}, error)
 	return result, err
 }
 
+func (ms *MongoStore) FindDistinct(findClause bson.M, distinctKey string) (interface{}, error) {
+	var result []interface{}
+	err := ms.metadata.Find(findClause).Distinct(distinctKey, &result)
+	return result, err
+}
+
 func (ms *MongoStore) CheckKey(apikey string, messages map[string]*SmapMessage) (bool, error) {
 	for _, msg := range messages {
 		if msg.UUID == "" {

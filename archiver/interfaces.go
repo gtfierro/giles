@@ -100,6 +100,9 @@ type MetadataStore interface {
 
 	// General purpose metadata Find
 	Find(findclause, selectClause bson.M) (interface{}, error)
+
+	// General purpose metadata Find
+	FindDistinct(findClause bson.M, distinctKey string) (interface{}, error)
 }
 
 type APIKeyManager interface {
