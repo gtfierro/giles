@@ -226,6 +226,10 @@ func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string, lega
 	r.Unlock()
 
 	log.Info("New subscriber for REPUBLISH 2 query \"%v\" with keys %v", query, q.keys)
+	//if !client.legacy {
+	//    ret, _ := r.reevaluateSelect(q)
+	//    client.subscriber.Send(ret)
+	//}
 
 	// wait for client to quit
 	<-client.notify
