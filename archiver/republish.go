@@ -111,6 +111,7 @@ type RepublishClient struct {
 	// true if this client is only interested in membership of a query (which UUIDs
 	// qualify and which do not)
 	membership bool
+	legacy     bool
 }
 
 // This is a more thought-out version of the republisher that was first

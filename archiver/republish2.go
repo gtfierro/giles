@@ -200,7 +200,7 @@ func (r *Republisher) HandleQuery2(query string) (*Query, error) {
 	return q, nil
 }
 
-func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string) {
+func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string, legacy bool) {
 	// create or get reference to the parsed query
 	q, err := r.HandleQuery2(query)
 	if err != nil {
@@ -210,7 +210,7 @@ func (r *Republisher) HandleSubscriber2(s Subscriber, query, apikey string) {
 	}
 
 	// create new instance of a client
-	client := &RepublishClient{notify: s.GetNotify(), subscriber: s, query: q}
+	client := &RepublishClient{notify: s.GetNotify(), subscriber: s, query: q, legacy: legacy}
 
 	// add the client to the relevant lists
 	r.Lock()
@@ -413,24 +413,37 @@ func (r *Republisher) RepublishReadings(messages map[string]*SmapMessage) {
 			continue
 		}
 		for _, client := range r.queryConcern[queryhash] {
+			if client.legacy {
+				continue
+			}
 			client.subscriber.Send(changeset)
 		}
 	}
 
 	for _, msg := range messages {
+		legacyMsg := make(map[string]interface{})
+		legacyMsg[msg.Path] = msg.ToSmapReading()
 		if queries, found := r.uuidConcern[msg.UUID]; found {
 			for _, queryhash := range queries {
-				if changeset, found := affected_queries[queryhash]; found && !changeset.IsEmpty() {
-					continue
-				}
+				changeset, found := affected_queries[queryhash]
+				//if changeset, found := affected_queries[queryhash]; found && !changeset.IsEmpty() {
+				//	continue
+				//}
 				query := r.queries[queryhash]
 				// get the list of subscribers for that query and forward the message
 				if !msg.HasKeysFrom(query.target) {
 					continue
 				}
 				for _, client := range r.queryConcern[queryhash] {
-					prettyPrintJSON(r.matchSelectClause(query, msg))
-					client.subscriber.Send(r.matchSelectClause(query, msg))
+					if (found && !changeset.IsEmpty()) && !client.legacy {
+						continue
+					}
+					if client.legacy {
+						client.subscriber.Send(legacyMsg)
+					} else {
+						prettyPrintJSON(r.matchSelectClause(query, msg))
+						client.subscriber.Send(r.matchSelectClause(query, msg))
+					}
 				}
 			}
 		}

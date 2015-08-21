@@ -515,11 +515,11 @@ func (a *Archiver) TagsUUID(uuid string) (bson.M, error) {
 // will push all subsequent incoming information (data and tags) on those streams
 // to the client associated with the provided http.ResponseWriter.
 func (a *Archiver) HandleSubscriber(s Subscriber, query, apikey string) {
-	a.republisher.HandleSubscriber(s, query, apikey, false)
+	a.republisher2.HandleSubscriber2(s, "select data before now where "+query, apikey, true)
 }
 
 func (a *Archiver) HandleSubscriber2(s Subscriber, query, apikey string) {
-	a.republisher2.HandleSubscriber2(s, query, apikey)
+	a.republisher2.HandleSubscriber2(s, query, apikey, false)
 }
 
 func (a *Archiver) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey string) {
@@ -527,7 +527,7 @@ func (a *Archiver) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey str
 }
 
 func (a *Archiver) HandleQuerySubscriber(s Subscriber, query, apikey string) {
-	a.republisher.HandleSubscriber(s, query, apikey, true)
+	a.republisher2.HandleSubscriber2(s, "select data before now where "+query, apikey, true)
 }
 
 func (a *Archiver) HandleMetadataSubscriber(s Subscriber, query, apikey string) {
