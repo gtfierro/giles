@@ -1,5 +1,5 @@
 name: Test republish from 2 streams
-layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> Sleep:1s -> 3:Input -> 3:Output -> Sleep:1s -> 1:Output:1 -> 1:Output:2
+layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> Sleep:200ms -> 3:Input -> 3:Output -> Sleep:200ms -> 1:Output:1 -> 1:Output:2
 Client:1:
     Interface: HTTP Stream
     Input:

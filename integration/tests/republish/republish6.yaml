@@ -1,5 +1,5 @@
 name: Test republish from 2 streams, then disqualify 1 stream
-layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> Sleep:500ms -> 3:Input -> 3:Output -> Sleep:500ms -> 4:Input -> 4:Output -> Sleep:500ms -> 1:Output:1 -> 1:Output:2 -> 1:Output:3
+layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> 1:Output:1 -> Sleep:500ms -> 3:Input -> 3:Output -> 1:Output:2 -> Sleep:500ms -> 4:Input -> 4:Output -> Sleep:500ms ->  1:Output:3
 Client:1:
     Interface: HTTP Stream
     Input:
