@@ -71,7 +71,7 @@ type MetadataStore interface {
 	GetTags(target bson.M, is_distinct bool, distinct_key string, where bson.M) ([]interface{}, error)
 
 	// Normal metadata save method
-	SaveTags(messages map[string]*SmapMessage) error
+	SaveTags(messages *map[string]*SmapMessage) error
 
 	// For all documents that match the where clause @where, apply the updates
 	// contained in @updates, provided that the key @apikey is valid for all of
@@ -97,6 +97,12 @@ type MetadataStore interface {
 
 	// Returns the stream type for the stream identified by the given UUID
 	GetStreamType(uuid string) StreamType
+
+	// General purpose metadata Find
+	Find(findclause, selectClause bson.M) (interface{}, error)
+
+	// General purpose metadata Find
+	FindDistinct(findClause bson.M, distinctKey string) (interface{}, error)
 }
 
 type APIKeyManager interface {

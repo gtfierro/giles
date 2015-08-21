@@ -35,6 +35,7 @@ func (qp *QueryProcessor) Parse(querystring string) *SQLex {
 		i += 1
 	}
 	fmt.Printf("operator list %v\n", l.query.operators)
+	fmt.Printf("select keys %v\n", l.query.Contents)
 	return l
 }
 

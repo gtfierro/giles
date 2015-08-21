@@ -33,3 +33,11 @@ apply edge() < min()  < etc... < chunk WINDOW CLAUSE to data since now where WHE
 a sliding window needs a window operation. chunked window can run on a normal range
 
 link to docker and use that to run processes! docker written in go
+
+Stream papers:
+Sensorware: Programming sensor networks beyond code update and querying
+Macro-programming wireless sensor networks using kairos.
+Envirosuite: An environmentally immersive programming framework for sensor networks.
+Flask: A language for data-driven sensor network programs
+The regiment macroprogramming system
+

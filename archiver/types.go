@@ -2,8 +2,11 @@ package archiver
 
 import (
 	"encoding/json"
+	"fmt"
 	"gopkg.in/mgo.v2/bson"
+	"sort"
 	"strconv"
+	"strings"
 )
 
 // Struct representing data readings to and from sMAP
@@ -155,6 +158,103 @@ func (sm *SmapMessage) ToSmapReading() *SmapReading {
 	return rdg
 }
 
+func (sm *SmapMessage) IsTimeseries() bool {
+	return sm.UUID != ""
+}
+
+func (sm *SmapMessage) HasMetadata() bool {
+	return sm.Metadata != nil || sm.Properties != nil || sm.Actuator != nil
+}
+
+// Key names like uuid, Metadata.Key, Properties.Key, etc. Fetches the corresponding
+// value from the
+func (sm *SmapMessage) GetKey(key string) interface{} {
+	// try a quick match on top-level keys
+	switch key {
+	case "uuid":
+		return sm.UUID
+	case "Path":
+		return sm.Path
+	case "Metadata":
+		return sm.Metadata
+	case "Properties":
+		return sm.Properties
+	case "Actuator":
+		return sm.Actuator
+	}
+
+	// handle nested keys
+	var keyPos = strings.Index(key, ".")
+	if keyPos == -1 {
+		return nil
+	}
+	var nestedKey = key[keyPos+1:]
+	var section = key[:keyPos]
+	fmt.Println("nested key", nestedKey, "sectioN", section)
+	switch section {
+	case "Metadata":
+		return sm.Metadata[nestedKey]
+	case "Properties":
+		return sm.Properties[nestedKey]
+	case "Actuator":
+		return sm.Actuator[nestedKey]
+	}
+	return nil
+}
+
+func (sm *SmapMessage) GetValuesFor(q *Query) {
+	for _, key := range q.target {
+		sm.GetKey(key)
+	}
+}
+
+// Returns true if the current message contains keys mentioned in the provided list
+func (sm *SmapMessage) HasKeysFrom(keys []string) bool {
+	var (
+		keyPos    int
+		nestedKey string
+		section   string
+		found     bool = false
+	)
+	if len(keys) == 0 { // the select * case
+		return true
+	}
+	for _, key := range keys {
+		// try quick match on top-level keys
+		switch key {
+		case "uuid":
+			return len(sm.UUID) > 0
+		case "Path":
+			return len(sm.Path) > 0
+		case "Metadata":
+			return sm.Metadata != nil && len(sm.Metadata) > 0
+		case "Properties":
+			return sm.Properties != nil && len(sm.Properties) > 0
+		case "Actuator":
+			return sm.Actuator != nil && len(sm.Actuator) > 0
+		}
+
+		keyPos = strings.Index(key, ".")
+		if keyPos == -1 { // not a nested key, so false
+			return false
+		}
+		nestedKey = key[keyPos+1:]
+		section = key[:keyPos]
+		switch section {
+		case "Metadata":
+			_, found = sm.Metadata[nestedKey]
+		case "Properties":
+			_, found = sm.Properties[nestedKey]
+		case "Actuator":
+			_, found = sm.Actuator[nestedKey]
+		}
+		if found {
+			return found
+		}
+	}
+	return false
+}
+
 type IncomingSmapMessage struct {
 	// Readings for this message
 	Readings [][]json.RawMessage
@@ -186,6 +286,105 @@ func (sm *SmapMessage) ToJson() []byte {
 }
 
 type TieredSmapMessage map[string]*SmapMessage
+
+// This performs the metadata inheritance for the paths and messages inside
+// this collection of SmapMessages. Inheritance starts from the root path "/"
+// can progresses towards the leaves.
+// First, get a list of all of the potential timeseries (any path that contains a UUID)
+// Then, for each of the prefixes for the path of that timeserie (util.getPrefixes), grab
+// the paths from the TieredSmapMessage that match the prefixes. Sort these in "decreasing" order
+// and apply to the metadata.
+// Finally, delete all non-timeseries paths
+func (tsm *TieredSmapMessage) CollapseToTimeseries() {
+	var (
+		prefixMsg *SmapMessage
+		found     bool
+	)
+	for path, msg := range *tsm {
+		if !msg.IsTimeseries() {
+			continue
+		}
+		prefixes := getPrefixes(path)
+		sort.Sort(sort.Reverse(sort.StringSlice(prefixes)))
+		for _, prefix := range prefixes {
+			// if we don't find the prefix OR it exists but doesn't have metadata, we skip
+			prefixMsg, found = (*tsm)[prefix]
+			if !found || prefixMsg == nil || (prefixMsg != nil && !prefixMsg.HasMetadata()) {
+				continue
+			}
+			// otherwise, we apply keys from paths higher up if our timeseries doesn't already have the key
+			// (this is reverse inheritance)
+			if prefixMsg.Metadata != nil && len(prefixMsg.Metadata) > 0 {
+				for k, v := range prefixMsg.Metadata {
+					if _, hasKey := msg.Metadata[k]; !hasKey {
+						if msg.Metadata == nil {
+							msg.Metadata = make(bson.M)
+						}
+						msg.Metadata[k] = v
+					}
+				}
+			}
+			if prefixMsg.Properties != nil && len(prefixMsg.Properties) > 0 {
+				for k, v := range prefixMsg.Properties {
+					if _, hasKey := msg.Properties[k]; !hasKey {
+						if msg.Properties == nil {
+							msg.Properties = make(bson.M)
+						}
+						msg.Properties[k] = v
+					}
+				}
+			}
+			if prefixMsg.Actuator != nil && len(prefixMsg.Actuator) > 0 {
+				for k, v := range prefixMsg.Actuator {
+					if _, hasKey := msg.Actuator[k]; !hasKey {
+						if msg.Actuator == nil {
+							msg.Actuator = make(bson.M)
+						}
+						msg.Actuator[k] = v
+					}
+				}
+			}
+			(*tsm)[path] = msg
+		}
+	}
+	// when done, delete all non timeseries paths
+	for path, msg := range *tsm {
+		if !msg.IsTimeseries() {
+			delete(*tsm, path)
+		}
+	}
+}
+
+func (tsm *TieredSmapMessage) ToBson() []bson.M {
+	var (
+		ret = make([]bson.M, len(*tsm))
+		idx = 0
+	)
+	for _, msg := range *tsm {
+		msgBson := bson.M{
+			"uuid": msg.UUID,
+			"Path": msg.Path,
+		}
+		if msg.Metadata != nil && len(msg.Metadata) > 0 {
+			for k, v := range msg.Metadata {
+				msgBson["Metadata."+k] = v
+			}
+		}
+		if msg.Properties != nil && len(msg.Properties) > 0 {
+			for k, v := range msg.Properties {
+				msgBson["Properties."+k] = v
+			}
+		}
+		if msg.Actuator != nil && len(msg.Actuator) > 0 {
+			for k, v := range msg.Actuator {
+				msgBson["Actuator."+k] = v
+			}
+		}
+		ret[idx] = msgBson
+		idx += 1
+	}
+	return ret
+}
 
 // unit of time indicators
 type UnitOfTime uint

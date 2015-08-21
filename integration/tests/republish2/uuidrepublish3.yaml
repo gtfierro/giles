@@ -1,5 +1,5 @@
-name: Test UUID republish two adds
-layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> 3:Input -> 3:Output -> Sleep:200ms -> 1:Output:1 -> 1:Output:2
+name: Test UUID republish two UUIDs
+layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> 3:Input -> 3:Output -> Sleep:1s -> 1:Output:1 -> 1:Output:2
 Client:1:
     Interface: HTTP Stream
     Input:
@@ -7,7 +7,7 @@ Client:1:
         URI: http://localhost:8079/republish/uuids
         Format: JSON
         Data: >
-            ["$UUID(2)"]
+            ["$UUID(2)","$UUID(3)"]
     Output:
         1:
             Code: 200
@@ -18,7 +18,7 @@ Client:1:
             Code: 200
             Format: JSON
             Contents: >
-                {"Path": "/sensor0", "Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(2),1]],"uuid": "$UUID(2)"}
+                {"Path": "/sensor0", "Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(2),1]],"uuid": "$UUID(3)"}
 
 Client:2:
     Interface: HTTP
@@ -40,7 +40,7 @@ Client:3:
         URI: http://localhost:8079/add/apikey
         Format: string
         Data:  >
-            {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(2),1]],"uuid": "$UUID(2)"}}
+            {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(2),1]],"uuid": "$UUID(3)"}}
     Output:
         Code: 200
         Contents: ""

@@ -164,6 +164,7 @@ setList     : lvalue EQ qstring
 
 selector	: tagList
 			{
+                SQlex.(*SQLex).query.Contents = $1
 				$$ = $1
 			}
 			| ALL

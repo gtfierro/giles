@@ -1,5 +1,5 @@
-name: Test UUID republish two adds
-layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> 3:Input -> 3:Output -> Sleep:200ms -> 1:Output:1 -> 1:Output:2
+name: Test UUID republish single add
+layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> Sleep:1s -> 1:Output
 Client:1:
     Interface: HTTP Stream
     Input:
@@ -14,11 +14,6 @@ Client:1:
             Format: JSON
             Contents: >
                 {"Path": "/sensor0", "Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(2)"}
-        2:
-            Code: 200
-            Format: JSON
-            Contents: >
-                {"Path": "/sensor0", "Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(2),1]],"uuid": "$UUID(2)"}
 
 Client:2:
     Interface: HTTP
@@ -28,19 +23,6 @@ Client:2:
         Format: string
         Data:  >
             {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(2)"}}
-    Output:
-        Code: 200
-        Contents: ""
-        Format: string
-
-Client:3:
-    Interface: HTTP
-    Input:
-        Method: POST
-        URI: http://localhost:8079/add/apikey
-        Format: string
-        Data:  >
-            {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(2),1]],"uuid": "$UUID(2)"}}
     Output:
         Code: 200
         Contents: ""

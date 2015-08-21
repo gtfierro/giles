@@ -54,6 +54,7 @@ type Archiver struct {
 	objstore             ObjectStore
 	qp                   *QueryProcessor
 	republisher          *Republisher
+	republisher2         *Republisher
 	incomingcounter      *counter
 	pendingwritescounter *counter
 	coalescer            *TransactionCoalescer
@@ -95,7 +96,7 @@ func NewArchiver(c *Config) (a *Archiver) {
 		if err != nil {
 			log.Fatal("Error parsing Mongo address: %v", err)
 		}
-		mongostore := NewMongoStore(mongoaddr)
+		mongostore := NewMongoStore(mongoaddr, *c.Mongo.UpdateInterval)
 		if mongostore == nil {
 			log.Fatal("Error connection to MongoDB instance")
 		}
@@ -176,6 +177,7 @@ func NewArchiver(c *Config) (a *Archiver) {
 	// Configure republisher
 	republisher := NewRepublisher(a)
 	a.republisher = republisher
+	a.republisher2 = NewRepublisher(a)
 	return
 }
 
@@ -199,31 +201,16 @@ func (a *Archiver) AddData(readings map[string]*SmapMessage, apikey string) erro
 			return errors.New("Unauthorized api key " + apikey)
 		}
 	}
-	// save metadata
-	//pathMdErr = a.store.SavePathMetadata(readings)
-	//if pathMdErr != nil {
-	//	return pathMdErr
-	//}
 
-	//tsMdErr = a.store.SaveTimeseriesMetadata(readings)
-	//if tsMdErr != nil {
-	//	return tsMdErr
-	//}
-
-	tsMdErr = a.store.SaveTags(readings)
+	tsMdErr = a.store.SaveTags(&readings)
 	if tsMdErr != nil {
 		return tsMdErr
 	}
 
 	// if any of these are NOT nil, then we signal the republisher
 	// that some metadata may have changed
-	for _, rdg := range readings {
-		if rdg.Metadata != nil ||
-			rdg.Properties != nil ||
-			rdg.Actuator != nil {
-			a.republisher.MetadataChange(rdg)
-		}
-	}
+	a.republisher2.RepublishReadings(readings)
+
 	for _, msg := range readings {
 		a.republisher.Republish(msg)
 		a.incomingcounter.Mark()
@@ -286,7 +273,8 @@ func (a *Archiver) HandleQuery(querystring, apikey string) (interface{}, error) 
 		} else { // RemoveDocs
 			res, err = a.store.RemoveDocs(apikey, lex.query.WhereBson())
 		}
-		a.republisher.MetadataChangeKeys(lex.keys)
+		//a.republisher.MetadataChangeKeys(lex.keys)
+		a.republisher2.RepublishKeyChanges(lex.keys)
 		log.Info("results %v", res)
 		if err != nil {
 			return res, err
@@ -296,7 +284,8 @@ func (a *Archiver) HandleQuery(querystring, apikey string) (interface{}, error) 
 		if err != nil {
 			return res, err
 		}
-		a.republisher.MetadataChangeKeys(lex.keys)
+		//a.republisher.MetadataChangeKeys(lex.keys)
+		a.republisher2.RepublishKeyChanges(lex.keys)
 	case DATA_TYPE:
 		// grab reference to the data query
 		dq := lex.query.data
@@ -526,7 +515,11 @@ func (a *Archiver) TagsUUID(uuid string) (bson.M, error) {
 // will push all subsequent incoming information (data and tags) on those streams
 // to the client associated with the provided http.ResponseWriter.
 func (a *Archiver) HandleSubscriber(s Subscriber, query, apikey string) {
-	a.republisher.HandleSubscriber(s, query, apikey, false)
+	a.republisher2.HandleSubscriber2(s, "select data before now where "+query, apikey, true)
+}
+
+func (a *Archiver) HandleSubscriber2(s Subscriber, query, apikey string) {
+	a.republisher2.HandleSubscriber2(s, query, apikey, false)
 }
 
 func (a *Archiver) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey string) {
@@ -534,7 +527,11 @@ func (a *Archiver) HandleUUIDSubscriber(s Subscriber, uuids []string, apikey str
 }
 
 func (a *Archiver) HandleQuerySubscriber(s Subscriber, query, apikey string) {
-	a.republisher.HandleSubscriber(s, query, apikey, true)
+	a.republisher2.HandleSubscriber2(s, "select data before now where "+query, apikey, true)
+}
+
+func (a *Archiver) HandleMetadataSubscriber(s Subscriber, query, apikey string) {
+	a.republisher.HandleMetadataSubscriber(s, query, apikey)
 }
 
 // For all streams that match the provided where clause in where_tags, sets the key-value

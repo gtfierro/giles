@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
+	//"sync"
 )
 
 var referenceManager *Manager
@@ -30,7 +30,7 @@ func findall(directory string) []string {
 }
 
 func main() {
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 
 	var files []string
 	var found []string
@@ -76,14 +76,16 @@ func main() {
 		steps := ParseLayout(m["layout"].(string), clients)
 		errors := make([]error, len(steps))
 		for idx, step := range steps {
-			wg.Add(1)
-			go func(idx int, s *Step) {
-				s.Run()
-				errors[idx] = s.Err()
-				defer wg.Done()
-			}(idx, step)
+			step.Run()
+			errors[idx] = step.Err()
+			//wg.Add(1)
+			//go func(idx int, s *Step) {
+			//	s.Run()
+			//	errors[idx] = s.Err()
+			//	defer wg.Done()
+			//}(idx, step)
 		}
-		wg.Wait()
+		//wg.Wait()
 		hasError := false
 		for _, e := range errors {
 			if e != nil {

@@ -27,8 +27,9 @@ type Config struct {
 	}
 
 	Mongo struct {
-		Port    *string
-		Address *string
+		Port           *string
+		Address        *string
+		UpdateInterval *int
 	}
 
 	Venkman struct {
@@ -93,7 +94,7 @@ func LoadConfig(filename string) *Config {
 
 func PrintConfig(c *Config) {
 	fmt.Println("Giles Configuration")
-	fmt.Println("Connecting to Mongo at", *c.Mongo.Address, ":", *c.Mongo.Port)
+	fmt.Println("Connecting to Mongo at", *c.Mongo.Address, ":", *c.Mongo.Port, "with update interval", *c.Mongo.UpdateInterval, "seconds")
 	fmt.Println("Using Timeseries DB", *c.Archiver.TSDB)
 	switch *c.Archiver.TSDB {
 	case "readingdb":

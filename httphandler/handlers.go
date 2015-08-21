@@ -42,6 +42,7 @@ func Handle(a *archiver.Archiver, port int) {
 
 	r.POST("/api/streamingquery", curryhandler(a, StreamingQueryHandler))
 
+	r.POST("/republish2", curryhandler(a, RepublishHandler2))
 	r.POST("/republish", curryhandler(a, RepublishHandler))
 	r.POST("/republish/data", curryhandler(a, RepublishHandler))
 	r.POST("/republish/uuids", curryhandler(a, UUIDRepublishHandler))
@@ -67,7 +68,7 @@ func curryhandler(a *archiver.Archiver, f func(*archiver.Archiver, http.Response
 }
 
 // Handles POSTing of new data
-// The handleJSON method parses the message received from the sMAP drivers
+// The HandleJSON method parses the message received from the sMAP drivers
 // and delivers them as an array. Because metadata is delivered as k/v pairs
 // representing a tree, we have a pre-loop that stores the metadata values at
 // the higher levels of the tree. Then, when we loop through the data to add it
@@ -122,6 +123,30 @@ func RepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Re
 	}
 	s := NewHTTPSubscriber(rw)
 	a.HandleSubscriber(s, string(stringquery), apikey)
+}
+
+// Receives POST request which contains metadata query. Subscribes the
+// requester to readings from streams which match that metadata query
+func RepublishHandler2(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	defer req.Body.Close()
+	apikey := unescape(ps.ByName("key"))
+	stringquery, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Error("Error handling republish: %v", err, stringquery)
+	}
+	s := NewHTTPSubscriber(rw)
+	a.HandleSubscriber2(s, string(stringquery), apikey)
+}
+
+func MetadataRepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	defer req.Body.Close()
+	apikey := unescape(ps.ByName("key"))
+	stringquery, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Error("Error handling republish: %v", err, stringquery)
+	}
+	s := NewHTTPSubscriber(rw)
+	a.HandleMetadataSubscriber(s, string(stringquery), apikey)
 }
 
 func UUIDRepublishHandler(a *archiver.Archiver, rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {

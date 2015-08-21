@@ -1,6 +1,7 @@
 package archiver
 
 import (
+	"fmt"
 	"gopkg.in/mgo.v2/bson"
 	"strings"
 	"sync"
@@ -12,13 +13,59 @@ type QueryHash string
 type Query struct {
 	// list of keys in the Where clause
 	keys []string
+	// type of query
+	querytype queryType
+	// list of desired tags
+	target []string
 	// parsed where clause
 	where bson.M
-	// a unique representation of this query
-	// used to compare two different query objects
+	// a unique representation of this query used to compare two different query objects
 	hash QueryHash
 	// Track state transitions for the UUIDs that match this query
 	m_uuids map[string]UUIDSTATE
+	// whether this is a DISTINCT query
+	distinct bool
+	// reference to the AST
+	lex *SQLex
+}
+
+func (q Query) Match(cs *QueryChangeSet) *QueryChangeSet {
+	var ret = NewQueryChangeSet()
+	//TODO: better Readings support. This just does "data before now"
+	if q.querytype == DATA_TYPE {
+		for uuid, msg := range cs.New {
+			msg.Metadata = nil
+			msg.Properties = nil
+			msg.Actuator = nil
+			ret.NewStream(uuid, msg)
+		}
+	} else if q.querytype == SELECT_TYPE {
+		if len(q.target) == 0 {
+			return cs
+		}
+		//TODO: handle select clause
+		fmt.Println("SELECT ME", q.target)
+	}
+	return ret
+}
+
+func (q Query) MatchSelectClause(msg *SmapMessage) (ret *SmapMessage) {
+	ret = msg
+	if q.querytype == DATA_TYPE {
+		ret.Metadata = nil
+		ret.Properties = nil
+		ret.Actuator = nil
+		return
+	} else if q.querytype == SELECT_TYPE {
+		if len(q.target) == 0 { // select *
+			return
+		} else {
+			//re run the query and deliver the result
+			fmt.Println("SELECT ME", q.target)
+			return
+		}
+	}
+	return
 }
 
 type UUIDSTATE uint
@@ -53,7 +100,7 @@ type Subscriber interface {
 // This is the type used within the Republisher to track the subscribers
 type RepublishClient struct {
 	// query made by this client
-	query string
+	query *Query
 
 	// a bool is sent on this channel when the client wants to be closed
 	notify <-chan bool
@@ -64,6 +111,7 @@ type RepublishClient struct {
 	// true if this client is only interested in membership of a query (which UUIDs
 	// qualify and which do not)
 	membership bool
+	legacy     bool
 }
 
 // This is a more thought-out version of the republisher that was first
@@ -126,7 +174,7 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string, membe
 	}
 
 	// create new instance of a client
-	client := &RepublishClient{notify: s.GetNotify(), subscriber: s, query: query, membership: membership}
+	client := &RepublishClient{notify: s.GetNotify(), subscriber: s, query: q, membership: membership}
 
 	r.Lock()
 	{ // begin lock
@@ -154,6 +202,11 @@ func (r *Republisher) HandleSubscriber(s Subscriber, query, apikey string, membe
 		}
 	}
 	r.Unlock()
+}
+
+// A Metadata subscriber wants notifications on changes on the set of streams that match
+// the where-clause provided by the `query` parameter
+func (r *Republisher) HandleMetadataSubscriber(s Subscriber, query, apikey string) {
 }
 
 // A UUID subscriber is interested in all metadata associated with a given stream. We
