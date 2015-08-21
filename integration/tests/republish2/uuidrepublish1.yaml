@@ -1,18 +1,19 @@
-name: Test republish single add
-layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> Sleep:2s -> 1:Output
+name: Test UUID republish single add
+layout: 1:Input -> Sleep:500ms -> 2:Input -> 2:Output -> Sleep:1s -> 1:Output
 Client:1:
     Interface: HTTP Stream
     Input:
         Method: POST
-        URI: http://localhost:8079/republish
-        Format: string
+        URI: http://localhost:8079/republish/uuids
+        Format: JSON
         Data: >
-            Metadata/tag = "$UUID(1)"
+            ["$UUID(2)"]
     Output:
         1:
             Code: 200
-            Contents: '{"/sensor0": {"uuid": "$UUID(2)", "Readings": [[$TIME_MS(1), 0]]}}'
             Format: JSON
+            Contents: >
+                {"Path": "/sensor0", "Properties": {"UnitofTime": "ms"}, "Metadata": {"tag": "$UUID(1)"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(2)"}
 
 Client:2:
     Interface: HTTP
