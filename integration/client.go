@@ -213,6 +213,10 @@ func (hc *HTTPStreamClient) Output() error {
 	if hc.response == nil {
 		return fmt.Errorf("Nil response")
 	}
+	go func() {
+		time.Sleep(5 * time.Second)
+		hc.response.Body.Close()
+	}()
 	if hc.reader == nil {
 		hc.reader = bufio.NewReader(hc.response.Body)
 	}
@@ -224,20 +228,9 @@ func (hc *HTTPStreamClient) Output() error {
 	var contents []byte
 	var readErr error
 
-	contents, readErr = hc.reader.ReadBytes('\n')
-	if readErr != nil {
-		fmt.Println("Error when reading HTTP response body (%v)\n", readErr)
-	}
-	_, readErr = hc.reader.ReadBytes('\n')
-
-	//fmt.Println("contents so far", string(contents))
-	//select {
-	//case <-readBytes:
-	//	//hc.reader.ReadBytes('\n') // discard second newline (sMAP delivers them in pairs)
-	//    fmt.Println("contents so far", string(contents))
-	//case <-time.After(2 * time.Second): // timeout
-	//    fmt.Println("timeout")
-	//}
+	// test if there is anything on the wire
+	contents, _ = hc.reader.ReadBytes('\n')
+	hc.reader.ReadBytes('\n')
 
 	if readErr != nil {
 		return fmt.Errorf("Error when reading HTTP response body (%v)\n", readErr)
