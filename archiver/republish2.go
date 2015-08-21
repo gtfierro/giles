@@ -380,11 +380,32 @@ func (r *Republisher) RepublishKeyChanges(keys []string) map[QueryHash]*QueryCha
 		reeval = make(map[QueryHash]*QueryChangeSet)
 	)
 
+	r.keyConcernLock.RLock()
 	// create the set of affected queries
 	for _, key := range keys {
 		for _, query := range r.keyConcern[key] {
 			if _, found := reeval[query]; !found {
 				reeval[query] = NewQueryChangeSet()
+			}
+		}
+	}
+	r.keyConcernLock.RUnlock()
+
+	// reevaluate the queries
+	for queryhash, changeset := range reeval {
+		if r.ReevaluateQuery(queryhash, changeset) {
+			// if the query is reevaluated, then we need to send off the latest
+			// changes, but we have no msg, so we can just reevluate the query
+			// and send it off
+			if len(r.queryConcern[queryhash]) == 0 {
+				continue
+			}
+			ret, _ := r.reevaluateSelect(r.queries[queryhash])
+			for _, client := range r.queryConcern[queryhash] {
+				if client.legacy {
+					continue
+				}
+				client.subscriber.Send(ret)
 			}
 		}
 	}
@@ -394,6 +415,17 @@ func (r *Republisher) RepublishKeyChanges(keys []string) map[QueryHash]*QueryCha
 	//  changeset.Debug()
 	//}
 	//TODO: notify each relevant subscriber of a changed query
+	for queryhash, changeset := range reeval {
+		if changeset.IsEmpty() {
+			continue
+		}
+		for _, client := range r.queryConcern[queryhash] {
+			if client.legacy {
+				continue
+			}
+			client.subscriber.Send(changeset)
+		}
+	}
 
 	return reeval
 }

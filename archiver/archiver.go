@@ -274,7 +274,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) (interface{}, error) 
 			res, err = a.store.RemoveDocs(apikey, lex.query.WhereBson())
 		}
 		//a.republisher.MetadataChangeKeys(lex.keys)
-		a.republisher.RepublishKeyChanges(lex.keys)
+		a.republisher2.RepublishKeyChanges(lex.keys)
 		log.Info("results %v", res)
 		if err != nil {
 			return res, err
@@ -285,7 +285,7 @@ func (a *Archiver) HandleQuery(querystring, apikey string) (interface{}, error) 
 			return res, err
 		}
 		//a.republisher.MetadataChangeKeys(lex.keys)
-		a.republisher.RepublishKeyChanges(lex.keys)
+		a.republisher2.RepublishKeyChanges(lex.keys)
 	case DATA_TYPE:
 		// grab reference to the data query
 		dq := lex.query.data
