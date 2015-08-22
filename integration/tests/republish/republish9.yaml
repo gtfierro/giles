@@ -1,0 +1,52 @@
+name: Test republish on changing select distinct clause
+layout: 1:Input -> Sleep:100ms -> 2:Input -> 2:Output -> Sleep:100ms -> 1:Output:1 -> 3:Input -> 3:Output -> Sleep:100ms -> 1:Output:2 
+Client:1:
+    Interface: HTTP Stream
+    Input:
+        Method: POST
+        URI: http://localhost:8079/republish2
+        Format: string
+        Data: >
+            select distinct Metadata/distinctTag where has Metadata/distinctTag;
+    Output:
+        1:
+            Code: 200
+            Contents: >
+                {"New":{"$UUID(1)":{"Path":"/sensor0","Properties":{"UnitofTime":"ms"},"Metadata":{"distinctTag":"$UUID(2)"},"uuid":"$UUID(1)","Readings":[[$TIME_MS(1),0]]}}}
+            Format: JSON
+        2:
+            Code: 200
+            Contents: >
+                [{"Metadata": {"distinctTag": "$UUID(1)"}}]
+            Format: JSON
+        3:
+            Code: 200
+            Contents: >
+                {"New":{"$UUID(3)":{"Path":"/sensor1","Properties":{"UnitofTime":"ms"},"Metadata":{"distinctTag":"$UUID(4)"},"uuid":"$UUID(3)","Readings":[[$TIME_MS(2),1]]}}}
+            Format: JSON
+
+Client:2:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/add/apikey
+        Format: string
+        Data:  >
+            {"/sensor0": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"distinctTag": "$UUID(2)"}, "Readings": [[$TIME_MS(1),0]],"uuid": "$UUID(1)"}}
+    Output:
+        Code: 200
+        Contents: ""
+        Format: string
+
+Client:3:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/add/apikey
+        Format: string
+        Data:  >
+            {"/sensor1": {"Properties": {"UnitofTime": "ms"}, "Metadata": {"distinctTag": "$UUID(4)"}, "Readings": [[$TIME_MS(2),1]],"uuid": "$UUID(3)"}}
+    Output:
+        Code: 200
+        Contents: ""
+        Format: string
