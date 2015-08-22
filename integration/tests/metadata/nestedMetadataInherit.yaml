@@ -1,0 +1,62 @@
+name: check to see if inheriting on a metadata subtree works
+layout: 1:Input -> 1:Output -> 2:Input -> 2:Output
+Client:1:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/add/apikey
+        Format: JSON
+        Data: >
+            {
+                "/root": {
+                    "Contents": [
+                        "sensors"
+                    ],
+                    "Metadata": {
+                        "tag1/base/first": 123
+                    }
+                },
+                "/root/sensors": {
+                    "Contents": [
+                        "0"
+                    ],
+                    "Metadata": {
+                        "tag1/base/second/name": 456
+                    }
+                },
+                "/root/sensors/0": {
+                    "Properties": {
+                        "UnitofTime": "ms"
+                    },
+                    "Readings": [
+                        [
+                            $TIME_MS(1),
+                            1
+                        ]
+                    ],
+                    "uuid": "$UUID(1)"
+                }
+            }
+    Output:
+        Code: 200
+        Contents: ''
+        Format: string
+
+Client:2:
+    Interface: HTTP
+    Input:
+        Method: POST
+        URI: http://localhost:8079/api/query
+        Format: string
+        Data: select * where uuid = "$UUID(1)"
+    Output:
+        Code: 200
+        Format: JSON
+        Contents: >
+            [{
+             "uuid": "$UUID(1)",
+             "Path": "/root/sensors/0",
+             "Metadata": {"tag1/base/first": 123,
+                          "tag1/base/second/name": 456},
+             "Properties": {"UnitofTime": "ms"}
+             }]
