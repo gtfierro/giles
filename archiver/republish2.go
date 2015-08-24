@@ -13,7 +13,6 @@ type QueryChangeSet struct {
 	// list of streams that no longer match this query
 	del map[string]struct{} `json:"-"`
 	Del []string            `json:",omitempty"`
-	// list of current data that matches query
 }
 
 func NewQueryChangeSet() *QueryChangeSet {
@@ -48,6 +47,7 @@ func (cs *QueryChangeSet) MarshalJSON() ([]byte, error) {
 	idx := 0
 	for uuid, _ := range cs.del {
 		cs.Del[idx] = uuid
+		idx += 1
 	}
 	return json.Marshal(*cs)
 }
