@@ -286,6 +286,18 @@ func (r *Republisher) ChangeSubscriptions(readings map[string]*SmapMessage) map[
 			}
 		}
 
+		for _, query := range r.keyConcern["uuid"] {
+			if _, found := reeval[query]; !found {
+				reeval[query] = NewQueryChangeSet()
+			}
+		}
+
+		for _, query := range r.keyConcern["Path"] {
+			if _, found := reeval[query]; !found {
+				reeval[query] = NewQueryChangeSet()
+			}
+		}
+
 		// reevaluate the queries
 		for queryhash, changeset := range reeval {
 			if r.ReevaluateQuery(queryhash, changeset) {
@@ -445,9 +457,11 @@ func (r *Republisher) RepublishReadings(messages map[string]*SmapMessage) {
 	// as a result. We look up the subscribers for each query, hand them
 	// the change set?
 	for queryhash, changeset := range affected_queries {
+		// do not deliver changes if there aren't any
 		if changeset.IsEmpty() {
 			continue
 		}
+		// find all clients that aren't legacy and send the changeset
 		for _, client := range r.queryConcern[queryhash] {
 			if client.legacy {
 				continue
@@ -457,19 +471,18 @@ func (r *Republisher) RepublishReadings(messages map[string]*SmapMessage) {
 	}
 
 	for _, msg := range messages {
+		// setup the special legacy message
 		legacyMsg := make(map[string]interface{})
 		legacyMsg[msg.Path] = msg.ToSmapReading()
+		// for all queries concerned with the uuid of this message
 		if queries, found := r.uuidConcern[msg.UUID]; found {
 			for _, queryhash := range queries {
-				changeset, found := affected_queries[queryhash]
-				//if changeset, found := affected_queries[queryhash]; found && !changeset.IsEmpty() {
+				query := r.queries[queryhash]
+				//if !msg.HasKeysFrom(query.target) {
 				//	continue
 				//}
-				query := r.queries[queryhash]
+				changeset, found := affected_queries[queryhash]
 				// get the list of subscribers for that query and forward the message
-				if !msg.HasKeysFrom(query.target) {
-					continue
-				}
 				for _, client := range r.queryConcern[queryhash] {
 					if (found && !changeset.IsEmpty()) && !client.legacy {
 						continue
