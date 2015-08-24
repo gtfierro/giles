@@ -96,7 +96,7 @@ func flatten(m bson.M) bson.M {
 	var ret = make(bson.M)
 	for k, v := range m {
 		if vb, ok := v.(map[string]interface{}); ok {
-			for kk, vv := range incorporate(vb) {
+			for kk, vv := range flatten(vb) {
 				ret[k+"."+kk] = vv
 			}
 		} else {
