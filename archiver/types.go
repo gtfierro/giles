@@ -121,9 +121,9 @@ func (sm *SmapMessage) UnmarshalJSON(b []byte) (err error) {
 	// copy the values over that we don't need to translate
 	sm.UUID = incoming.UUID
 	sm.Path = incoming.Path
-	sm.Metadata = incoming.Metadata
-	sm.Properties = incoming.Properties
-	sm.Actuator = incoming.Actuator
+	sm.Metadata = flatten(incoming.Metadata)
+	sm.Properties = flatten(incoming.Properties)
+	sm.Actuator = flatten(incoming.Actuator)
 	sm.Contents = incoming.Contents
 
 	// convert the readings depending if they are numeric or object
