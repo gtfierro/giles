@@ -321,9 +321,9 @@ func (r *Republisher) ReevaluateQuery(qh QueryHash, cs *QueryChangeSet) bool {
 	// fetch the query corresponding to this hash
 	r.queriesLock.RLock()
 	query, found = r.queries[qh]
-	r.queriesLock.RUnlock()
 
 	if !found {
+		r.queriesLock.RUnlock()
 		return changed // did not find the query, so we cannot reevaluate anything
 	}
 
@@ -331,6 +331,7 @@ func (r *Republisher) ReevaluateQuery(qh QueryHash, cs *QueryChangeSet) bool {
 	uuids, err := r.a.store.GetUUIDs(query.where)
 	if err != nil {
 		log.Error("Received error when getting UUIDs for %v: (%v)", query.where, err)
+		r.queriesLock.RUnlock()
 		return changed
 	}
 
@@ -345,6 +346,7 @@ func (r *Republisher) ReevaluateQuery(qh QueryHash, cs *QueryChangeSet) bool {
 			changed = true
 		}
 	}
+	r.queriesLock.RUnlock()
 
 	// remove UUIDs marked as OLD because they no longer match
 	r.uuidConcernLock.Lock()
@@ -477,7 +479,9 @@ func (r *Republisher) RepublishReadings(messages map[string]*SmapMessage) {
 		// for all queries concerned with the uuid of this message
 		if queries, found := r.uuidConcern[msg.UUID]; found {
 			for _, queryhash := range queries {
+				r.queriesLock.RLock()
 				query := r.queries[queryhash]
+				r.queriesLock.RUnlock()
 				//if !msg.HasKeysFrom(query.target) {
 				//	continue
 				//}
@@ -490,7 +494,7 @@ func (r *Republisher) RepublishReadings(messages map[string]*SmapMessage) {
 					if client.legacy {
 						client.subscriber.Send(legacyMsg)
 					} else {
-						prettyPrintJSON(r.matchSelectClause(query, msg))
+						//prettyPrintJSON(r.matchSelectClause(query, msg))
 						client.subscriber.Send(r.matchSelectClause(query, msg))
 					}
 				}
