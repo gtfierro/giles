@@ -100,13 +100,14 @@ type SmapMessage struct {
 	// Unique identifier for this stream. Should be empty for Collections
 	UUID string `json:"uuid"`
 	// Path of this stream (thus far)
-	Path string
+	Path string `json:", omitempty"`
 }
 
 func (sm *SmapMessage) UnmarshalJSON(b []byte) (err error) {
 	var (
 		incoming  = new(IncomingSmapMessage)
 		time      uint64
+		timeFloat float64
 		value_num float64
 		value_obj interface{}
 	)
@@ -130,9 +131,12 @@ func (sm *SmapMessage) UnmarshalJSON(b []byte) (err error) {
 	sm.Readings = make([]Reading, len(incoming.Readings))
 	for idx, reading := range incoming.Readings {
 		// time should be a uint64 no matter what
-		err = json.Unmarshal(reading[0], &time)
-		if err != nil {
-			return
+		if err = json.Unmarshal(reading[0], &time); err != nil {
+			if err = json.Unmarshal(reading[0], &timeFloat); err != nil {
+				return
+			} else {
+				time = uint64(timeFloat)
+			}
 		}
 
 		// check if we have a numerical value
