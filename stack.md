@@ -148,35 +148,36 @@ Edit `upmuplot/settings.json` and `upmuplot/client/home.js`. The addresses can b
 or IP addresses. All ports below are default, but if you have changed them in your installation,
 change them here.
 
-`upmuplot/settings.json`
-```json
-{
-    "archiverUrl": "http://<address of btrdb>:9000",
-    "public": { "archiverUrl": "http://<address of btrdb>:9000" }
-}
-```
+* `upmuplot/settings.json`
 
-`upmuplot/client/home.js`
-```javascript
-tagsURL: 'http://<address of giles>:8079/api/query',
-dataURLStart: 'http://<address of btrdb>:9000/data/uuid/',
-bracketURL: 'http://<address of btrdb>:9000/q/bracket',
-csvURL: 'http://<address of btrdb>:9000/wrappedcsv',
-```
+  ```json
+  {
+      "archiverUrl": "http://<address of btrdb>:9000",
+      "public": { "archiverUrl": "http://<address of btrdb>:9000" }
+  }
+  ```
 
+* `upmuplot/client/home.js`
 
+  ```javascript
+  tagsURL: 'http://<address of giles>:8079/api/query',
+  dataURLStart: 'http://<address of btrdb>:9000/data/uuid/',
+  bracketURL: 'http://<address of btrdb>:9000/q/bracket',
+  csvURL: 'http://<address of btrdb>:9000/wrappedcsv',
+  ```
 
-Supervisord conf file
-```ini
-# /etc/supervisor/conf.d/plotter.conf
-[program:plotter]
-command=/usr/local/bin/meteor --settings settings.json
-directory=/srv/plotter/upmuplot
-autostart=true
-autorestart=true
-stderr_logfile=/var/log/plotter.err.log
-stdout_logfile=/var/log/plotter.out.log
-```
+* Supervisord conf file
+
+  ```ini
+  # /etc/supervisor/conf.d/plotter.conf
+  [program:plotter]
+  command=/usr/local/bin/meteor --settings settings.json
+  directory=/srv/plotter/upmuplot
+  autostart=true
+  autorestart=true
+  stderr_logfile=/var/log/plotter.err.log
+  stdout_logfile=/var/log/plotter.out.log
+  ```
 
 ## <a name="Deckard"></a>Deckard
 
