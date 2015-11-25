@@ -144,8 +144,29 @@ stdout_logfile=/var/log/giles.out.log
 $ git clone https://github.com/SoftwareDefinedBuildings/upmu-plotter.git
 ```
 
-Edit `upmuplot/settings.json` and `upmuplot/client/home.js`
+Edit `upmuplot/settings.json` and `upmuplot/client/home.js`. The addresses can be hostnames
+or IP addresses. All ports below are default, but if you have changed them in your installation,
+change them here.
 
+`upmuplot/settings.json`
+```json
+{
+    "archiverUrl": "http://<address of btrdb>:9000",
+    "public": { "archiverUrl": "http://<address of btrdb>:9000" }
+}
+```
+
+`upmuplot/client/home.js`
+```javascript
+tagsURL: 'http://<address of giles>:8079/api/query',
+dataURLStart: 'http://<address of btrdb>:9000/data/uuid/',
+bracketURL: 'http://<address of btrdb>:9000/q/bracket',
+csvURL: 'http://<address of btrdb>:9000/wrappedcsv',
+```
+
+
+
+Supervisord conf file
 ```ini
 # /etc/supervisor/conf.d/plotter.conf
 [program:plotter]
