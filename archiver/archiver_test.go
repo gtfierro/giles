@@ -1,8 +1,8 @@
 package archiver
 
 import (
-	UUID "code.google.com/p/go-uuid/uuid"
 	"fmt"
+	UUID "github.com/pborman/uuid"
 	"gopkg.in/mgo.v2/bson"
 	"sync"
 	"testing"

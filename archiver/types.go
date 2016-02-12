@@ -128,6 +128,9 @@ func (sm *SmapMessage) UnmarshalJSON(b []byte) (err error) {
 	sm.Contents = incoming.Contents
 
 	// convert the readings depending if they are numeric or object
+	if len(incoming.Readings) == 0 {
+		return
+	}
 	sm.Readings = make([]Reading, len(incoming.Readings))
 	for idx, reading := range incoming.Readings {
 		// time should be a uint64 no matter what

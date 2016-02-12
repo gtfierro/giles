@@ -1,8 +1,8 @@
 package archiver
 
 import (
-	"code.google.com/p/gcfg"
 	"fmt"
+	gcfg "gopkg.in/gcfg.v1"
 )
 
 type Config struct {

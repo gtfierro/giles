@@ -2,11 +2,11 @@ package archiver
 
 import (
 	"bytes"
-	uuidlib "code.google.com/p/go-uuid/uuid"
 	"errors"
 	"fmt"
 	capn "github.com/glycerine/go-capnproto"
 	qsr "github.com/gtfierro/giles/internal/quasarcapnp"
+	uuidlib "github.com/pborman/uuid"
 	"net"
 	"sync"
 )

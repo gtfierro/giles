@@ -1,7 +1,7 @@
 package mphandler
 
 import (
-	UUID "code.google.com/p/go-uuid/uuid"
+	UUID "github.com/pborman/uuid"
 	"github.com/gtfierro/giles/archiver"
 	"github.com/gtfierro/msgpack"
 	"github.com/ugorji/go/codec"

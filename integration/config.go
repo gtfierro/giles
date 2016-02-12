@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "code.google.com/p/go-uuid/uuid"
+	_ "github.com/pborman/uuid"
 	"fmt"
 	"log"
 	"regexp"

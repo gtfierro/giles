@@ -1,7 +1,7 @@
 package main
 
 import (
-	uuid "code.google.com/p/go-uuid/uuid"
+	uuid "github.com/pborman/uuid"
 	"github.com/gtfierro/giles/mphandler"
 	"github.com/ugorji/go/codec"
 	"log"

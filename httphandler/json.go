@@ -27,6 +27,9 @@ func handleJSON(r io.Reader) (decoded archiver.TieredSmapMessage, err error) {
 	decoder.UseNumber()
 	err = decoder.Decode(&decoded)
 	for path, msg := range decoded {
+		if msg == nil {
+			continue
+		}
 		msg.Path = path
 	}
 	return
